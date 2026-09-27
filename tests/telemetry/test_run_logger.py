@@ -154,6 +154,11 @@ def test_metadata_contains_reproducibility_identity(
     assert stored["code_revision"] == "abc123"
     assert stored["config_hash"] == resolved.sha256
     assert stored["log_schema_version"] == "1"
+    assert stored["dependency_versions"]["mediapipe"] == "1.0.1"
+    assert (
+        stored["dependency_versions"]["opencv-contrib-python"]
+        == "4.14.0.94"
+    )
 
 
 def test_logger_serializes_unavailable_quality(

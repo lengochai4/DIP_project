@@ -92,6 +92,11 @@ def build_run_metadata(
         "python_version": platform.python_version(),
         "dependency_versions": {
             "PyYAML": _dependency_version("PyYAML"),
+            "numpy": _dependency_version("numpy"),
+            "opencv-contrib-python": _dependency_version(
+                "opencv-contrib-python"
+            ),
+            "mediapipe": _dependency_version("mediapipe"),
         },
         "provider": {
             "name": tracking.get("provider"),
