@@ -97,6 +97,37 @@ Primary G1 objectives:
 10. run camera smoke testing only where hardware is available.
 
 No ROI/CLAHE or 1-Euro behavior belongs in G1.
+### G1 contract correction — LandmarkProvider input
+
+Change:
+`LandmarkProvider.process` now accepts `FramePacket` instead of separate
+image/timestamp arguments.
+
+Reason:
+The previous signature could not preserve required `frame_id` identity
+and conflicted with the rule that the MediaPipe adapter owns explicit
+BGR → RGB conversion.
+
+Canonical file/section changed:
+`02_ARCHITECTURE_AND_CONTRACTS.md`, Public interfaces.
+
+Code/modules affected:
+`core/interfaces.py`, future tracking-provider adapter.
+
+Algorithmic impact:
+None.
+
+Experimental impact:
+None.
+
+Compatibility impact:
+Public interface correction before any provider implementation existed.
+
+Tests added/updated:
+Provider tests will verify frame identity and BGR → RGB conversion in G1.4.
+
+Existing results invalidated:
+No — no provider experiments/results exist yet.
 
 ## 5. Immediate next tasks
 

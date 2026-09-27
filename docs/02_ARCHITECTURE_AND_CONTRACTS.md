@@ -434,9 +434,18 @@ Replay EOF may return `None`; camera failure must be distinguishable from normal
 
 ```python
 class LandmarkProvider(Protocol):
-    def process(self, frame_rgb: np.ndarray, timestamp_s: float) -> LandmarkObservation: ...
+    def process(self, frame: FramePacket) -> LandmarkObservation: ...
     def close(self) -> None: ...
 ```
+The provider receives the project-owned FramePacket so frame identity,
+timestamp, and declared color space remain coupled.
+
+For the required MediaPipe adapter, the input FramePacket MUST be BGR.
+The adapter owns the explicit BGR → RGB conversion before constructing
+the MediaPipe image.
+
+The emitted LandmarkObservation MUST preserve frame.frame_id and
+frame.timestamp_s exactly.
 
 ```python
 class LandmarkFilter(Protocol):
