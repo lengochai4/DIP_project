@@ -228,7 +228,7 @@ class ReplayRuntime:
                             compute_total_ms
                         ),
                     ),
-                    events=(),
+                    events=diagnostics.events,
                 )
 
                 self._logger.log_tracking_frame(

@@ -292,8 +292,15 @@ class FileRunLogger:
                     "frame_id": frame.frame_id,
                     "timestamp_s": frame.timestamp_s,
                     "event_type": event_type,
-                    "severity": "INFO",
-                    "details": {},
+                    "severity": "WARNING",
+                    "details": {
+                        "filter_mode": (
+                            frame.filter_diagnostics.mode.value
+                        ),
+                        "reset_occurred": (
+                            frame.filter_diagnostics.reset_occurred
+                        ),
+                    },
                 }
             )
 
