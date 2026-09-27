@@ -34,6 +34,9 @@ from .adaptive_one_euro_temporal import (
     AdaptiveOneEuroTemporalCore,
     AdaptiveOneEuroTemporalResult,
 )
+from .adaptive_one_euro import (
+    AdaptiveOneEuroLandmarkFilter,
+)
 from .raw import RawLandmarkFilter
 
 __all__ = [
@@ -56,4 +59,5 @@ __all__ = [
     "AdaptiveOneEuroLandmarkCore",
     "AdaptiveOneEuroTemporalCore",
     "AdaptiveOneEuroTemporalResult",
+    "AdaptiveOneEuroLandmarkFilter",
 ]

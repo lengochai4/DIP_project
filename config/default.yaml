@@ -43,10 +43,31 @@ tracking:
 
 filter:
   mode: "RAW"
+
+  # F1 canonical fixed 1-Euro
   min_cutoff_hz: 1.0
   beta: 0.0
+
+  # Shared F1/F2 temporal parameters
   derivative_cutoff_hz: 1.0
   reset_gap_s: 0.50
+
+  # F2 project-specific bounded adaptive 1-Euro.
+  # Engineering starter values only; not claimed optima.
+  adaptive:
+    base_cutoff_hz: 1.0
+
+    beta_min: 0.0
+    beta_base: 0.0
+    beta_max: 1.0
+
+    velocity_gain: 0.1
+    velocity_max: 10.0
+
+    final_cutoff_min_hz: 1.0
+    final_cutoff_max_hz: 10.0
+
+    quality_adaptation_enabled: false
 
 gesture:
   pinch_on: 0.30

@@ -387,3 +387,208 @@ def test_zero_fixed_beta_is_allowed() -> None:
         resolved.data["filter"]["beta"]
         == pytest.approx(0.0)
     )
+
+
+def test_default_adaptive_filter_parameters_are_valid() -> None:
+    resolved = resolve_config(
+        DEFAULT_CONFIG
+    )
+
+    adaptive = (
+        resolved.data["filter"]["adaptive"]
+    )
+
+    assert adaptive[
+        "base_cutoff_hz"
+    ] == pytest.approx(1.0)
+
+    assert adaptive["beta_min"] == pytest.approx(
+        0.0
+    )
+
+    assert adaptive["beta_base"] == pytest.approx(
+        0.0
+    )
+
+    assert adaptive["beta_max"] == pytest.approx(
+        1.0
+    )
+
+    assert adaptive[
+        "velocity_gain"
+    ] == pytest.approx(0.1)
+
+    assert adaptive[
+        "velocity_max"
+    ] == pytest.approx(10.0)
+
+    assert adaptive[
+        "final_cutoff_min_hz"
+    ] == pytest.approx(1.0)
+
+    assert adaptive[
+        "final_cutoff_max_hz"
+    ] == pytest.approx(10.0)
+
+    assert (
+        adaptive[
+            "quality_adaptation_enabled"
+        ]
+        is False
+    )
+
+
+def test_adaptive_filter_mode_is_allowed() -> None:
+    resolved = resolve_config(
+        DEFAULT_CONFIG,
+        overrides={
+            "filter": {
+                "mode": (
+                    "ONE_EURO_ADAPTIVE"
+                ),
+            }
+        },
+    )
+
+    assert (
+        resolved.data["filter"]["mode"]
+        == "ONE_EURO_ADAPTIVE"
+    )
+
+
+@pytest.mark.parametrize(
+    (
+        "beta_min",
+        "beta_base",
+        "beta_max",
+    ),
+    [
+        (0.5, 0.4, 1.0),
+        (0.0, 1.1, 1.0),
+        (1.0, 0.5, 0.4),
+    ],
+)
+def test_invalid_adaptive_beta_order_is_rejected(
+    beta_min: float,
+    beta_base: float,
+    beta_max: float,
+) -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "filter": {
+                    "adaptive": {
+                        "beta_min": beta_min,
+                        "beta_base": beta_base,
+                        "beta_max": beta_max,
+                    }
+                }
+            },
+        )
+
+
+def test_negative_velocity_gain_is_rejected() -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "filter": {
+                    "adaptive": {
+                        "velocity_gain": -0.1,
+                    }
+                }
+            },
+        )
+
+
+@pytest.mark.parametrize(
+    "velocity_max",
+    [
+        0.0,
+        -1.0,
+        float("inf"),
+        float("nan"),
+    ],
+)
+def test_invalid_velocity_max_is_rejected(
+    velocity_max: float,
+) -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "filter": {
+                    "adaptive": {
+                        "velocity_max": (
+                            velocity_max
+                        ),
+                    }
+                }
+            },
+        )
+
+
+def test_velocity_max_may_be_disabled() -> None:
+    resolved = resolve_config(
+        DEFAULT_CONFIG,
+        overrides={
+            "filter": {
+                "adaptive": {
+                    "velocity_max": None,
+                }
+            }
+        },
+    )
+
+    assert (
+        resolved.data[
+            "filter"
+        ][
+            "adaptive"
+        ][
+            "velocity_max"
+        ]
+        is None
+    )
+
+
+def test_invalid_final_cutoff_order_is_rejected() -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "filter": {
+                    "adaptive": {
+                        "final_cutoff_min_hz": 5.0,
+                        "final_cutoff_max_hz": 5.0,
+                    }
+                }
+            },
+        )
+
+
+def test_quality_adaptation_cannot_be_enabled_without_source() -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "filter": {
+                    "adaptive": {
+                        "quality_adaptation_enabled": (
+                            True
+                        ),
+                    }
+                }
+            },
+        )
