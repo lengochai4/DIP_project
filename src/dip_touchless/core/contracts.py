@@ -165,8 +165,8 @@ class TrackingFrame:
     raw_landmarks: tuple[Landmark, ...]
     filtered_landmarks: tuple[Landmark, ...]
     quality: MeasurementQuality
-    roi: ROI
-    illumination: IlluminationMetrics
+    roi: ROI | None
+    illumination: IlluminationMetrics | None
     filter_diagnostics: FilterDiagnostics
     timings: StageTimings
     events: tuple[str, ...]

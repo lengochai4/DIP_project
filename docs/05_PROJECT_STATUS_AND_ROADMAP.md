@@ -128,7 +128,38 @@ Provider tests will verify frame identity and BGR → RGB conversion in G1.4.
 
 Existing results invalidated:
 No — no provider experiments/results exist yet.
+### G1 contract correction — pre-G2 TrackingFrame diagnostics
 
+Change:
+`TrackingFrame.roi` and `TrackingFrame.illumination` may be `None`
+when the corresponding stages have not been executed.
+
+Reason:
+G1 requires a Raw `TrackingFrame`, while ROI and illumination processing
+are introduced only in G2. Fabricating zero-valued measurements would
+violate the project evidence semantics.
+
+Canonical file/section changed:
+`02_ARCHITECTURE_AND_CONTRACTS.md`, TrackingFrame contract.
+
+Code/modules affected:
+`core/contracts.py`, RunLogger integration.
+
+Algorithmic impact:
+None.
+
+Experimental impact:
+Pre-G2 development logs explicitly distinguish unavailable diagnostics
+from measured diagnostics.
+
+Compatibility impact:
+G2+ runs remain required to populate ROI and illumination.
+
+Tests added/updated:
+Core contract test for explicit pre-G2 unavailable diagnostics.
+
+Existing results invalidated:
+No — no final G2+ experiment results exist.
 ## 5. Immediate next tasks
 
 After G1 passes:

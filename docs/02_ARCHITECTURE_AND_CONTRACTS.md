@@ -394,15 +394,21 @@ class TrackingFrame:
     raw_landmarks: tuple[Landmark, ...]
     filtered_landmarks: tuple[Landmark, ...]
     quality: MeasurementQuality
-    roi: ROI
-    illumination: IlluminationMetrics
+    roi: ROI | None
+    illumination: IlluminationMetrics | None
     filter_diagnostics: FilterDiagnostics
     timings: StageTimings
     events: tuple[str, ...]
 ```
 
 This is the primary research/logging boundary. Analysis SHOULD depend on this contract or serialized equivalents, not on the renderer.
+For pre-G2 Raw-baseline runs, `roi` and `illumination` MAY be `None`
+when those stages have not been executed.
 
+`None` means explicitly unavailable/not executed; it MUST NOT be
+replaced by fabricated zero-valued ROI or illumination measurements.
+
+Once the G2 preprocessing path is enabled, both fields MUST be populated.
 ### 10.10 `InteractionState`
 
 ```python
