@@ -17,73 +17,97 @@ This file is the single source of truth for:
 
 Update this file when the actual implementation state changes. Do not infer completion from the existence of specifications alone.
 
-## 2. Current evidence available at this refactor
+## 2. Current implementation evidence
 
-The audit had access to:
+As of 2026-09-27, the implementation repository has been bootstrapped and verified through Gate G0.
 
-- original v1.0 four-file specification;
-- expanded v1.1 specification package;
-- no verified implementation source tree, executed test output, recorded experiment dataset, or final result tables in the supplied material.
+Verified evidence includes:
 
-Therefore this document MUST NOT claim that implementation stages or experiments have already passed.
+- canonical six-file specification set;
+- Python package using the `src/` layout;
+- clean virtual-environment installation through `pyproject.toml`;
+- executable pytest test suite;
+- project-owned domain enums and dataclass contracts;
+- configuration loading with defaults/profile/explicit override precedence;
+- semantic configuration validation;
+- deterministic resolved-configuration serialization and SHA-256 identity;
+- project-owned Core protocols;
+- run metadata identity generation;
+- run logging skeleton producing machine-readable run artifacts;
+- automated G0 tests executed successfully.
+
+No G1 camera, replay, MediaPipe landmark-provider, preprocessing, temporal-filter, gesture, renderer, or final experiment result is claimed complete by this status.
 
 ## 3. Current stage
 
 ### Specification status
 
 ```text
-CANONICAL SPEC REFACTOR: COMPLETE
+CANONICAL SPECIFICATION: FROZEN FOR IMPLEMENTATION
 ```
 
-The normative project specification has been consolidated into six canonical files with one owner per decision domain.
+The six canonical specification files remain the normative project source of truth.
 
 ### Implementation status
 
 ```text
-UNVERIFIED — treat as PRE-G0 until the actual code repository is inspected
+G0 — BOOTSTRAP AND CONTRACTS: COMPLETE
+G1 — RAW BASELINE + REPLAY: NOT STARTED
 ```
 
-If an implementation repository already exists, the first engineering action is a conformance audit against files `02`–`04`. Existing code may be reused; do not rewrite it solely because this canonical document set is newer.
+G0 completion means the project foundation is established and verified. It does not imply that tracking, preprocessing, filtering, interaction, or experimental claims have been validated.
 
 ## 4. Current task
 
-**Task S0 — Inspect/bootstrap implementation against the canonical contracts.**
+**Task G1 — Implement Raw + Replay baseline.**
 
-Required actions:
-
-1. inspect the current repository/tree if code already exists;
-2. identify reusable modules vs non-compliant legacy behavior;
-3. establish/verify package structure and test runner;
-4. implement/verify the public domain contracts from `02_ARCHITECTURE_AND_CONTRACTS.md`;
-5. implement/verify config loading, validation, resolved-config snapshot, and config hash;
-6. implement/verify run-logging skeleton;
-7. run the G0 checks in `04_IMPLEMENTATION_TESTING_GUIDE.md`;
-8. record any incompatible legacy behavior instead of silently preserving it.
-
-Expected output of the current task:
+Required implementation direction:
 
 ```text
-repository can load configuration
-public contracts exist
-unit test runner executes
-logger skeleton writes a valid run identity
-actual code status is known
-G0 pass/fail is evidence-based
+FrameSource
+    ↓
+OpenCVCameraSource / ReplayFrameSource
+    ↓
+explicit BGR → RGB provider boundary
+    ↓
+MediaPipe Hand Landmarker adapter
+    ↓
+MeasurementValidator
+    ↓
+LandmarkObservation
+    ↓
+RAW temporal path
+    ↓
+TrackingFrame
+    ↓
+RunLogger
 ```
+
+Primary G1 objectives:
+
+1. add required runtime dependencies deliberately;
+2. implement `OpenCVCameraSource`;
+3. implement deterministic `ReplayFrameSource`;
+4. verify explicit frame/timestamp/color semantics;
+5. implement the MediaPipe provider adapter without leaking provider objects downstream;
+6. represent unavailable measurement quality explicitly;
+7. implement a safe raw/no-filter baseline;
+8. serialize Raw `TrackingFrame` data through the existing logger;
+9. add unit and replay integration tests;
+10. run camera smoke testing only where hardware is available.
+
+No ROI/CLAHE or 1-Euro behavior belongs in G1.
 
 ## 5. Immediate next tasks
 
-After G0, proceed in this order unless a documented blocker requires rearrangement:
+After G1 passes:
 
-1. **G1 Raw + Replay baseline** — camera/replay → MediaPipe adapter → project-domain landmarks → raw `TrackingFrame` → machine-readable logs.
-2. **G2 DIP preprocessing** — ROI state machine → illumination descriptors/hysteresis → adaptive CLAHE → same-size detector input.
-3. **G3 Canonical fixed 1-Euro** — derivative low-pass `d_cutoff`, fixed parameters, diagnostics, synthetic tests.
-4. **G4 Bounded adaptive 1-Euro** — velocity-dependent beta, optional valid quality branch, cutoff bounds, reset/reacquisition.
-5. **G5 Gesture + 3D extension** — normalized pinch/hysteresis, bounded rotation/scale, simple STEM scene.
-6. **G6 Experiment tooling** — replay profiles, trial manifests, required descriptive metrics, reproducibility capture; optional statistics only if deliberately adopted.
-7. **G7 Final evaluation** — collect final trials, regenerate plots/tables, write evidence-bounded report, package demo.
-
-Do not prioritize renderer polish ahead of G1–G4 correctness.
+1. **G2 DIP preprocessing** — ROI state machine, illumination descriptors/hysteresis, adaptive CLAHE, unchanged full-frame provider geometry.
+2. **G3 Canonical fixed 1-Euro** — derivative low-pass `d_cutoff`, fixed parameters, diagnostics and synthetic tests.
+3. **G4 Bounded adaptive 1-Euro** — velocity adaptation, optional valid quality branch, cutoff bounds and safe reset/reacquisition.
+4. **G5 Gesture + 3D Extension** — normalized pinch/hysteresis, bounded interaction mapping and minimal rendered STEM scene.
+5. **G6 Minimal experiment tooling** — deterministic comparisons, required descriptive metrics and reproducibility.
+6. **G7 Final evaluation** — final trials, evidence-bounded results/report and demo packaging.
 
 ## 6. Course-final roadmap
 

@@ -7,7 +7,9 @@ name = "dip-touchless-stem"
 version = "0.1.0"
 description = "Digital Image Processing pipeline for real-time touchless 3D STEM interaction."
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "PyYAML>=6.0",
+]
 
 [project.optional-dependencies]
 dev = [
