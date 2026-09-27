@@ -380,47 +380,77 @@ reset, and loss behavior.
 
 ### 7.2 Project vectorization
 
-The canonical algorithm above is scalar. For landmark vectors, the project baseline defines this application rule:
+The canonical algorithm above is scalar. The project applies it to hand
+landmarks using one independent 2D filter vector per landmark.
 
-1. derivative-filter each configured coordinate component;
-2. compute a shared speed from the filtered derivative vector;
-3. derive one shared signal cutoff from that speed;
-4. filter each coordinate using that shared cutoff.
-
-For interaction speed, x/y normalized-frame motion is the default. Including model-relative z requires an explicit justification because its scale/semantics differ.
-
-This vector application is a project design choice; it is not claimed as part of the original canonical scalar algorithm.
-
-## 8. Proposed bounded adaptive 1-Euro
-
-The proposed method extends Section 7 without removing derivative filtering.
-
-### 8.1 Velocity-dependent beta — required proposed behavior
-
-Let `v_t` be the norm of the configured filtered derivative vector:
+For landmark `j`, the baseline filtering vector is:
 
 \[
-v_t=\|\hat{\mathbf d}_t\|
+\mathbf p_{j,t} =
+\begin{bmatrix}
+x_{j,t} \\
+y_{j,t}
+\end{bmatrix}
 \]
 
-Optional configured safety cap:
+where x/y are full-frame normalized coordinates.
+
+For each landmark independently:
+
+1. maintain separate signal low-pass state for x and y;
+2. maintain separate derivative low-pass state for x and y;
+3. derive raw x/y derivatives using the previous filtered x/y outputs;
+4. low-pass both derivatives using the same configured `d_cutoff`;
+5. compute the landmark speed:
 
 \[
-v_t \leftarrow min(v_t, v_{max})
+v_{j,t}
+=
+\sqrt{
+\hat d_{x,j,t}^{\,2}
++
+\hat d_{y,j,t}^{\,2}
+}
 \]
 
-Adaptive beta:
+6. derive one shared signal cutoff for that landmark:
 
 \[
-\beta(v_t)=clip(\beta_{base}+k_vv_t,\beta_{min},\beta_{max})
+f_{c,j,t}
+=
+f_{min}
++
+\beta v_{j,t}
 \]
 
-Required invariants:
+7. use the same `f_{c,j,t}` and therefore the same signal alpha to
+filter both x and y of that landmark.
+
+The cutoff is shared between x/y of one landmark. It is NOT derived from
+a concatenated vector containing all 21 landmarks.
+
+Each landmark maintains independent temporal state; motion of one
+landmark MUST NOT alter the signal cutoff of another landmark.
+
+The baseline does not include MediaPipe model-relative z in the speed
+norm because x/y and z do not share the same coordinate semantics or
+scale.
+
+For the fixed course baseline:
 
 ```text
-0 <= beta_min <= beta_base <= beta_max
-k_v >= 0
+filtered x = fixed 1-Euro x/y-vector result
+filtered y = fixed 1-Euro x/y-vector result
+filtered z = raw model-relative z pass-through
 ```
+
+Preserving z unchanged keeps its provider semantics explicit while
+avoiding an unjustified mixed-space velocity norm.
+Adding z to temporal filtering or to the speed vector requires an
+explicit algorithm/specification change and experimental justification.
+This vector application is a project design choice; it is not claimed
+as part of the original canonical scalar 1-Euro algorithm.
+
 
 ### 8.2 Quality-dependent minimum cutoff — optional
 

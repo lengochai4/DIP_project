@@ -276,6 +276,56 @@ Existing results invalidated:
 
 No — no final G2 preprocessing experiment results exist yet.
 
+### G3 algorithm clarification — landmark vectorization scope
+
+Change:
+
+Defined the fixed 1-Euro landmark vectorization as one independent x/y
+2D filter vector per landmark. Each landmark derives one shared x/y
+speed and cutoff from its own filtered x/y derivatives. Model-relative
+z is passed through unchanged in the course baseline.
+
+Reason:
+
+The previous specification required a "shared speed" and "shared
+cutoff" for landmark vectors but did not state whether sharing applied
+within one landmark or across all 21 landmarks. Those interpretations
+produce materially different filtering behavior.
+
+Canonical file/section changed:
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, Section 7.2 Project vectorization.
+
+Code/modules affected:
+
+Future fixed landmark 1-Euro core, temporal-filter wrapper, diagnostics,
+synthetic tests, and adaptive filter extension.
+
+Algorithmic impact:
+
+Clarifies the project-specific vectorization layered on top of the
+canonical scalar 1-Euro algorithm. The canonical scalar equations are
+unchanged.
+
+Experimental impact:
+
+F1/F2 landmark filtering will use independent per-landmark x/y motion
+rather than a concatenated all-landmark speed vector.
+
+Compatibility impact:
+
+No completed F1/F2 experiment results exist yet.
+
+Tests added/updated:
+
+Upcoming G3.4 tests will verify shared x/y cutoff within one landmark,
+independence between landmarks, z pass-through, and preservation of
+landmark identity/coordinate space.
+
+Existing results invalidated:
+
+No — no final fixed/adaptive temporal-filter experiment results exist.
+
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:
