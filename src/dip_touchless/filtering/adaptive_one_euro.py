@@ -1,4 +1,4 @@
-"""Public fixed 1-Euro LandmarkFilter implementation."""
+"""Public bounded adaptive 1-Euro LandmarkFilter implementation."""
 
 from __future__ import annotations
 
@@ -9,46 +9,63 @@ from dip_touchless.core import (
     LandmarkObservation,
 )
 
-from .one_euro_landmarks import (
-    LandmarkOneEuroDiagnostics,
+from .adaptive_one_euro_landmarks import (
+    AdaptiveLandmarkDiagnostics,
 )
-from .one_euro_temporal import (
-    FixedOneEuroTemporalCore,
-    FixedOneEuroTemporalResult,
+from .adaptive_one_euro_temporal import (
+    AdaptiveOneEuroTemporalCore,
+    AdaptiveOneEuroTemporalResult,
 )
 
 
-class FixedOneEuroLandmarkFilter:
-    """Canonical fixed 1-Euro landmark filter.
+class AdaptiveOneEuroLandmarkFilter:
+    """Project-specific bounded adaptive 1-Euro landmark filter.
 
-    Public LandmarkFilter wrapper around the project temporal/vector
-    implementation.
-
-    Filtering:
-    - independent x/y vector state per landmark;
-    - shared x/y cutoff within each landmark;
+    Primary F2 path:
+    - independent x/y state per landmark;
+    - speed from filtered x/y derivative;
+    - bounded velocity-dependent beta;
+    - bounded final signal cutoff;
     - model-relative z pass-through;
-    - timestamp/loss/reset handling in the temporal core.
-
-    Public diagnostics use the frozen frame-level summary semantics.
+    - shared F1/F2 timestamp/loss/reset semantics;
+    - quality adaptation disabled unless separately specified.
     """
 
     def __init__(
         self,
         *,
-        min_cutoff_hz: float,
-        beta: float,
+        base_cutoff_hz: float,
+        beta_min: float,
+        beta_base: float,
+        beta_max: float,
+        velocity_gain: float,
+        velocity_max: float | None,
+        final_cutoff_min_hz: float,
+        final_cutoff_max_hz: float,
         derivative_cutoff_hz: float,
         reset_gap_s: float,
     ) -> None:
-        self._min_cutoff_hz = float(
-            min_cutoff_hz
+        self._base_cutoff_hz = float(
+            base_cutoff_hz
         )
-        self._beta = float(beta)
 
-        self._core = FixedOneEuroTemporalCore(
-            min_cutoff_hz=min_cutoff_hz,
-            beta=beta,
+        self._beta_base = float(
+            beta_base
+        )
+
+        self._core = AdaptiveOneEuroTemporalCore(
+            base_cutoff_hz=base_cutoff_hz,
+            beta_min=beta_min,
+            beta_base=beta_base,
+            beta_max=beta_max,
+            velocity_gain=velocity_gain,
+            velocity_max=velocity_max,
+            final_cutoff_min_hz=(
+                final_cutoff_min_hz
+            ),
+            final_cutoff_max_hz=(
+                final_cutoff_max_hz
+            ),
             derivative_cutoff_hz=(
                 derivative_cutoff_hz
             ),
@@ -56,7 +73,7 @@ class FixedOneEuroLandmarkFilter:
         )
 
     def reset(self) -> None:
-        """Reset all fixed-filter temporal state."""
+        """Reset all adaptive-filter temporal state."""
 
         self._core.reset()
 
@@ -73,31 +90,27 @@ class FixedOneEuroLandmarkFilter:
             observation
         )
 
-        diagnostics = (
-            self._to_public_diagnostics(
-                result
-            )
-        )
-
         return (
             result.landmarks,
-            diagnostics,
+            self._to_public_diagnostics(
+                result
+            ),
         )
 
     def _to_public_diagnostics(
         self,
-        result: FixedOneEuroTemporalResult,
+        result: AdaptiveOneEuroTemporalResult,
     ) -> FilterDiagnostics:
         if not result.measurement_accepted:
             return FilterDiagnostics(
                 mode=(
-                    FilterMode.ONE_EURO_FIXED
+                    FilterMode.ONE_EURO_ADAPTIVE
                 ),
                 dt_s=None,
                 speed=None,
-                beta=self._beta,
+                beta=None,
                 min_cutoff_hz=(
-                    self._min_cutoff_hz
+                    self._base_cutoff_hz
                 ),
                 final_cutoff_hz=None,
                 signal_alpha=None,
@@ -119,12 +132,14 @@ class FixedOneEuroLandmarkFilter:
         )
 
         return FilterDiagnostics(
-            mode=FilterMode.ONE_EURO_FIXED,
+            mode=(
+                FilterMode.ONE_EURO_ADAPTIVE
+            ),
             dt_s=result.dt_s,
             speed=representative.speed,
-            beta=self._beta,
+            beta=representative.beta,
             min_cutoff_hz=(
-                self._min_cutoff_hz
+                representative.min_cutoff_hz
             ),
             final_cutoff_hz=(
                 representative.cutoff_hz
@@ -148,20 +163,16 @@ class FixedOneEuroLandmarkFilter:
     @staticmethod
     def _select_representative(
         diagnostics: tuple[
-            LandmarkOneEuroDiagnostics,
-            ...
+            AdaptiveLandmarkDiagnostics,
+            ...,
         ],
-    ) -> LandmarkOneEuroDiagnostics:
+    ) -> AdaptiveLandmarkDiagnostics:
         if not diagnostics:
             raise RuntimeError(
                 "accepted measurement has no "
                 "landmark diagnostics"
             )
 
-        # Maximum speed wins.
-        #
-        # For an exact tie, lower landmark index wins:
-        #   max((speed, -index))
         return max(
             diagnostics,
             key=lambda item: (

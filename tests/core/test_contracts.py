@@ -144,3 +144,4 @@ def test_pre_g2_tracking_frame_allows_unavailable_roi_and_illumination() -> None
 
     assert frame.roi is None
     assert frame.illumination is None
+    assert frame.filter_diagnostics.events == ()

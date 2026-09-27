@@ -6,14 +6,13 @@ from dip_touchless.core import (
     Landmark,
     LandmarkObservation,
     MeasurementQuality,
-    QualitySource,
     TrackingStatus,
 )
 from dip_touchless.filtering import (
-    FixedOneEuroLandmarkFilter,
+    AdaptiveOneEuroLandmarkFilter,
 )
-from dip_touchless.filtering.one_euro_landmarks import (
-    LandmarkOneEuroDiagnostics,
+from dip_touchless.filtering.adaptive_one_euro_landmarks import (
+    AdaptiveLandmarkDiagnostics,
 )
 
 
@@ -47,27 +46,28 @@ def _observation(
         landmarks=landmarks,
         handedness_label=None,
         handedness_score=None,
-        quality=MeasurementQuality(
-            value=None,
-            source=QualitySource.NONE,
-            valid=False,
-            semantic_name=None,
-        ),
+        quality=MeasurementQuality.unavailable(),
         hand_bbox=None,
         provider_name="fixture",
     )
 
 
-def _filter() -> FixedOneEuroLandmarkFilter:
-    return FixedOneEuroLandmarkFilter(
-        min_cutoff_hz=1.0,
-        beta=0.5,
+def _filter() -> AdaptiveOneEuroLandmarkFilter:
+    return AdaptiveOneEuroLandmarkFilter(
+        base_cutoff_hz=1.0,
+        beta_min=0.0,
+        beta_base=0.1,
+        beta_max=1.0,
+        velocity_gain=0.5,
+        velocity_max=10.0,
+        final_cutoff_min_hz=0.5,
+        final_cutoff_max_hz=20.0,
         derivative_cutoff_hz=1.0,
         reset_gap_s=0.5,
     )
 
 
-def test_initialization_maps_public_diagnostics() -> None:
+def test_initialization_maps_adaptive_diagnostics() -> None:
     landmark_filter = _filter()
 
     filtered, diagnostics = (
@@ -89,7 +89,7 @@ def test_initialization_maps_public_diagnostics() -> None:
     assert len(filtered) == 1
 
     assert diagnostics.mode is (
-        FilterMode.ONE_EURO_FIXED
+        FilterMode.ONE_EURO_ADAPTIVE
     )
 
     assert diagnostics.dt_s is None
@@ -98,7 +98,7 @@ def test_initialization_maps_public_diagnostics() -> None:
     )
 
     assert diagnostics.beta == pytest.approx(
-        0.5
+        0.1
     )
 
     assert (
@@ -116,7 +116,7 @@ def test_initialization_maps_public_diagnostics() -> None:
     assert diagnostics.reset_occurred is False
 
 
-def test_ordinary_update_uses_max_speed_landmark_summary() -> None:
+def test_ordinary_update_uses_representative_adaptive_values() -> None:
     landmark_filter = _filter()
 
     landmark_filter.update(
@@ -143,13 +143,11 @@ def test_ordinary_update_uses_max_speed_landmark_summary() -> None:
             timestamp_s=1.1,
             status=TrackingStatus.VALID,
             landmarks=(
-                # Large movement.
                 _landmark(
                     0,
                     0.4,
                     0.0,
                 ),
-                # Stationary.
                 _landmark(
                     1,
                     0.5,
@@ -166,14 +164,24 @@ def test_ordinary_update_uses_max_speed_landmark_summary() -> None:
     assert diagnostics.speed is not None
     assert diagnostics.speed > 0.0
 
+    assert diagnostics.beta is not None
+    assert diagnostics.beta > 0.1
+    assert diagnostics.beta <= 1.0
+
+    assert (
+        diagnostics.min_cutoff_hz
+        == pytest.approx(1.0)
+    )
+
     assert (
         diagnostics.final_cutoff_hz
         is not None
     )
 
     assert (
-        diagnostics.final_cutoff_hz
-        > diagnostics.min_cutoff_hz
+        0.5
+        <= diagnostics.final_cutoff_hz
+        <= 20.0
     )
 
     assert diagnostics.signal_alpha is not None
@@ -183,7 +191,7 @@ def test_ordinary_update_uses_max_speed_landmark_summary() -> None:
     )
 
 
-def test_no_measurement_maps_unavailable_diagnostics() -> None:
+def test_no_measurement_has_no_effective_beta() -> None:
     landmark_filter = _filter()
 
     landmark_filter.update(
@@ -212,15 +220,12 @@ def test_no_measurement_maps_unavailable_diagnostics() -> None:
     assert filtered == ()
 
     assert diagnostics.mode is (
-        FilterMode.ONE_EURO_FIXED
+        FilterMode.ONE_EURO_ADAPTIVE
     )
 
     assert diagnostics.dt_s is None
     assert diagnostics.speed is None
-
-    assert diagnostics.beta == pytest.approx(
-        0.5
-    )
+    assert diagnostics.beta is None
 
     assert (
         diagnostics.min_cutoff_hz
@@ -258,12 +263,11 @@ def test_long_loss_reports_reset() -> None:
     )
 
     assert diagnostics.reset_occurred is True
-
     assert diagnostics.speed is None
-    assert diagnostics.final_cutoff_hz is None
+    assert diagnostics.beta is None
 
 
-def test_gap_reinitialization_reports_reset_and_initialization_values() -> None:
+def test_gap_reinitialization_uses_beta_base() -> None:
     landmark_filter = _filter()
 
     landmark_filter.update(
@@ -300,10 +304,6 @@ def test_gap_reinitialization_reports_reset_and_initialization_values() -> None:
         0.8
     )
 
-    assert filtered[0].y == pytest.approx(
-        0.7
-    )
-
     assert diagnostics.reset_occurred is True
     assert diagnostics.dt_s is None
 
@@ -311,16 +311,17 @@ def test_gap_reinitialization_reports_reset_and_initialization_values() -> None:
         0.0
     )
 
+    assert diagnostics.beta == pytest.approx(
+        0.1
+    )
+
     assert (
         diagnostics.final_cutoff_hz
         == pytest.approx(1.0)
     )
 
-    assert diagnostics.signal_alpha is None
-    assert diagnostics.derivative_alpha is None
 
-
-def test_reset_returns_wrapper_to_initialization() -> None:
+def test_manual_reset_returns_to_initialization() -> None:
     landmark_filter = _filter()
 
     landmark_filter.update(
@@ -339,24 +340,18 @@ def test_reset_returns_wrapper_to_initialization() -> None:
 
     landmark_filter.reset()
 
-    filtered, diagnostics = (
-        landmark_filter.update(
-            _observation(
-                timestamp_s=10.0,
-                status=TrackingStatus.VALID,
-                landmarks=(
-                    _landmark(
-                        0,
-                        0.9,
-                        0.4,
-                    ),
+    _, diagnostics = landmark_filter.update(
+        _observation(
+            timestamp_s=10.0,
+            status=TrackingStatus.VALID,
+            landmarks=(
+                _landmark(
+                    0,
+                    0.9,
+                    0.4,
                 ),
-            )
+            ),
         )
-    )
-
-    assert filtered[0].x == pytest.approx(
-        0.9
     )
 
     assert diagnostics.reset_occurred is False
@@ -364,33 +359,40 @@ def test_reset_returns_wrapper_to_initialization() -> None:
     assert diagnostics.speed == pytest.approx(
         0.0
     )
+    assert diagnostics.beta == pytest.approx(
+        0.1
+    )
 
 
-def test_representative_tie_prefers_lower_landmark_index() -> None:
-    low_index = LandmarkOneEuroDiagnostics(
+def test_representative_tie_prefers_lower_index() -> None:
+    low_index = AdaptiveLandmarkDiagnostics(
         landmark_index=2,
         filtered_dx=1.0,
         filtered_dy=0.0,
         speed=1.0,
-        cutoff_hz=2.0,
+        beta=0.4,
+        min_cutoff_hz=1.0,
+        cutoff_hz=1.4,
         signal_alpha=0.2,
         derivative_alpha=0.1,
         initialization_occurred=False,
     )
 
-    high_index = LandmarkOneEuroDiagnostics(
+    high_index = AdaptiveLandmarkDiagnostics(
         landmark_index=9,
         filtered_dx=0.0,
         filtered_dy=1.0,
         speed=1.0,
-        cutoff_hz=2.0,
-        signal_alpha=0.2,
+        beta=0.8,
+        min_cutoff_hz=1.0,
+        cutoff_hz=1.8,
+        signal_alpha=0.3,
         derivative_alpha=0.1,
         initialization_occurred=False,
     )
 
     representative = (
-        FixedOneEuroLandmarkFilter
+        AdaptiveOneEuroLandmarkFilter
         ._select_representative(
             (
                 high_index,
@@ -400,40 +402,17 @@ def test_representative_tie_prefers_lower_landmark_index() -> None:
     )
 
     assert representative.landmark_index == 2
+    assert representative.beta == pytest.approx(
+        0.4
+    )
 
 
-def test_ordinary_update_has_no_filter_event() -> None:
+def test_timestamp_event_reaches_adaptive_public_diagnostics() -> None:
     landmark_filter = _filter()
 
     landmark_filter.update(
         _observation(
-            timestamp_s=1.0,
-            status=TrackingStatus.VALID,
-            landmarks=(
-                _landmark(0, 0.0, 0.0),
-            ),
-        )
-    )
-
-    _, diagnostics = landmark_filter.update(
-        _observation(
-            timestamp_s=1.1,
-            status=TrackingStatus.VALID,
-            landmarks=(
-                _landmark(0, 0.2, 0.0),
-            ),
-        )
-    )
-
-    assert diagnostics.events == ()
-
-
-def test_reset_gap_event_reaches_public_diagnostics() -> None:
-    landmark_filter = _filter()
-
-    landmark_filter.update(
-        _observation(
-            timestamp_s=1.0,
+            timestamp_s=2.0,
             status=TrackingStatus.VALID,
             landmarks=(
                 _landmark(0, 0.0, 0.0),
@@ -446,12 +425,12 @@ def test_reset_gap_event_reaches_public_diagnostics() -> None:
             timestamp_s=2.0,
             status=TrackingStatus.VALID,
             landmarks=(
-                _landmark(0, 0.8, 0.7),
+                _landmark(0, 0.9, 0.8),
             ),
         )
     )
 
     assert diagnostics.reset_occurred is True
     assert diagnostics.events == (
-        "reset_gap_exceeded",
+        "timestamp_discontinuity",
     )

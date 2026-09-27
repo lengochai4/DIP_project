@@ -145,6 +145,7 @@ class FilterDiagnostics:
     signal_alpha: float | None
     derivative_alpha: float | None
     reset_occurred: bool
+    events: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

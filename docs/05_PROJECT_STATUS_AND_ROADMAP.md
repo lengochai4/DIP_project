@@ -1,6 +1,7 @@
 ## 2. Current implementation evidence
 
-As of 2026-09-27, the implementation repository has been bootstrapped and verified through Gate G1.
+As of 2026-09-27, the implementation repository has been verified
+through Gate G4.
 
 Verified evidence includes:
 
@@ -35,7 +36,9 @@ Verified evidence includes:
 - successful end-to-end replay → MediaPipe → Raw → logger smoke test;
 - automated G1 test suite executed successfully.
 
-No ROI/CLAHE, canonical fixed 1-Euro, adaptive 1-Euro, gesture engine, renderer, or final experiment result is claimed complete by this status.
+G0–G4 are technically complete. Gesture mapping, rendered 3D
+interaction, experiment tooling, final evaluation, and final research
+outcomes are not claimed complete by this status.
 
 ## 3. Current stage
 
@@ -54,7 +57,8 @@ G0 — BOOTSTRAP AND CONTRACTS: COMPLETE
 G1 — RAW BASELINE + REPLAY: COMPLETE
 G2 — DIP PREPROCESSING: COMPLETE
 G3 — CANONICAL FIXED 1-EURO: COMPLETE
-G4 — BOUNDED ADAPTIVE 1-EURO: NOT STARTED
+G4 — BOUNDED ADAPTIVE 1-EURO: COMPLETE
+G5 — GESTURE + 3D EXTENSION: NOT STARTED
 ```
 
 G0–G1 completion establishes the engineering baseline:
@@ -73,52 +77,59 @@ This does not imply that DIP preprocessing, temporal filtering, gesture behavior
 
 ## 4. Current task
 
-**Task G4 — Implement the bounded adaptive 1-Euro filter.**
+**Task G5 — Implement gesture mapping and the minimal 3D STEM Extension.**
 
-G3 canonical fixed 1-Euro is technically complete.
+G4 bounded adaptive 1-Euro is technically complete.
 
-G3 completion evidence includes:
+G4 completion evidence includes:
 
-- canonical 1-Euro reference/provenance verification;
-- reusable low-pass primitive and alpha validation;
-- canonical scalar 1-Euro implementation with derivative low-pass `d_cutoff`;
-- regression against the published OneEuroFilter ground-truth fixture;
-- project-specific independent per-landmark x/y vectorization;
-- shared x/y cutoff within each landmark and independent state across landmarks;
-- model-relative z pass-through in the fixed baseline;
-- timestamp-derived `dt`;
-- safe short-loss state retention without fake measurements;
-- long-loss and timestamp-discontinuity reset behavior;
-- deterministic reinitialization after reset;
-- public `ONE_EURO_FIXED` `LandmarkFilter` implementation;
-- deterministic frame-level diagnostic summary semantics;
-- fixed-filter configuration validation;
-- ReplayRuntime and FileRunLogger integration through the existing public contracts;
-- deterministic synthetic tests covering constant, step, ramp, sine,
-  noise, known noisy trajectory, and nonuniform valid `dt`;
-- full automated project suite passing with 225 tests.
+- frozen project-specific bounded adaptive 1-Euro semantics;
+- speed derived from filtered per-landmark x/y derivatives;
+- bounded velocity-dependent beta;
+- optional quality-dependent minimum-cutoff primitive with no invented
+  measurement quality;
+- primary F2 baseline using `f_base` when quality adaptation is disabled
+  or unavailable;
+- independent final-cutoff bounds;
+- project-specific independent per-landmark x/y adaptive state;
+- model-relative z pass-through;
+- shared F1/F2 timestamp, short-loss, long-loss, discontinuity, reset,
+  and reacquisition semantics;
+- public `ONE_EURO_ADAPTIVE` `LandmarkFilter`;
+- deterministic frame-level adaptive diagnostics;
+- validated adaptive configuration and engineering defaults;
+- explicit filter-originated temporal events propagated through
+  `FilterDiagnostics` and `TrackingFrame`;
+- temporal reset/discontinuity events serialized to `events.csv`;
+- ReplayRuntime integration for Raw/F0, Fixed/F1, and Adaptive/F2;
+- acceptance coverage for beta bounds, cutoff bounds, monotonic beta,
+  unavailable quality fallback, valid-quality minimum-cutoff
+  monotonicity, extreme finite speed, invalid dt, long-gap reset,
+  missing measurements, and reacquisition;
+- full automated project suite passing with 290 tests.
 
-Key G3 implementation/evidence commits:
+Key G4 implementation/evidence commits:
 
 ```text
-fab66d0 docs: verify canonical one euro reference
-0294fdb feat: add canonical low pass primitives
-7381fb0 feat: add canonical scalar one euro filter
-49f3c82 docs: clarify landmark one euro vectorization
-db0df50 feat: add fixed one euro landmark vector core
-7e60e03 feat: add fixed one euro temporal state handling
-01e1b37 docs: define one euro diagnostic summary semantics
-ce37135 feat: expose fixed one euro landmark filter
-20ec3d3 feat: define fixed one euro configuration
-596367e test: integrate fixed one euro replay logging
-f56192c test: add one euro reference regression
-c96f834 test: add one euro synthetic acceptance suite
+8884df1 docs: define bounded adaptive one euro semantics
+877d17f feat: add bounded adaptive filter policy
+958e3e4 feat: add adaptive one euro landmark core
+e7be912 feat: share temporal semantics across one euro filters
+2145739 feat: expose adaptive one euro filter configuration
+5730abb docs: define temporal filter event propagation
+3bbe8bf feat: expose temporal filter events
+35aa24a docs: clarify tracking frame event serialization
+2ddfd34 test: integrate adaptive filter replay logging
+15a5a4f test: complete adaptive filter gate acceptance
 ```
-G3 completion establishes the canonical F1 baseline. It does not imply
-that the adaptive F2 method, gesture behavior, rendered interaction, or
-final experiment outcomes have been validated.
-The next implementation stage is G4. G4 reuses the already frozen
-timestamp/loss/reset safety semantics rather than redefining them.
+G4 completion establishes the project F2 temporal baseline. It does not
+claim that F2 outperforms F0/F1; that conclusion remains dependent on
+future recorded experiments.
+The next implementation stage is G5. G5 must preserve the Core/Extension
+boundary: gesture processing consumes filtered project-domain landmarks,
+and the 3D Extension consumes InteractionState rather than reaching into
+filter, tracking, or preprocessing internals.
+
 
 ### G1 contract correction — LandmarkProvider input
 
@@ -382,6 +393,123 @@ reset reporting, and runtime serialization.
 Existing results invalidated:
 
 No — no final F1/F2 experimental results exist.
+
+### G4 contract clarification — bounded adaptive beta mapping
+
+Change:
+
+Defined the exact project-specific F2 velocity-to-beta mapping, clarified
+per-landmark adaptive vectorization, primary quality-disabled behavior,
+final-cutoff safety, and adaptive public diagnostic aggregation.
+
+Reason:
+
+The canonical specification already defined adaptive parameters and
+final cutoff bounds but did not state the exact beta(v) equation.
+Implementation would otherwise have to choose algorithm behavior
+silently.
+
+Canonical file/section changed:
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, adaptive F2 algorithm;
+`02_ARCHITECTURE_AND_CONTRACTS.md`, adaptive FilterDiagnostics semantics.
+
+Code/modules affected:
+
+Upcoming adaptive landmark core, adaptive public LandmarkFilter,
+configuration validation, replay/logging tests.
+
+Algorithmic impact:
+
+F2 beta is explicitly nondecreasing with speed and bounded by configured
+beta limits. Optional velocity limiting applies to beta adaptation.
+Final cutoff remains independently bounded.
+
+Experimental impact:
+
+Defines the F2 method that will later be compared with F0 and F1.
+Primary F2 does not use measurement-quality adaptation unless a valid
+documented source exists.
+
+Compatibility impact:
+
+No adaptive implementation or final F2 result exists yet.
+
+Tests added/updated:
+
+Upcoming G4 tests will cover beta bounds/monotonicity, velocity spikes,
+final cutoff bounds, unavailable quality, invalid dt, reset, and
+reacquisition.
+
+Existing results invalidated:
+
+No — no F2 implementation/final experimental results exist.
+
+### G4 contract correction — temporal filter event propagation
+
+Change:
+
+Added explicit filter-event propagation through `FilterDiagnostics.events`
+to `TrackingFrame.events` and `RunLogger.log_event`. Frozen the existing
+temporal event names for F1/F2.
+
+Reason:
+
+The temporal filter cores already detect timestamp/loss/reset events, and
+the run artifact contract already includes `TrackingFrame.events` and
+`events.csv`, but the public `LandmarkFilter` return contract had no path
+for carrying those events to the runtime. ReplayRuntime therefore could
+not preserve them without duplicating temporal state logic.
+
+Canonical file/section changed:
+
+`02_ARCHITECTURE_AND_CONTRACTS.md`, FilterDiagnostics / TrackingFrame /
+LandmarkFilter logging semantics;
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, tracking-loss/discontinuity event
+semantics.
+
+Code/modules affected:
+
+Core FilterDiagnostics contract;
+Raw/fixed/adaptive LandmarkFilter implementations;
+ReplayRuntime;
+run logging integration and tests.
+
+Algorithmic impact:
+
+None. Existing timestamp, loss, reset, and reacquisition decisions are
+unchanged.
+
+Experimental impact:
+
+Future F1/F2 run artifacts preserve temporal reset/discontinuity events
+needed for auditability and exclusion/debugging.
+
+Compatibility impact:
+
+In-memory `FilterDiagnostics` gains an events field. Existing CSV column
+schemas are unchanged; the already-defined events artifact will begin
+receiving the events that were previously dropped.
+
+The existing FileRunLogger already serializes TrackingFrame.events.
+The contract therefore assigns serialization responsibility to RunLogger
+rather than requiring ReplayRuntime to issue a second duplicate
+log_event call.
+
+Tests added/updated:
+
+Core contract tests;
+Raw/F1/F2 public-filter tests;
+ReplayRuntime event propagation tests;
+events.csv logging tests.
+
+Existing results invalidated:
+
+No — no final F1/F2 experimental result set exists. Earlier development
+runs may lack these event records and must not be treated as final
+event-complete runs.
+
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:

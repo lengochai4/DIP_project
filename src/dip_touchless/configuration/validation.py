@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from typing import Any, Mapping
 
 
@@ -35,6 +37,7 @@ def _require_positive_number(
     if (
         not isinstance(value, (int, float))
         or isinstance(value, bool)
+        or not math.isfinite(value)
         or value <= 0
     ):
         raise ConfigValidationError(
@@ -52,6 +55,7 @@ def _require_non_negative_number(
     if (
         not isinstance(value, (int, float))
         or isinstance(value, bool)
+        or not math.isfinite(value)
         or value < 0
     ):
         raise ConfigValidationError(
@@ -188,8 +192,12 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "illumination",
         )
 
-    low_light_enter = illumination["low_light_enter_v"]
-    low_light_exit = illumination["low_light_exit_v"]
+    low_light_enter = illumination[
+        "low_light_enter_v"
+    ]
+    low_light_exit = illumination[
+        "low_light_exit_v"
+    ]
 
     if not low_light_enter < low_light_exit:
         raise ConfigValidationError(
@@ -309,6 +317,114 @@ def validate_config(config: Mapping[str, Any]) -> None:
         "filter",
     )
 
+    adaptive = filter_config.get(
+        "adaptive"
+    )
+
+    if not isinstance(adaptive, Mapping):
+        raise ConfigValidationError(
+            "filter.adaptive must be a mapping"
+        )
+
+    _require_positive_number(
+        adaptive,
+        "base_cutoff_hz",
+        "filter.adaptive",
+    )
+
+    for key in (
+        "beta_min",
+        "beta_base",
+        "beta_max",
+        "velocity_gain",
+    ):
+        _require_non_negative_number(
+            adaptive,
+            key,
+            "filter.adaptive",
+        )
+
+    beta_min = adaptive["beta_min"]
+    beta_base = adaptive["beta_base"]
+    beta_max = adaptive["beta_max"]
+
+    if not (
+        beta_min
+        <= beta_base
+        <= beta_max
+    ):
+        raise ConfigValidationError(
+            "filter.adaptive beta bounds must satisfy "
+            "beta_min <= beta_base <= beta_max"
+        )
+
+    velocity_max = adaptive.get(
+        "velocity_max"
+    )
+
+    if velocity_max is not None:
+        if (
+            not isinstance(
+                velocity_max,
+                (int, float),
+            )
+            or isinstance(
+                velocity_max,
+                bool,
+            )
+            or not math.isfinite(
+                velocity_max
+            )
+            or velocity_max <= 0.0
+        ):
+            raise ConfigValidationError(
+                "filter.adaptive.velocity_max "
+                "must be positive and finite "
+                "when enabled"
+            )
+
+    _require_positive_number(
+        adaptive,
+        "final_cutoff_min_hz",
+        "filter.adaptive",
+    )
+
+    _require_positive_number(
+        adaptive,
+        "final_cutoff_max_hz",
+        "filter.adaptive",
+    )
+
+    if not (
+        adaptive["final_cutoff_min_hz"]
+        < adaptive["final_cutoff_max_hz"]
+    ):
+        raise ConfigValidationError(
+            "filter.adaptive final cutoff bounds "
+            "must satisfy min < max"
+        )
+
+    quality_enabled = adaptive.get(
+        "quality_adaptation_enabled"
+    )
+
+    if not isinstance(
+        quality_enabled,
+        bool,
+    ):
+        raise ConfigValidationError(
+            "filter.adaptive."
+            "quality_adaptation_enabled "
+            "must be boolean"
+        )
+
+    if quality_enabled:
+        raise ConfigValidationError(
+            "filter.adaptive quality adaptation "
+            "must remain disabled until a valid "
+            "documented quality source is configured"
+        )
+
     pinch_on = gesture.get("pinch_on")
     pinch_off = gesture.get("pinch_off")
 
@@ -327,8 +443,16 @@ def validate_config(config: Mapping[str, Any]) -> None:
         )
 
     if renderer.get("enabled"):
-        _require_positive_number(renderer, "width", "renderer")
-        _require_positive_number(renderer, "height", "renderer")
+        _require_positive_number(
+            renderer,
+            "width",
+            "renderer",
+        )
+        _require_positive_number(
+            renderer,
+            "height",
+            "renderer",
+        )
 
 
 def _require_byte_range_number(

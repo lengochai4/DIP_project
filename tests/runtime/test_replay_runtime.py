@@ -1,4 +1,5 @@
 import csv
+import json
 from pathlib import Path
 
 import cv2
@@ -23,6 +24,7 @@ from dip_touchless.preprocessing import (
     ROIManager,
 )
 from dip_touchless.filtering import (
+    AdaptiveOneEuroLandmarkFilter,
     FixedOneEuroLandmarkFilter,
     RawLandmarkFilter,
 )
@@ -780,6 +782,422 @@ def test_replay_runtime_logs_g2_preprocessing_diagnostics(
         ) >= 0.0
         for row in rows
     )
+
+    assert fake_capture.released is True
+    assert provider.closed is True
+
+
+def test_replay_runtime_logs_adaptive_one_euro_diagnostics(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frames = [
+        np.zeros(
+            (16, 16, 3),
+            dtype=np.uint8,
+        ),
+        np.ones(
+            (16, 16, 3),
+            dtype=np.uint8,
+        ),
+    ]
+
+    fake_capture = FakeVideoCapture(
+        frames,
+        fps=20.0,
+    )
+
+    monkeypatch.setattr(
+        cv2,
+        "VideoCapture",
+        lambda _: fake_capture,
+    )
+
+    video_path = (
+        tmp_path
+        / "adaptive-one-euro-fixture.mp4"
+    )
+    video_path.touch()
+
+    run_id = (
+        "adaptive-one-euro-integration-run"
+    )
+
+    source = ReplayFrameSource(
+        video_path,
+        run_id=run_id,
+    )
+
+    provider = MovingFakeProvider()
+
+    resolved = resolve_config(
+        DEFAULT_CONFIG,
+        overrides={
+            "runtime": {
+                "mode": "replay",
+                "replay_source": str(
+                    video_path
+                ),
+            },
+            "filter": {
+                "mode": (
+                    "ONE_EURO_ADAPTIVE"
+                ),
+            },
+        },
+    )
+
+    filter_config = resolved.data[
+        "filter"
+    ]
+
+    adaptive = filter_config[
+        "adaptive"
+    ]
+
+    landmark_filter = (
+        AdaptiveOneEuroLandmarkFilter(
+            base_cutoff_hz=(
+                adaptive[
+                    "base_cutoff_hz"
+                ]
+            ),
+            beta_min=adaptive[
+                "beta_min"
+            ],
+            beta_base=adaptive[
+                "beta_base"
+            ],
+            beta_max=adaptive[
+                "beta_max"
+            ],
+            velocity_gain=adaptive[
+                "velocity_gain"
+            ],
+            velocity_max=adaptive[
+                "velocity_max"
+            ],
+            final_cutoff_min_hz=(
+                adaptive[
+                    "final_cutoff_min_hz"
+                ]
+            ),
+            final_cutoff_max_hz=(
+                adaptive[
+                    "final_cutoff_max_hz"
+                ]
+            ),
+            derivative_cutoff_hz=(
+                filter_config[
+                    "derivative_cutoff_hz"
+                ]
+            ),
+            reset_gap_s=(
+                filter_config[
+                    "reset_gap_s"
+                ]
+            ),
+        )
+    )
+
+    metadata = build_run_metadata(
+        resolved,
+        run_id=run_id,
+        code_revision="test-revision",
+    )
+
+    runtime = ReplayRuntime(
+        source=source,
+        provider=provider,
+        validator=MeasurementValidator(),
+        landmark_filter=landmark_filter,
+        logger=FileRunLogger(
+            tmp_path / "runs"
+        ),
+    )
+
+    processed = runtime.run(
+        metadata=metadata,
+        resolved_config=resolved.to_dict(),
+    )
+
+    assert processed == 2
+
+    run_dir = (
+        tmp_path
+        / "runs"
+        / run_id
+    )
+
+    with (
+        run_dir / "frames.csv"
+    ).open(
+        newline="",
+        encoding="utf-8",
+    ) as file:
+        rows = list(
+            csv.DictReader(file)
+        )
+
+    assert len(rows) == 2
+
+    first = rows[0]
+    second = rows[1]
+
+    assert first["filter_mode"] == (
+        "ONE_EURO_ADAPTIVE"
+    )
+
+    assert first["dt_s"] == ""
+
+    assert float(
+        first["speed"]
+    ) == pytest.approx(0.0)
+
+    assert float(
+        first["beta"]
+    ) == pytest.approx(
+        adaptive["beta_base"]
+    )
+
+    assert float(
+        first["min_cutoff_hz"]
+    ) == pytest.approx(
+        adaptive["base_cutoff_hz"]
+    )
+
+    assert second["filter_mode"] == (
+        "ONE_EURO_ADAPTIVE"
+    )
+
+    assert float(
+        second["dt_s"]
+    ) == pytest.approx(0.05)
+
+    assert float(
+        second["speed"]
+    ) > 0.0
+
+    beta = float(
+        second["beta"]
+    )
+
+    assert (
+        adaptive["beta_min"]
+        <= beta
+        <= adaptive["beta_max"]
+    )
+
+    cutoff = float(
+        second["final_cutoff_hz"]
+    )
+
+    assert (
+        adaptive[
+            "final_cutoff_min_hz"
+        ]
+        <= cutoff
+        <= adaptive[
+            "final_cutoff_max_hz"
+        ]
+    )
+
+    assert fake_capture.released is True
+    assert provider.closed is True
+
+
+def test_replay_runtime_logs_adaptive_filter_event(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frames = [
+        np.zeros(
+            (16, 16, 3),
+            dtype=np.uint8,
+        ),
+        np.ones(
+            (16, 16, 3),
+            dtype=np.uint8,
+        ),
+    ]
+
+    fake_capture = FakeVideoCapture(
+        frames,
+        fps=20.0,
+    )
+
+    monkeypatch.setattr(
+        cv2,
+        "VideoCapture",
+        lambda _: fake_capture,
+    )
+
+    video_path = (
+        tmp_path
+        / "adaptive-event-fixture.mp4"
+    )
+    video_path.touch()
+
+    run_id = (
+        "adaptive-event-integration-run"
+    )
+
+    source = ReplayFrameSource(
+        video_path,
+        run_id=run_id,
+    )
+
+    provider = MovingFakeProvider()
+
+    resolved = resolve_config(
+        DEFAULT_CONFIG,
+        overrides={
+            "runtime": {
+                "mode": "replay",
+                "replay_source": str(
+                    video_path
+                ),
+            },
+            "filter": {
+                "mode": (
+                    "ONE_EURO_ADAPTIVE"
+                ),
+                "reset_gap_s": 0.01,
+            },
+        },
+    )
+
+    filter_config = resolved.data[
+        "filter"
+    ]
+
+    adaptive = filter_config[
+        "adaptive"
+    ]
+
+    landmark_filter = (
+        AdaptiveOneEuroLandmarkFilter(
+            base_cutoff_hz=(
+                adaptive[
+                    "base_cutoff_hz"
+                ]
+            ),
+            beta_min=adaptive[
+                "beta_min"
+            ],
+            beta_base=adaptive[
+                "beta_base"
+            ],
+            beta_max=adaptive[
+                "beta_max"
+            ],
+            velocity_gain=adaptive[
+                "velocity_gain"
+            ],
+            velocity_max=adaptive[
+                "velocity_max"
+            ],
+            final_cutoff_min_hz=(
+                adaptive[
+                    "final_cutoff_min_hz"
+                ]
+            ),
+            final_cutoff_max_hz=(
+                adaptive[
+                    "final_cutoff_max_hz"
+                ]
+            ),
+            derivative_cutoff_hz=(
+                filter_config[
+                    "derivative_cutoff_hz"
+                ]
+            ),
+            reset_gap_s=(
+                filter_config[
+                    "reset_gap_s"
+                ]
+            ),
+        )
+    )
+
+    metadata = build_run_metadata(
+        resolved,
+        run_id=run_id,
+        code_revision="test-revision",
+    )
+
+    runtime = ReplayRuntime(
+        source=source,
+        provider=provider,
+        validator=MeasurementValidator(),
+        landmark_filter=landmark_filter,
+        logger=FileRunLogger(
+            tmp_path / "runs"
+        ),
+    )
+
+    processed = runtime.run(
+        metadata=metadata,
+        resolved_config=resolved.to_dict(),
+    )
+
+    assert processed == 2
+
+    run_dir = (
+        tmp_path
+        / "runs"
+        / run_id
+    )
+
+    with (
+        run_dir / "frames.csv"
+    ).open(
+        newline="",
+        encoding="utf-8",
+    ) as file:
+        frame_rows = list(
+            csv.DictReader(file)
+        )
+
+    assert len(frame_rows) == 2
+
+    second = frame_rows[1]
+
+    assert second["reset_occurred"] == (
+        "True"
+    )
+
+    with (
+        run_dir / "events.csv"
+    ).open(
+        newline="",
+        encoding="utf-8",
+    ) as file:
+        event_rows = list(
+            csv.DictReader(file)
+        )
+
+    assert len(event_rows) == 1
+
+    event = event_rows[0]
+
+    assert event["frame_id"] == "1"
+
+    assert event["event_type"] == (
+        "reset_gap_exceeded"
+    )
+
+    assert event["severity"] == "WARNING"
+
+    details = json.loads(
+        event["details_json"]
+    )
+
+    assert details["filter_mode"] == (
+        "ONE_EURO_ADAPTIVE"
+    )
+
+    assert details["reset_occurred"] is True
 
     assert fake_capture.released is True
     assert provider.closed is True

@@ -366,7 +366,9 @@ class FilterDiagnostics:
     signal_alpha: float | None
     derivative_alpha: float | None
     reset_occurred: bool
+    events: tuple[str, ...]
 ```
+
 For vector landmark filters, the scalar diagnostic fields are a
 frame-level summary and do not redefine the per-landmark filtering
 algorithm.
@@ -377,43 +379,144 @@ For an accepted ordinary fixed/adaptive landmark update:
 speed
     = maximum finite per-landmark x/y speed for that frame
 
+representative landmark
+    = landmark with maximum per-landmark x/y speed
+      (tie → lowest landmark index)
+
 final_cutoff_hz
 signal_alpha
-    = values belonging to the same landmark that produced `speed`
+    = values belonging to the same representative landmark that
+      produced `speed`
 
 derivative_alpha
     = common derivative alpha for the frame
       because all filtered x/y components use the same accepted `dt`
       and configured derivative cutoff
 ```
+
+For `ONE_EURO_ADAPTIVE`, the effective `beta` is also taken from the same
+representative landmark selected by maximum speed.
+
+Thus for an accepted ordinary adaptive update:
+
+```text
+representative landmark
+    = maximum per-landmark x/y speed
+      (tie → lowest landmark index)
+
+speed
+beta
+final_cutoff_hz
+signal_alpha
+    = values from that same representative landmark
+
+min_cutoff_hz
+    = the effective frame minimum cutoff:
+      f_base when quality adaptation is disabled/unavailable,
+      otherwise the valid quality-derived minimum cutoff
+
+derivative_alpha
+    = common derivative alpha for the accepted frame dt
+```
+
+The representative diagnostic aggregation MUST NOT feed back into any
+landmark filtering calculation.
+
 If multiple landmarks tie for maximum speed, the lowest landmark index
 MUST be selected so serialization remains deterministic.
-For a filter initialization/reinitialization frame:
-```python
+
+For adaptive initialization/reinitialization:
+
+```text
+dt_s = None
+speed = 0
+beta = beta_base
+min_cutoff_hz = effective minimum cutoff
+final_cutoff_hz =
+    clip(min_cutoff_hz, final_cutoff_min, final_cutoff_max)
+signal_alpha = None
+derivative_alpha = None
+```
+
+For a fixed-filter initialization/reinitialization frame:
+
+```text
 dt_s = None
 speed = 0
 beta = configured beta
 min_cutoff_hz = configured minimum cutoff
-final_cutoff_hz = configured minimum cutoff
+final_cutoff_hz =
+    clip(min_cutoff_hz, final_cutoff_min, final_cutoff_max)
 signal_alpha = None
 derivative_alpha = None
 ```
-For a frame with no accepted landmark measurement:
-```python
+
+For an adaptive frame with no accepted landmark measurement:
+
+```text
+dt_s = None
+speed = None
+beta = None
+final_cutoff_hz = None
+signal_alpha = None
+derivative_alpha = None
+```
+
+For a fixed-filter frame with no accepted landmark measurement:
+
+```text
 dt_s = None
 speed = None
 final_cutoff_hz = None
 signal_alpha = None
 derivative_alpha = None
 ```
-Configured parameter fields such as beta and min_cutoff_hz MAY
-remain populated so the active filter configuration remains explicit.
-reset_occurred reports whether filter state was reset while processing
-that observation.
+
+For a frame with no accepted landmark measurement, configured parameter
+fields such as `beta` and `min_cutoff_hz` MAY remain populated when the
+implementation uses them to expose the active filter configuration.
+For the adaptive no-measurement contract above, `beta` is explicitly
+`None` and `min_cutoff_hz` MAY remain populated if the effective
+configuration is intentionally exposed.
+
+`reset_occurred` retains its existing semantics.
+
 The frame-level summary is diagnostic metadata only. Final jitter and
 responsiveness outcomes MUST be computed from the recorded landmark
 trajectories rather than treating this summary speed as an experimental
 outcome.
+
+### Temporal-filter event propagation
+
+`FilterDiagnostics.events` carries filter-originated state-transition
+events produced while processing the current observation.
+
+For ordinary updates with no transition:
+
+```text
+events = ()
+For F1/F2 timestamp/loss/reset transitions, the event names and
+generation semantics are defined by 03_ALGORITHM_AND_EXPERIMENTS.md.
+The LandmarkFilter.update return shape remains unchanged:
+
+tuple[tuple[Landmark, ...], FilterDiagnostics]
+The runtime MUST copy filter-originated diagnostic events into
+TrackingFrame.events.
+For each filter event in TrackingFrame.events, RunLogger MUST preserve
+one corresponding event record in events.csv.
+
+A runtime MUST NOT separately duplicate the same event through
+RunLogger.log_event(...) when log_tracking_frame() already serializes
+TrackingFrame.events.
+
+Event propagation is diagnostic/logging behavior only. It MUST NOT feed
+back into landmark filtering calculations.
+Raw/F0 emits no temporal-filter events:
+events = ()
+
+This clarification does not add a new serialized artifact or change the
+existing events.csv purpose.
+
 ### 10.8 `StageTimings`
 
 ```python
