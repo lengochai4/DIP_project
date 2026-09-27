@@ -248,3 +248,41 @@ def test_roi_min_height_cannot_exceed_camera_height() -> None:
                 },
             },
         )
+
+
+def test_low_light_hysteresis_order_is_validated() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "illumination": {
+                    "low_light_enter_v": 90.0,
+                    "low_light_exit_v": 80.0,
+                }
+            },
+        )
+
+
+def test_low_contrast_hysteresis_order_is_validated() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "illumination": {
+                    "low_contrast_enter_range_v": 50.0,
+                    "low_contrast_exit_range_v": 40.0,
+                }
+            },
+        )
+
+
+def test_illumination_threshold_must_be_in_byte_range() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "illumination": {
+                    "low_light_enter_v": -1.0,
+                }
+            },
+        )

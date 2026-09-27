@@ -175,6 +175,44 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "illumination.ema_alpha must be in (0, 1]"
         )
 
+    for key in (
+        "low_light_enter_v",
+        "low_light_exit_v",
+        "low_contrast_enter_range_v",
+        "low_contrast_exit_range_v",
+    ):
+        _require_byte_range_number(
+            illumination,
+            key,
+            "illumination",
+        )
+
+    low_light_enter = illumination[
+        "low_light_enter_v"
+    ]
+    low_light_exit = illumination[
+        "low_light_exit_v"
+    ]
+
+    if not low_light_enter < low_light_exit:
+        raise ConfigValidationError(
+            "illumination.low_light_enter_v must be less than "
+            "illumination.low_light_exit_v"
+        )
+
+    low_contrast_enter = illumination[
+        "low_contrast_enter_range_v"
+    ]
+    low_contrast_exit = illumination[
+        "low_contrast_exit_range_v"
+    ]
+
+    if not low_contrast_enter < low_contrast_exit:
+        raise ConfigValidationError(
+            "illumination.low_contrast_enter_range_v must be less than "
+            "illumination.low_contrast_exit_range_v"
+        )
+    
     clip_limit = clahe.get("clip_limit")
     if (
         not isinstance(clip_limit, (int, float))
@@ -254,3 +292,20 @@ def validate_config(config: Mapping[str, Any]) -> None:
     if renderer.get("enabled"):
         _require_positive_number(renderer, "width", "renderer")
         _require_positive_number(renderer, "height", "renderer")
+
+
+def _require_byte_range_number(
+    section: Mapping[str, Any],
+    key: str,
+    section_name: str,
+) -> None:
+    value = section.get(key)
+
+    if (
+        not isinstance(value, (int, float))
+        or isinstance(value, bool)
+        or not 0.0 <= value <= 255.0
+    ):
+        raise ConfigValidationError(
+            f"{section_name}.{key} must be in [0, 255]"
+        )

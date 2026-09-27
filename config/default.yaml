@@ -21,7 +21,12 @@ roi:
 
 illumination:
   ema_alpha: 0.20
-  hysteresis_frames: 3
+
+  low_light_enter_v: 70.0
+  low_light_exit_v: 85.0
+
+  low_contrast_enter_range_v: 35.0
+  low_contrast_exit_range_v: 45.0
 
 clahe:
   mode: "adaptive"

@@ -231,6 +231,54 @@ Existing results invalidated:
 
 No — no final G2+ experiment results existed before the correction.
 
+### G2 algorithm decision — illumination state stabilization
+
+Change:
+
+Defined the baseline illumination-state decision using EMA-smoothed
+`mean_v` and `robust_range_v`, with separate enter/exit hysteresis
+thresholds.
+
+Reason:
+
+The canonical specification required `NORMAL`, `LOW_LIGHT`,
+`LOW_CONTRAST`, and `DIFFICULT` states and required temporal stability,
+but did not previously define the exact mapping from descriptors to
+states.
+
+Canonical file/section changed:
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, Illumination assessment.
+
+Code/modules affected:
+
+`configuration`, `preprocessing/illumination_decision.py`, future
+adaptive preprocessing/runtime integration.
+
+Algorithmic impact:
+
+Defines the course-baseline illumination classification and
+stabilization behavior.
+
+Experimental impact:
+
+Future P0/P1 preprocessing runs must preserve the resolved threshold and
+EMA configuration used for each run.
+
+Compatibility impact:
+
+No completed final illumination experiments existed before this rule was
+defined.
+
+Tests added/updated:
+
+Configuration threshold-ordering tests and illumination
+EMA/hysteresis/state-transition tests.
+
+Existing results invalidated:
+
+No — no final G2 illumination results exist yet.
+
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:
