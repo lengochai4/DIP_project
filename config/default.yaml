@@ -1,0 +1,55 @@
+project:
+  name: "DIP Touchless STEM"
+  config_schema_version: "1"
+
+camera:
+  width: 640
+  height: 480
+  requested_fps: 30
+  backend: "default"
+
+runtime:
+  mode: "realtime"
+  replay_source: null
+
+roi:
+  padding_ratio: 0.20
+  coast_frames: 5
+  fallback_full_frame: true
+
+illumination:
+  ema_alpha: 0.20
+  hysteresis_frames: 3
+
+clahe:
+  mode: "adaptive"
+  clip_limit: 2.0
+  tile_grid_size: [8, 8]
+
+tracking:
+  provider: "mediapipe"
+  model_path: null
+
+filter:
+  mode: "RAW"
+  derivative_cutoff_hz: 1.0
+  reset_gap_s: 0.50
+
+gesture:
+  pinch_on: 0.30
+  pinch_off: 0.40
+
+logging:
+  schema_version: "1"
+  output_dir: "runs"
+  record_raw_video: false
+
+experiment:
+  experiment_id: null
+  condition: null
+  trial_id: null
+
+renderer:
+  enabled: true
+  width: 1280
+  height: 720
