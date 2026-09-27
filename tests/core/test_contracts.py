@@ -1,6 +1,7 @@
 import math
 
 import pytest
+import numpy as np
 
 from dip_touchless.core import (
     ColorSpace,
@@ -84,9 +85,21 @@ def test_frame_packet_accepts_explicit_color_space() -> None:
         run_id="run-test",
         frame_id=0,
         timestamp_s=1.0,
-        image=object(),
+        image=np.zeros((2, 2, 3), dtype=np.uint8),
         color_space=ColorSpace.BGR,
         source_name="test-source",
     )
 
     assert frame.color_space is ColorSpace.BGR
+
+
+def test_frame_packet_rejects_empty_image() -> None:
+    with pytest.raises(ValueError):
+        FramePacket(
+            run_id="run-test",
+            frame_id=0,
+            timestamp_s=1.0,
+            image=np.empty((0, 0, 3), dtype=np.uint8),
+            color_space=ColorSpace.BGR,
+            source_name="test-source",
+        )
