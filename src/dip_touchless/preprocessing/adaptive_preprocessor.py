@@ -8,8 +8,11 @@ import cv2
 import numpy as np
 
 from dip_touchless.core import (
+    ColorSpace,
+    FramePacket,
     IlluminationMetrics,
     IlluminationState,
+    ROI,
 )
 
 
@@ -18,6 +21,14 @@ class ROIPreprocessResult:
     """Result of preprocessing one BGR ROI."""
 
     image_bgr: np.ndarray
+    illumination: IlluminationMetrics
+
+
+@dataclass(frozen=True)
+class FramePreprocessResult:
+    """Result of preprocessing and compositing one full frame."""
+
+    frame: FramePacket
     illumination: IlluminationMetrics
 
 
@@ -74,6 +85,54 @@ class AdaptivePreprocessor:
             tileGridSize=self._tile_grid_size,
         )
 
+    def process_frame(
+        self,
+        frame: FramePacket,
+        roi: ROI,
+        illumination: IlluminationMetrics,
+    ) -> FramePreprocessResult:
+        """Preprocess selected ROI and composite it into a full-size frame."""
+
+        if frame.color_space is not ColorSpace.BGR:
+            raise ValueError(
+                "adaptive preprocessing requires BGR FramePacket input"
+            )
+
+        frame_height, frame_width = frame.image.shape[:2]
+
+        self._validate_frame_roi(
+            roi,
+            frame_width=frame_width,
+            frame_height=frame_height,
+        )
+
+        roi_bgr = frame.image[
+            roi.y : roi.y + roi.height,
+            roi.x : roi.x + roi.width,
+        ]
+
+        roi_result = self.process_roi(
+            roi_bgr,
+            illumination,
+        )
+
+        output_image = frame.image.copy()
+
+        output_image[
+            roi.y : roi.y + roi.height,
+            roi.x : roi.x + roi.width,
+        ] = roi_result.image_bgr
+
+        output_frame = replace(
+            frame,
+            image=output_image,
+        )
+
+        return FramePreprocessResult(
+            frame=output_frame,
+            illumination=roi_result.illumination,
+        )
+    
     def process_roi(
         self,
         roi_bgr: np.ndarray,
@@ -139,6 +198,31 @@ class AdaptivePreprocessor:
             state is not IlluminationState.NORMAL
         )
 
+    @staticmethod
+    def _validate_frame_roi(
+        roi: ROI,
+        *,
+        frame_width: int,
+        frame_height: int,
+    ) -> None:
+        if roi.x < 0 or roi.y < 0:
+            raise ValueError(
+                "ROI origin must be inside the frame"
+            )
+
+        if roi.width <= 0 or roi.height <= 0:
+            raise ValueError(
+                "ROI dimensions must be positive"
+            )
+
+        if (
+            roi.x + roi.width > frame_width
+            or roi.y + roi.height > frame_height
+        ):
+            raise ValueError(
+                "ROI must be contained within frame bounds"
+            )
+    
     @staticmethod
     def _validate_roi_image(
         roi_bgr: np.ndarray,

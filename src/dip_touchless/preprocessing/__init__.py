@@ -9,12 +9,14 @@ from .illumination_decision import (
 )
 from .adaptive_preprocessor import (
     AdaptivePreprocessor,
+    FramePreprocessResult,
     ROIPreprocessResult,
 )
 from .roi import ROIManager
 
 __all__ = [
     "AdaptivePreprocessor",
+    "FramePreprocessResult",
     "IlluminationAnalyzer",
     "IlluminationDecisionStabilizer",
     "IlluminationDescriptors",
