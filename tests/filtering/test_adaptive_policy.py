@@ -4,6 +4,7 @@ import pytest
 
 from dip_touchless.core import (
     MeasurementQuality,
+    QualitySource,
 )
 from dip_touchless.filtering.adaptive_policy import (
     adaptive_beta,
@@ -155,6 +156,48 @@ def test_disabled_quality_adaptation_uses_base_cutoff() -> None:
 
     assert result == pytest.approx(
         1.5
+    )
+
+
+def test_lower_valid_quality_does_not_increase_min_cutoff() -> None:
+    low_quality = MeasurementQuality(
+        value=0.2,
+        source=QualitySource.PROVIDER_DOCUMENTED,
+        valid=True,
+        semantic_name="documented_fixture_quality",
+    )
+
+    high_quality = MeasurementQuality(
+        value=0.8,
+        source=QualitySource.PROVIDER_DOCUMENTED,
+        valid=True,
+        semantic_name="documented_fixture_quality",
+    )
+
+    low_result = effective_min_cutoff_hz(
+        base_cutoff_hz=1.5,
+        quality_adaptation_enabled=True,
+        quality=low_quality,
+        quality_low_cutoff_hz=0.5,
+        quality_high_cutoff_hz=2.0,
+    )
+
+    high_result = effective_min_cutoff_hz(
+        base_cutoff_hz=1.5,
+        quality_adaptation_enabled=True,
+        quality=high_quality,
+        quality_low_cutoff_hz=0.5,
+        quality_high_cutoff_hz=2.0,
+    )
+
+    assert low_result <= high_result
+
+    assert low_result == pytest.approx(
+        0.8
+    )
+
+    assert high_result == pytest.approx(
+        1.7
     )
 
 
