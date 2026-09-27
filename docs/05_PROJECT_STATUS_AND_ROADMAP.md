@@ -481,6 +481,11 @@ In-memory `FilterDiagnostics` gains an events field. Existing CSV column
 schemas are unchanged; the already-defined events artifact will begin
 receiving the events that were previously dropped.
 
+The existing FileRunLogger already serializes TrackingFrame.events.
+The contract therefore assigns serialization responsibility to RunLogger
+rather than requiring ReplayRuntime to issue a second duplicate
+log_event call.
+
 Tests added/updated:
 
 Core contract tests;

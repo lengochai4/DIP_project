@@ -502,9 +502,13 @@ The LandmarkFilter.update return shape remains unchanged:
 tuple[tuple[Landmark, ...], FilterDiagnostics]
 The runtime MUST copy filter-originated diagnostic events into
 TrackingFrame.events.
-For each filter event in TrackingFrame.events, the runtime MUST also
-emit one corresponding RunLogger.log_event(...) record so the event is
-preserved in events.csv.
+For each filter event in TrackingFrame.events, RunLogger MUST preserve
+one corresponding event record in events.csv.
+
+A runtime MUST NOT separately duplicate the same event through
+RunLogger.log_event(...) when log_tracking_frame() already serializes
+TrackingFrame.events.
+
 Event propagation is diagnostic/logging behavior only. It MUST NOT feed
 back into landmark filtering calculations.
 Raw/F0 emits no temporal-filter events:
