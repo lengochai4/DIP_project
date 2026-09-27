@@ -134,6 +134,7 @@ def test_no_hand_is_explicit_and_has_no_fake_landmarks() -> None:
 
     assert observation.status is TrackingStatus.NO_HAND
     assert observation.landmarks == ()
+    assert observation.hand_bbox is None
 
     assert observation.quality.valid is False
     assert observation.quality.value is None
@@ -215,3 +216,160 @@ def test_close_releases_landmarker() -> None:
     provider.close()
 
     assert fake.closed is True
+
+
+def _bbox_result() -> object:
+    landmarks = []
+
+    for index in range(21):
+        if index % 2 == 0:
+            x = 0.25
+            y = 0.20
+        else:
+            x = 0.75
+            y = 0.80
+
+        landmarks.append(
+            SimpleNamespace(
+                x=x,
+                y=y,
+                z=-0.01 * index,
+            )
+        )
+
+    category = SimpleNamespace(
+        category_name="Right",
+        display_name=None,
+        score=0.92,
+    )
+
+    return SimpleNamespace(
+        hand_landmarks=[landmarks],
+        handedness=[[category]],
+    )
+
+
+def test_valid_hand_derives_full_frame_pixel_bbox() -> None:
+    fake = FakeLandmarker(
+        _bbox_result()
+    )
+
+    provider = MediaPipeHandLandmarkerProvider(
+        landmarker=fake,
+    )
+
+    frame = FramePacket(
+        run_id="run-test",
+        frame_id=0,
+        timestamp_s=1.0,
+        image=np.zeros(
+            (100, 200, 3),
+            dtype=np.uint8,
+        ),
+        color_space=ColorSpace.BGR,
+        source_name="fixture",
+    )
+
+    observation = provider.process(frame)
+
+    assert observation.status is TrackingStatus.VALID
+
+    assert observation.hand_bbox is not None
+
+    assert observation.hand_bbox.x == 50
+    assert observation.hand_bbox.y == 20
+    assert observation.hand_bbox.width == 100
+    assert observation.hand_bbox.height == 60
+
+
+def _out_of_bounds_result() -> object:
+    landmarks = [
+        SimpleNamespace(
+            x=-0.20 if index % 2 == 0 else 1.20,
+            y=-0.10 if index % 2 == 0 else 1.10,
+            z=-0.01 * index,
+        )
+        for index in range(21)
+    ]
+
+    category = SimpleNamespace(
+        category_name="Right",
+        display_name=None,
+        score=0.90,
+    )
+
+    return SimpleNamespace(
+        hand_landmarks=[landmarks],
+        handedness=[[category]],
+    )
+
+
+def test_hand_bbox_is_clamped_to_frame_bounds() -> None:
+    fake = FakeLandmarker(
+        _out_of_bounds_result()
+    )
+
+    provider = MediaPipeHandLandmarkerProvider(
+        landmarker=fake,
+    )
+
+    frame = FramePacket(
+        run_id="run-test",
+        frame_id=0,
+        timestamp_s=1.0,
+        image=np.zeros(
+            (100, 200, 3),
+            dtype=np.uint8,
+        ),
+        color_space=ColorSpace.BGR,
+        source_name="fixture",
+    )
+
+    observation = provider.process(frame)
+
+    assert observation.hand_bbox is not None
+
+    assert observation.hand_bbox.x == 0
+    assert observation.hand_bbox.y == 0
+    assert observation.hand_bbox.width == 200
+    assert observation.hand_bbox.height == 100
+
+
+def test_degenerate_normalized_bbox_stays_positive() -> None:
+    landmarks = [
+        SimpleNamespace(
+            x=0.5,
+            y=0.5,
+            z=0.0,
+        )
+        for _ in range(21)
+    ]
+
+    result = SimpleNamespace(
+        hand_landmarks=[landmarks],
+        handedness=[],
+    )
+
+    fake = FakeLandmarker(result)
+
+    provider = MediaPipeHandLandmarkerProvider(
+        landmarker=fake,
+    )
+
+    frame = FramePacket(
+        run_id="run-test",
+        frame_id=0,
+        timestamp_s=1.0,
+        image=np.zeros(
+            (100, 200, 3),
+            dtype=np.uint8,
+        ),
+        color_space=ColorSpace.BGR,
+        source_name="fixture",
+    )
+
+    observation = provider.process(frame)
+
+    assert observation.hand_bbox is not None
+    assert observation.hand_bbox.width >= 1
+    assert observation.hand_bbox.height >= 1
