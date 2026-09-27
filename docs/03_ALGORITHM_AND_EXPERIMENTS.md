@@ -221,6 +221,28 @@ BGR ROI
 → BGR ROI
 → paste into unchanged full-size BGR frame
 ```
+Policy resolution is:
+
+```text
+policy = bypass
+    -> CLAHE not applied
+
+policy = always
+    -> CLAHE applied
+
+policy = adaptive
+    -> CLAHE applied when stabilized illumination state != NORMAL
+```
+
+For final/logged IlluminationMetrics,
+enhancement_active means CLAHE was actually applied after policy
+resolution.
+The illumination decision stage may request adaptive enhancement from
+the stabilized state, but AdaptivePreprocessor is the owner of the
+actual policy resolution.
+Only post-preprocessor IlluminationMetrics should be serialized as the
+final per-frame illumination diagnostics.
+
 
 Required tunable parameters:
 

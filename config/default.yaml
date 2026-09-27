@@ -29,7 +29,7 @@ illumination:
   low_contrast_exit_range_v: 45.0
 
 clahe:
-  mode: "adaptive"
+  policy: "adaptive"
   clip_limit: 2.0
   tile_grid_size: [8, 8]
 

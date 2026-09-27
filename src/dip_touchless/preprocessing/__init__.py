@@ -7,11 +7,17 @@ from .illumination import (
 from .illumination_decision import (
     IlluminationDecisionStabilizer,
 )
+from .adaptive_preprocessor import (
+    AdaptivePreprocessor,
+    ROIPreprocessResult,
+)
 from .roi import ROIManager
 
 __all__ = [
+    "AdaptivePreprocessor",
     "IlluminationAnalyzer",
-    "IlluminationDescriptors",
-    "ROIManager",
     "IlluminationDecisionStabilizer",
+    "IlluminationDescriptors",
+    "ROIPreprocessResult",
+    "ROIManager",
 ]

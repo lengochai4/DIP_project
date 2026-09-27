@@ -238,6 +238,17 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "clahe.tile_grid_size must contain two positive integers"
         )
 
+    clahe_policy = clahe.get("policy")
+
+    if clahe_policy not in {
+        "adaptive",
+        "always",
+        "bypass",
+    }:
+        raise ConfigValidationError(
+            "clahe.policy must be 'adaptive', 'always', or 'bypass'"
+        )
+
     num_hands = tracking.get("num_hands")
 
     if (

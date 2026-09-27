@@ -286,3 +286,15 @@ def test_illumination_threshold_must_be_in_byte_range() -> None:
                 }
             },
         )
+
+
+def test_invalid_clahe_policy_is_rejected() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "clahe": {
+                    "policy": "unknown",
+                }
+            },
+        )

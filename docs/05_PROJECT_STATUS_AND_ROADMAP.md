@@ -279,6 +279,42 @@ Existing results invalidated:
 
 No — no final G2 illumination results exist yet.
 
+### G2 semantic clarification — enhancement_active
+
+Change:
+
+`IlluminationMetrics.enhancement_active` is defined as whether CLAHE was
+actually applied after preprocessing policy resolution.
+
+Reason:
+
+Illumination state and preprocessing policy are distinct. A difficult
+illumination state may still be intentionally bypassed in P0/bypass
+conditions.
+
+Canonical file/section changed:
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, Adaptive CLAHE.
+
+Code/modules affected:
+
+`preprocessing/illumination_decision.py`,
+`preprocessing/adaptive_preprocessor.py`,
+future runtime/logging integration.
+
+Algorithmic impact:
+
+Clarifies adaptive/always/bypass policy behavior.
+
+Experimental impact:
+
+P0/P1 logs can distinguish measured illumination state from actual
+enhancement application.
+
+Existing results invalidated:
+
+No — no final G2 preprocessing experiment results exist yet.
+
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:
