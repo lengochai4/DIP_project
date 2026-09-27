@@ -155,6 +155,7 @@ def validate_config(config: Mapping[str, Any]) -> None:
         raise ConfigValidationError(
             "roi.min_height must be a positive integer"
         )
+
     if min_width > camera["width"]:
         raise ConfigValidationError(
             "roi.min_width must not exceed camera.width"
@@ -164,7 +165,7 @@ def validate_config(config: Mapping[str, Any]) -> None:
         raise ConfigValidationError(
             "roi.min_height must not exceed camera.height"
         )
-    
+
     ema_alpha = illumination.get("ema_alpha")
     if (
         not isinstance(ema_alpha, (int, float))
@@ -187,12 +188,8 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "illumination",
         )
 
-    low_light_enter = illumination[
-        "low_light_enter_v"
-    ]
-    low_light_exit = illumination[
-        "low_light_exit_v"
-    ]
+    low_light_enter = illumination["low_light_enter_v"]
+    low_light_exit = illumination["low_light_exit_v"]
 
     if not low_light_enter < low_light_exit:
         raise ConfigValidationError(
@@ -212,7 +209,7 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "illumination.low_contrast_enter_range_v must be less than "
             "illumination.low_contrast_exit_range_v"
         )
-    
+
     clip_limit = clahe.get("clip_limit")
     if (
         not isinstance(clip_limit, (int, float))
@@ -271,12 +268,41 @@ def validate_config(config: Mapping[str, Any]) -> None:
             key,
             "tracking",
         )
-    
+
+    # ------------------------------------------------------------------
+    # Filter configuration
+    # ------------------------------------------------------------------
+
+    filter_mode = filter_config.get("mode")
+
+    if filter_mode not in {
+        "RAW",
+        "ONE_EURO_FIXED",
+        "ONE_EURO_ADAPTIVE",
+    }:
+        raise ConfigValidationError(
+            "filter.mode must be "
+            "'RAW', 'ONE_EURO_FIXED', or 'ONE_EURO_ADAPTIVE'"
+        )
+
+    _require_positive_number(
+        filter_config,
+        "min_cutoff_hz",
+        "filter",
+    )
+
+    _require_non_negative_number(
+        filter_config,
+        "beta",
+        "filter",
+    )
+
     _require_positive_number(
         filter_config,
         "derivative_cutoff_hz",
         "filter",
     )
+
     _require_positive_number(
         filter_config,
         "reset_gap_s",

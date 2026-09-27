@@ -298,3 +298,92 @@ def test_invalid_clahe_policy_is_rejected() -> None:
                 }
             },
         )
+
+
+def test_default_fixed_filter_parameters_are_valid() -> None:
+    resolved = resolve_config(DEFAULT_CONFIG)
+
+    filter_config = resolved.data["filter"]
+
+    assert filter_config["mode"] == "RAW"
+    assert filter_config["min_cutoff_hz"] == pytest.approx(1.0)
+    assert filter_config["beta"] == pytest.approx(0.0)
+    assert (
+        filter_config["derivative_cutoff_hz"]
+        == pytest.approx(1.0)
+    )
+    assert filter_config["reset_gap_s"] == pytest.approx(0.5)
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [
+        "",
+        "FIXED",
+        "ONE_EURO",
+        "UNKNOWN",
+    ],
+)
+def test_invalid_filter_mode_is_rejected(
+    mode: str,
+) -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "filter": {
+                    "mode": mode,
+                }
+            },
+        )
+
+
+@pytest.mark.parametrize(
+    "min_cutoff_hz",
+    [
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_min_cutoff_is_rejected(
+    min_cutoff_hz: float,
+) -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "filter": {
+                    "min_cutoff_hz": (
+                        min_cutoff_hz
+                    ),
+                }
+            },
+        )
+
+
+def test_negative_fixed_beta_is_rejected() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "filter": {
+                    "beta": -0.1,
+                }
+            },
+        )
+
+
+def test_zero_fixed_beta_is_allowed() -> None:
+    resolved = resolve_config(
+        DEFAULT_CONFIG,
+        overrides={
+            "filter": {
+                "beta": 0.0,
+            }
+        },
+    )
+
+    assert (
+        resolved.data["filter"]["beta"]
+        == pytest.approx(0.0)
+    )

@@ -43,6 +43,8 @@ tracking:
 
 filter:
   mode: "RAW"
+  min_cutoff_hz: 1.0
+  beta: 0.0
   derivative_cutoff_hz: 1.0
   reset_gap_s: 0.50
 
