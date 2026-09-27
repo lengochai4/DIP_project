@@ -382,6 +382,58 @@ reset reporting, and runtime serialization.
 Existing results invalidated:
 
 No — no final F1/F2 experimental results exist.
+
+### G4 contract clarification — bounded adaptive beta mapping
+
+Change:
+
+Defined the exact project-specific F2 velocity-to-beta mapping, clarified
+per-landmark adaptive vectorization, primary quality-disabled behavior,
+final-cutoff safety, and adaptive public diagnostic aggregation.
+
+Reason:
+
+The canonical specification already defined adaptive parameters and
+final cutoff bounds but did not state the exact beta(v) equation.
+Implementation would otherwise have to choose algorithm behavior
+silently.
+
+Canonical file/section changed:
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, adaptive F2 algorithm;
+`02_ARCHITECTURE_AND_CONTRACTS.md`, adaptive FilterDiagnostics semantics.
+
+Code/modules affected:
+
+Upcoming adaptive landmark core, adaptive public LandmarkFilter,
+configuration validation, replay/logging tests.
+
+Algorithmic impact:
+
+F2 beta is explicitly nondecreasing with speed and bounded by configured
+beta limits. Optional velocity limiting applies to beta adaptation.
+Final cutoff remains independently bounded.
+
+Experimental impact:
+
+Defines the F2 method that will later be compared with F0 and F1.
+Primary F2 does not use measurement-quality adaptation unless a valid
+documented source exists.
+
+Compatibility impact:
+
+No adaptive implementation or final F2 result exists yet.
+
+Tests added/updated:
+
+Upcoming G4 tests will cover beta bounds/monotonicity, velocity spikes,
+final cutoff bounds, unavailable quality, invalid dt, reset, and
+reacquisition.
+
+Existing results invalidated:
+
+No — no F2 implementation/final experimental results exist.
+
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:
