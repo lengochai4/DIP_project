@@ -218,3 +218,33 @@ def test_non_positive_roi_min_height_is_rejected() -> None:
                 }
             },
         )
+
+
+def test_roi_min_width_cannot_exceed_camera_width() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "camera": {
+                    "width": 640,
+                },
+                "roi": {
+                    "min_width": 641,
+                },
+            },
+        )
+
+
+def test_roi_min_height_cannot_exceed_camera_height() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "camera": {
+                    "height": 480,
+                },
+                "roi": {
+                    "min_height": 481,
+                },
+            },
+        )

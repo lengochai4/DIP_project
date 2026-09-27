@@ -155,7 +155,16 @@ def validate_config(config: Mapping[str, Any]) -> None:
         raise ConfigValidationError(
             "roi.min_height must be a positive integer"
         )
+    if min_width > camera["width"]:
+        raise ConfigValidationError(
+            "roi.min_width must not exceed camera.width"
+        )
 
+    if min_height > camera["height"]:
+        raise ConfigValidationError(
+            "roi.min_height must not exceed camera.height"
+        )
+    
     ema_alpha = illumination.get("ema_alpha")
     if (
         not isinstance(ema_alpha, (int, float))
