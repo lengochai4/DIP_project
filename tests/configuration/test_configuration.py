@@ -158,3 +158,27 @@ def test_write_resolved_config(tmp_path: Path) -> None:
     )
 
     assert parsed["project"]["name"] == "DIP Touchless STEM"
+
+
+def test_invalid_tracking_confidence_is_rejected() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "tracking": {
+                    "min_tracking_confidence": 1.1,
+                }
+            },
+        )
+
+
+def test_multi_hand_mode_is_rejected_for_baseline() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "tracking": {
+                    "num_hands": 2,
+                }
+            },
+        )
