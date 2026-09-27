@@ -18,6 +18,8 @@ from dip_touchless.core import (
     LandmarkObservation,
     MeasurementQuality,
     TrackingStatus,
+    ROI,
+    ROIState,
 )
 
 
@@ -229,6 +231,12 @@ class MediaPipeHandLandmarkerProvider:
                     category.score
                 )
 
+        hand_bbox = self._derive_hand_bbox(
+            tuple(landmarks),
+            frame_width=frame.image.shape[1],
+            frame_height=frame.image.shape[0],
+        )
+
         return LandmarkObservation(
             frame_id=frame.frame_id,
             timestamp_s=frame.timestamp_s,
@@ -237,7 +245,7 @@ class MediaPipeHandLandmarkerProvider:
             handedness_label=handedness_label,
             handedness_score=handedness_score,
             quality=MeasurementQuality.unavailable(),
-            hand_bbox=None,
+            hand_bbox=hand_bbox,
             provider_name=PROVIDER_NAME,
         )
 
@@ -286,6 +294,90 @@ class MediaPipeHandLandmarkerProvider:
 
         return timestamp_ms
 
+    @staticmethod
+    def _derive_hand_bbox(
+        landmarks: tuple[Landmark, ...],
+        *,
+        frame_width: int,
+        frame_height: int,
+    ) -> ROI:
+        """Derive a tight full-frame pixel bbox from normalized x/y."""
+
+        if not landmarks:
+            raise ValueError(
+                "cannot derive hand bbox from empty landmarks"
+            )
+
+        if frame_width <= 0 or frame_height <= 0:
+            raise ValueError(
+                "frame dimensions must be positive"
+            )
+
+        min_x = min(
+            landmark.x
+            for landmark in landmarks
+        )
+        max_x = max(
+            landmark.x
+            for landmark in landmarks
+        )
+        min_y = min(
+            landmark.y
+            for landmark in landmarks
+        )
+        max_y = max(
+            landmark.y
+            for landmark in landmarks
+        )
+
+        # MediaPipe normalized landmarks may occasionally extend slightly
+        # outside the image. Preserve landmarks themselves, but clamp the
+        # derived pixel bbox to valid full-frame geometry.
+        min_x = min(max(min_x, 0.0), 1.0)
+        max_x = min(max(max_x, 0.0), 1.0)
+        min_y = min(max(min_y, 0.0), 1.0)
+        max_y = min(max(max_y, 0.0), 1.0)
+
+        left = math.floor(
+            min_x * frame_width
+        )
+        top = math.floor(
+            min_y * frame_height
+        )
+
+        right = math.ceil(
+            max_x * frame_width
+        )
+        bottom = math.ceil(
+            max_y * frame_height
+        )
+
+        left = min(
+            max(0, left),
+            frame_width - 1,
+        )
+        top = min(
+            max(0, top),
+            frame_height - 1,
+        )
+
+        right = min(
+            frame_width,
+            max(left + 1, right),
+        )
+        bottom = min(
+            frame_height,
+            max(top + 1, bottom),
+        )
+
+        return ROI(
+            x=left,
+            y=top,
+            width=right - left,
+            height=bottom - top,
+            state=ROIState.TRACKING,
+        )
+    
     def close(self) -> None:
         if self._closed:
             return

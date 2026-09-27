@@ -130,6 +130,84 @@ The illumination decision MUST avoid uncontrolled on/off chatter around one thre
 
 If hysteresis is used, threshold ordering MUST make exit from a difficult state require a sufficiently improved condition rather than the same noisy boundary.
 
+### 4.2 Baseline illumination-state decision
+
+The course baseline uses two EMA-smoothed decision signals:
+
+\[
+\bar{\mu}_{V,t}
+=
+\alpha \mu_{V,t}
++
+(1-\alpha)\bar{\mu}_{V,t-1}
+\]
+
+and
+
+\[
+\bar{C}_{V,t}
+=
+\alpha C_{V,t}
++
+(1-\alpha)\bar{C}_{V,t-1}
+\]
+
+where:
+
+```text
+0 < ema_alpha <= 1
+C_V = P90(V) - P10(V)
+```
+The first valid sample initializes each EMA directly from the current
+measurement; it is not blended with an invented zero state.
+The baseline uses separate enter/exit thresholds:
+```
+low-light enters when:
+    EMA mean V < low_light_enter_v
+
+low-light exits when:
+    EMA mean V >= low_light_exit_v
+
+low-contrast enters when:
+    EMA robust range V < low_contrast_enter_range_v
+
+low-contrast exits when:
+    EMA robust range V >= low_contrast_exit_range_v
+```
+Required threshold ordering:
+```0 <= low_light_enter_v < low_light_exit_v <= 255
+0 <= low_contrast_enter_range_v
+  < low_contrast_exit_range_v <= 255
+```
+The stabilized state is:
+low_light  low_contrast  state
+false      false         NORMAL
+true       false         LOW_LIGHT
+false      true          LOW_CONTRAST
+true       true          DIFFICULT
+
+For the adaptive preprocessing baseline:
+NORMAL        -> enhancement inactive
+LOW_LIGHT     -> enhancement active
+LOW_CONTRAST  -> enhancement active
+DIFFICULT     -> enhancement active
+
+IlluminationMetrics stores the current raw ROI descriptors while its
+state and enhancement_active fields are produced by the stabilized
+EMA/hysteresis decision above.
+std_v, p10_v, and p90_v remain required measured diagnostics but
+are not additional classification thresholds in the course baseline.
+Default threshold values are engineering starting parameters stored in
+configuration. They MUST NOT be presented as universal illumination
+boundaries or as measured project results.
+
+Rule này rất rõ và dễ reproducible:
+
+```text
+mean V       → brightness
+robust range → usable contrast
+```
+
 ## 5. Adaptive CLAHE
 
 Required baseline path:
@@ -143,6 +221,28 @@ BGR ROI
 → BGR ROI
 → paste into unchanged full-size BGR frame
 ```
+Policy resolution is:
+
+```text
+policy = bypass
+    -> CLAHE not applied
+
+policy = always
+    -> CLAHE applied
+
+policy = adaptive
+    -> CLAHE applied when stabilized illumination state != NORMAL
+```
+
+For final/logged IlluminationMetrics,
+enhancement_active means CLAHE was actually applied after policy
+resolution.
+The illumination decision stage may request adaptive enhancement from
+the stabilized state, but AdaptivePreprocessor is the owner of the
+actual policy resolution.
+Only post-preprocessor IlluminationMetrics should be serialized as the
+final per-frame illumination diagnostics.
+
 
 Required tunable parameters:
 

@@ -126,6 +126,45 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "roi.coast_frames must be a non-negative integer"
         )
 
+    coast_expand_ratio = roi.get("coast_expand_ratio")
+    if (
+        not isinstance(coast_expand_ratio, (int, float))
+        or isinstance(coast_expand_ratio, bool)
+        or coast_expand_ratio < 0
+    ):
+        raise ConfigValidationError(
+            "roi.coast_expand_ratio must be a non-negative number"
+        )
+
+    min_width = roi.get("min_width")
+    if (
+        not isinstance(min_width, int)
+        or isinstance(min_width, bool)
+        or min_width <= 0
+    ):
+        raise ConfigValidationError(
+            "roi.min_width must be a positive integer"
+        )
+
+    min_height = roi.get("min_height")
+    if (
+        not isinstance(min_height, int)
+        or isinstance(min_height, bool)
+        or min_height <= 0
+    ):
+        raise ConfigValidationError(
+            "roi.min_height must be a positive integer"
+        )
+    if min_width > camera["width"]:
+        raise ConfigValidationError(
+            "roi.min_width must not exceed camera.width"
+        )
+
+    if min_height > camera["height"]:
+        raise ConfigValidationError(
+            "roi.min_height must not exceed camera.height"
+        )
+    
     ema_alpha = illumination.get("ema_alpha")
     if (
         not isinstance(ema_alpha, (int, float))
@@ -136,6 +175,44 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "illumination.ema_alpha must be in (0, 1]"
         )
 
+    for key in (
+        "low_light_enter_v",
+        "low_light_exit_v",
+        "low_contrast_enter_range_v",
+        "low_contrast_exit_range_v",
+    ):
+        _require_byte_range_number(
+            illumination,
+            key,
+            "illumination",
+        )
+
+    low_light_enter = illumination[
+        "low_light_enter_v"
+    ]
+    low_light_exit = illumination[
+        "low_light_exit_v"
+    ]
+
+    if not low_light_enter < low_light_exit:
+        raise ConfigValidationError(
+            "illumination.low_light_enter_v must be less than "
+            "illumination.low_light_exit_v"
+        )
+
+    low_contrast_enter = illumination[
+        "low_contrast_enter_range_v"
+    ]
+    low_contrast_exit = illumination[
+        "low_contrast_exit_range_v"
+    ]
+
+    if not low_contrast_enter < low_contrast_exit:
+        raise ConfigValidationError(
+            "illumination.low_contrast_enter_range_v must be less than "
+            "illumination.low_contrast_exit_range_v"
+        )
+    
     clip_limit = clahe.get("clip_limit")
     if (
         not isinstance(clip_limit, (int, float))
@@ -159,6 +236,17 @@ def validate_config(config: Mapping[str, Any]) -> None:
     ):
         raise ConfigValidationError(
             "clahe.tile_grid_size must contain two positive integers"
+        )
+
+    clahe_policy = clahe.get("policy")
+
+    if clahe_policy not in {
+        "adaptive",
+        "always",
+        "bypass",
+    }:
+        raise ConfigValidationError(
+            "clahe.policy must be 'adaptive', 'always', or 'bypass'"
         )
 
     num_hands = tracking.get("num_hands")
@@ -215,3 +303,20 @@ def validate_config(config: Mapping[str, Any]) -> None:
     if renderer.get("enabled"):
         _require_positive_number(renderer, "width", "renderer")
         _require_positive_number(renderer, "height", "renderer")
+
+
+def _require_byte_range_number(
+    section: Mapping[str, Any],
+    key: str,
+    section_name: str,
+) -> None:
+    value = section.get(key)
+
+    if (
+        not isinstance(value, (int, float))
+        or isinstance(value, bool)
+        or not 0.0 <= value <= 255.0
+    ):
+        raise ConfigValidationError(
+            f"{section_name}.{key} must be in [0, 255]"
+        )

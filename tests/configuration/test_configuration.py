@@ -182,3 +182,119 @@ def test_multi_hand_mode_is_rejected_for_baseline() -> None:
                 }
             },
         )
+
+
+def test_negative_coast_expand_ratio_is_rejected() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "roi": {
+                    "coast_expand_ratio": -0.1,
+                }
+            },
+        )
+
+
+def test_non_positive_roi_min_width_is_rejected() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "roi": {
+                    "min_width": 0,
+                }
+            },
+        )
+
+
+def test_non_positive_roi_min_height_is_rejected() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "roi": {
+                    "min_height": 0,
+                }
+            },
+        )
+
+
+def test_roi_min_width_cannot_exceed_camera_width() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "camera": {
+                    "width": 640,
+                },
+                "roi": {
+                    "min_width": 641,
+                },
+            },
+        )
+
+
+def test_roi_min_height_cannot_exceed_camera_height() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "camera": {
+                    "height": 480,
+                },
+                "roi": {
+                    "min_height": 481,
+                },
+            },
+        )
+
+
+def test_low_light_hysteresis_order_is_validated() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "illumination": {
+                    "low_light_enter_v": 90.0,
+                    "low_light_exit_v": 80.0,
+                }
+            },
+        )
+
+
+def test_low_contrast_hysteresis_order_is_validated() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "illumination": {
+                    "low_contrast_enter_range_v": 50.0,
+                    "low_contrast_exit_range_v": 40.0,
+                }
+            },
+        )
+
+
+def test_illumination_threshold_must_be_in_byte_range() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "illumination": {
+                    "low_light_enter_v": -1.0,
+                }
+            },
+        )
+
+
+def test_invalid_clahe_policy_is_rejected() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "clahe": {
+                    "policy": "unknown",
+                }
+            },
+        )

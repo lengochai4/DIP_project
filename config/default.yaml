@@ -14,15 +14,22 @@ runtime:
 
 roi:
   padding_ratio: 0.20
+  coast_expand_ratio: 0.15
   coast_frames: 5
-  fallback_full_frame: true
+  min_width: 1
+  min_height: 1
 
 illumination:
   ema_alpha: 0.20
-  hysteresis_frames: 3
+
+  low_light_enter_v: 70.0
+  low_light_exit_v: 85.0
+
+  low_contrast_enter_range_v: 35.0
+  low_contrast_exit_range_v: 45.0
 
 clahe:
-  mode: "adaptive"
+  policy: "adaptive"
   clip_limit: 2.0
   tile_grid_size: [8, 8]
 

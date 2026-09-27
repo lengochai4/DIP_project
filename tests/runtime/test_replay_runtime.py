@@ -13,6 +13,14 @@ from dip_touchless.core import (
     LandmarkObservation,
     MeasurementQuality,
     TrackingStatus,
+    ROI,
+    ROIState,
+)
+from dip_touchless.preprocessing import (
+    AdaptivePreprocessor,
+    IlluminationAnalyzer,
+    IlluminationDecisionStabilizer,
+    ROIManager,
 )
 from dip_touchless.filtering import RawLandmarkFilter
 from dip_touchless.runtime import ReplayRuntime
@@ -100,7 +108,13 @@ class FakeProvider:
                 quality=(
                     MeasurementQuality.unavailable()
                 ),
-                hand_bbox=None,
+                hand_bbox=ROI(
+                    x=8,
+                    y=8,
+                    width=8,
+                    height=8,
+                    state=ROIState.TRACKING,
+                ),
                 provider_name="fake-provider",
             )
 
@@ -262,6 +276,192 @@ def test_replay_runtime_writes_raw_machine_readable_run(
         "raw",
         "filtered",
     }
+
+    assert fake_capture.released is True
+    assert provider.closed is True
+
+
+def test_replay_runtime_logs_g2_preprocessing_diagnostics(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frames = [
+        np.zeros(
+            (32, 32, 3),
+            dtype=np.uint8,
+        )
+        for _ in range(3)
+    ]
+
+    fake_capture = FakeVideoCapture(
+        frames,
+        fps=20.0,
+    )
+
+    monkeypatch.setattr(
+        cv2,
+        "VideoCapture",
+        lambda _: fake_capture,
+    )
+
+    video_path = tmp_path / "g2-fixture.mp4"
+    video_path.touch()
+
+    run_id = "g2-integration-run"
+
+    source = ReplayFrameSource(
+        video_path,
+        run_id=run_id,
+    )
+
+    provider = FakeProvider()
+
+    resolved = resolve_config(
+        DEFAULT_CONFIG,
+        overrides={
+            "runtime": {
+                "mode": "replay",
+                "replay_source": str(
+                    video_path
+                ),
+            },
+            "filter": {
+                "mode": "RAW",
+            },
+            "clahe": {
+                "policy": "bypass",
+            },
+        },
+    )
+
+    metadata = build_run_metadata(
+        resolved,
+        run_id=run_id,
+        code_revision="test-revision",
+    )
+
+    runtime = ReplayRuntime(
+        source=source,
+        provider=provider,
+        validator=MeasurementValidator(),
+        landmark_filter=RawLandmarkFilter(),
+        logger=FileRunLogger(
+            tmp_path / "runs"
+        ),
+        roi_manager=ROIManager(
+            padding_ratio=0.20,
+            coast_expand_ratio=0.15,
+            coast_frames=2,
+            min_width=1,
+            min_height=1,
+        ),
+        illumination_analyzer=(
+            IlluminationAnalyzer()
+        ),
+        illumination_decision=(
+            IlluminationDecisionStabilizer(
+                ema_alpha=1.0,
+                low_light_enter_v=70.0,
+                low_light_exit_v=85.0,
+                low_contrast_enter_range_v=35.0,
+                low_contrast_exit_range_v=45.0,
+            )
+        ),
+        adaptive_preprocessor=(
+            AdaptivePreprocessor(
+                policy="bypass",
+                clip_limit=2.0,
+                tile_grid_size=(8, 8),
+            )
+        ),
+    )
+
+    processed = runtime.run(
+        metadata=metadata,
+        resolved_config=resolved.to_dict(),
+    )
+
+    assert processed == 3
+
+    frames_path = (
+        tmp_path
+        / "runs"
+        / run_id
+        / "frames.csv"
+    )
+
+    with frames_path.open(
+        newline="",
+        encoding="utf-8",
+    ) as file:
+        rows = list(
+            csv.DictReader(file)
+        )
+
+    assert len(rows) == 3
+
+    assert [
+        row["frame_id"]
+        for row in rows
+    ] == [
+        "0",
+        "1",
+        "2",
+    ]
+
+    # Frame 0 has no previous geometry.
+    # Frame 1 uses frame 0's detected bbox.
+    # Frame 2 coasts after frame 1 reports NO_HAND.
+    assert [
+        row["roi_state"]
+        for row in rows
+    ] == [
+        "SEARCHING",
+        "TRACKING",
+        "COASTING",
+    ]
+
+    # Black fixture:
+    # mean V = 0 and robust range = 0.
+    assert all(
+        row["illumination_state"]
+        == "DIFFICULT"
+        for row in rows
+    )
+
+    assert all(
+        float(row["mean_v"]) == pytest.approx(
+            0.0
+        )
+        for row in rows
+    )
+
+    assert all(
+        float(
+            row["robust_range_v"]
+        ) == pytest.approx(0.0)
+        for row in rows
+    )
+
+    # Policy is bypass, therefore difficult illumination
+    # does not imply that CLAHE was actually applied.
+    assert all(
+        row["enhancement_active"]
+        == "False"
+        for row in rows
+    )
+
+    assert all(
+        row["filter_mode"] == "RAW"
+        for row in rows
+    )
+
+    assert all(
+        float(
+            row["preprocess_ms"]
+        ) >= 0.0
+        for row in rows
+    )
 
     assert fake_capture.released is True
     assert provider.closed is True
