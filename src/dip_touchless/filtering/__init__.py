@@ -17,6 +17,9 @@ from .one_euro_temporal import (
     FixedOneEuroTemporalCore,
     FixedOneEuroTemporalResult,
 )
+from .fixed_one_euro import (
+    FixedOneEuroLandmarkFilter,
+)
 from .raw import RawLandmarkFilter
 
 __all__ = [
@@ -30,4 +33,5 @@ __all__ = [
     "low_pass_alpha",
     "FixedOneEuroTemporalCore",
     "FixedOneEuroTemporalResult",
+    "FixedOneEuroLandmarkFilter",
 ]
