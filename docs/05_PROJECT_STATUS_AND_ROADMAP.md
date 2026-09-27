@@ -52,7 +52,8 @@ The six canonical specification files remain the normative project source of tru
 ```text
 G0 — BOOTSTRAP AND CONTRACTS: COMPLETE
 G1 — RAW BASELINE + REPLAY: COMPLETE
-G2 — DIP PREPROCESSING: NOT STARTED
+G2 — DIP PREPROCESSING: COMPLETE
+G3 — CANONICAL FIXED 1-EURO: NOT STARTED
 ```
 
 G0–G1 completion establishes the engineering baseline:
@@ -71,89 +72,49 @@ This does not imply that DIP preprocessing, temporal filtering, gesture behavior
 
 ## 4. Current task
 
-**Task G2 — Implement DIP preprocessing.**
+**Task G3 — Implement canonical fixed 1-Euro filtering.**
+
+Before implementation, verify the canonical 1-Euro formulation against
+the original/reference source, including derivative low-pass filtering
+and the role of `d_cutoff`.
 
 Required implementation direction:
 
 ```text
-full-frame BGR input
+validated landmark signal
     ↓
-ROI state and geometry
+timestamp-derived dt
     ↓
-illumination analysis on ROI
+filtered derivative using d_cutoff
     ↓
-temporally stabilized illumination decision
+fixed min_cutoff + fixed beta
     ↓
-adaptive CLAHE or bypass
+signal low-pass
     ↓
-processed ROI composited into unchanged full-size BGR frame
+filter diagnostics
     ↓
-existing MediaPipe provider boundary
+safe reset/discontinuity handling
+
 ```
-
-Primary G2 objectives:
-
-1. implement the ROI state machine:
-   - `SEARCHING`;
-   - `TRACKING`;
-   - `COASTING`;
-2. provide safe full-frame fallback when ROI is unavailable or invalid;
-3. preserve unchanged full-frame dimensions and detector geometry;
-4. compute documented HSV V-channel illumination descriptors;
-5. implement illumination decision stabilization/hysteresis;
-6. implement configurable CLAHE/bypass behavior;
-7. modify only the selected ROI while preserving the rest of the frame;
-8. populate real `TrackingFrame.roi` and `TrackingFrame.illumination` diagnostics;
-9. add unit tests for ROI geometry/state transitions, illumination descriptors, color semantics, frame shape, and adaptive preprocessing decisions;
-10. preserve deterministic replay compatibility for future P0/P1 comparisons.
-
-G2 MUST NOT:
-
-- perform variable-size ROI-only MediaPipe inference in the course baseline;
-- change normalized detector geometry between preprocessing conditions;
-- introduce temporal landmark filtering;
-- implement gesture or renderer behavior;
-- claim tracking improvement solely from increased image contrast.
-
-### G1 completion evidence
-
-G1 was completed with the following verified implementation path:
-
-```text
-OpenCVCameraSource / ReplayFrameSource
-    ↓
-FramePacket
-    ↓
-MediaPipe Hand Landmarker adapter
-    ↓
-explicit BGR → RGB conversion
-    ↓
-LandmarkObservation
-    ↓
-MeasurementValidator
-    ↓
-RawLandmarkFilter
-    ↓
-Raw TrackingFrame
-    ↓
-FileRunLogger
-```
-
-Verified Gate G1 acceptance evidence:
-
-- physical camera smoke path works on available hardware;
-- replay frame IDs and source-derived timestamps are deterministic;
-- MediaPipe model loads and executes through the project adapter;
-- blank/no-hand input produces explicit `NO_HAND`;
-- missing hand data does not create fake landmarks;
-- measurement quality remains explicitly unavailable when no valid source exists;
-- Raw/F0 landmarks pass through without temporal smoothing;
-- Raw logs are machine-readable;
-- replay integration produces consistent frame and landmark records;
-- runtime shutdown releases replay/camera/provider/logger resources;
-- full automated test suite passes.
-
-No performance, tracking-accuracy, FPS, latency, jitter-reduction, or robustness result is inferred from these engineering verification tests.
+G2 completion evidence includes:
+- ROI SEARCHING/TRACKING/COASTING state machine;
+- full-frame pixel ROI geometry with clamping and safe fallback;
+- hand bounding-box derivation from normalized landmarks;
+- HSV V-channel illumination descriptors;
+- mean, standard deviation, P10, P90 and robust-range diagnostics;
+- EMA-smoothed illumination decision signals;
+- separate enter/exit hysteresis;
+- NORMAL / LOW_LIGHT / LOW_CONTRAST / DIFFICULT states;
+- adaptive / always / bypass CLAHE policies;
+- CLAHE applied only to HSV V;
+- unchanged full-frame BGR detector geometry;
+- explicit final enhancement_active semantics;
+- runtime integration using previous-frame hand geometry;
+- machine-readable ROI and illumination diagnostics;
+- real replay → preprocessing → MediaPipe → Raw → logger smoke test;
+- full automated test suite passing.
+No G3 fixed 1-Euro, G4 adaptive filter, gesture, renderer, or final
+experiment result is claimed complete by this status.
 
 ### G1 contract correction — LandmarkProvider input
 
