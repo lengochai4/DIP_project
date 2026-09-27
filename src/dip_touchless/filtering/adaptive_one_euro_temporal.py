@@ -1,4 +1,4 @@
-"""Tracking/timestamp semantics for fixed 1-Euro landmark filtering."""
+"""Shared temporal semantics for bounded adaptive F2 filtering."""
 
 from __future__ import annotations
 
@@ -9,10 +9,10 @@ from dip_touchless.core import (
     LandmarkObservation,
 )
 
-from .one_euro_landmarks import (
-    FixedOneEuroLandmarkCore,
-    LandmarkOneEuroDiagnostics,
-    LandmarkOneEuroResult,
+from .adaptive_one_euro_landmarks import (
+    AdaptiveLandmarkDiagnostics,
+    AdaptiveLandmarkResult,
+    AdaptiveOneEuroLandmarkCore,
 )
 from .temporal_controller import (
     OneEuroTemporalController,
@@ -20,11 +20,11 @@ from .temporal_controller import (
 
 
 @dataclass(frozen=True)
-class FixedOneEuroTemporalResult:
+class AdaptiveOneEuroTemporalResult:
     landmarks: tuple[Landmark, ...]
 
     landmark_diagnostics: tuple[
-        LandmarkOneEuroDiagnostics,
+        AdaptiveLandmarkDiagnostics,
         ...,
     ]
 
@@ -35,17 +35,39 @@ class FixedOneEuroTemporalResult:
     event: str | None
 
 
-class _FixedMeasurementCore:
+class _AdaptiveMeasurementCore:
+    """Primary F2 measurement core.
+
+    Quality adaptation remains disabled here, therefore the
+    adaptive landmark core uses its configured base cutoff.
+    """
+
     def __init__(
         self,
         *,
-        min_cutoff_hz: float,
-        beta: float,
+        base_cutoff_hz: float,
+        beta_min: float,
+        beta_base: float,
+        beta_max: float,
+        velocity_gain: float,
+        velocity_max: float | None,
+        final_cutoff_min_hz: float,
+        final_cutoff_max_hz: float,
         derivative_cutoff_hz: float,
     ) -> None:
-        self._core = FixedOneEuroLandmarkCore(
-            min_cutoff_hz=min_cutoff_hz,
-            beta=beta,
+        self._core = AdaptiveOneEuroLandmarkCore(
+            base_cutoff_hz=base_cutoff_hz,
+            beta_min=beta_min,
+            beta_base=beta_base,
+            beta_max=beta_max,
+            velocity_gain=velocity_gain,
+            velocity_max=velocity_max,
+            final_cutoff_min_hz=(
+                final_cutoff_min_hz
+            ),
+            final_cutoff_max_hz=(
+                final_cutoff_max_hz
+            ),
             derivative_cutoff_hz=(
                 derivative_cutoff_hz
             ),
@@ -63,34 +85,54 @@ class _FixedMeasurementCore:
         observation: LandmarkObservation,
         *,
         dt_s: float | None,
-    ) -> LandmarkOneEuroResult:
+    ) -> AdaptiveLandmarkResult:
         return self._core.update(
             observation.landmarks,
             dt_s=dt_s,
         )
 
 
-class FixedOneEuroTemporalCore:
-    """Fixed F1 using shared temporal semantics."""
+class AdaptiveOneEuroTemporalCore:
+    """Bounded adaptive F2 using shared F1/F2 temporal semantics."""
 
     def __init__(
         self,
         *,
-        min_cutoff_hz: float,
-        beta: float,
+        base_cutoff_hz: float,
+        beta_min: float,
+        beta_base: float,
+        beta_max: float,
+        velocity_gain: float,
+        velocity_max: float | None,
+        final_cutoff_min_hz: float,
+        final_cutoff_max_hz: float,
         derivative_cutoff_hz: float,
         reset_gap_s: float,
     ) -> None:
         self._controller = (
             OneEuroTemporalController[
-                LandmarkOneEuroDiagnostics
+                AdaptiveLandmarkDiagnostics
             ](
                 measurement_core=(
-                    _FixedMeasurementCore(
-                        min_cutoff_hz=(
-                            min_cutoff_hz
+                    _AdaptiveMeasurementCore(
+                        base_cutoff_hz=(
+                            base_cutoff_hz
                         ),
-                        beta=beta,
+                        beta_min=beta_min,
+                        beta_base=beta_base,
+                        beta_max=beta_max,
+                        velocity_gain=(
+                            velocity_gain
+                        ),
+                        velocity_max=(
+                            velocity_max
+                        ),
+                        final_cutoff_min_hz=(
+                            final_cutoff_min_hz
+                        ),
+                        final_cutoff_max_hz=(
+                            final_cutoff_max_hz
+                        ),
                         derivative_cutoff_hz=(
                             derivative_cutoff_hz
                         ),
@@ -119,12 +161,12 @@ class FixedOneEuroTemporalCore:
     def update(
         self,
         observation: LandmarkObservation,
-    ) -> FixedOneEuroTemporalResult:
+    ) -> AdaptiveOneEuroTemporalResult:
         result = self._controller.update(
             observation
         )
 
-        return FixedOneEuroTemporalResult(
+        return AdaptiveOneEuroTemporalResult(
             landmarks=result.landmarks,
             landmark_diagnostics=(
                 result.landmark_diagnostics
