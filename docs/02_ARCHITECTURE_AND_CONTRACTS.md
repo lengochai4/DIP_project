@@ -366,6 +366,7 @@ class FilterDiagnostics:
     signal_alpha: float | None
     derivative_alpha: float | None
     reset_occurred: bool
+    events: tuple[str, ...]
 ```
 
 For vector landmark filters, the scalar diagnostic fields are a
@@ -484,6 +485,33 @@ The frame-level summary is diagnostic metadata only. Final jitter and
 responsiveness outcomes MUST be computed from the recorded landmark
 trajectories rather than treating this summary speed as an experimental
 outcome.
+
+### Temporal-filter event propagation
+
+`FilterDiagnostics.events` carries filter-originated state-transition
+events produced while processing the current observation.
+
+For ordinary updates with no transition:
+
+```text
+events = ()
+For F1/F2 timestamp/loss/reset transitions, the event names and
+generation semantics are defined by 03_ALGORITHM_AND_EXPERIMENTS.md.
+The LandmarkFilter.update return shape remains unchanged:
+
+tuple[tuple[Landmark, ...], FilterDiagnostics]
+The runtime MUST copy filter-originated diagnostic events into
+TrackingFrame.events.
+For each filter event in TrackingFrame.events, the runtime MUST also
+emit one corresponding RunLogger.log_event(...) record so the event is
+preserved in events.csv.
+Event propagation is diagnostic/logging behavior only. It MUST NOT feed
+back into landmark filtering calculations.
+Raw/F0 emits no temporal-filter events:
+events = ()
+
+This clarification does not add a new serialized artifact or change the
+existing events.csv purpose.
 
 ### 10.8 `StageTimings`
 

@@ -836,6 +836,35 @@ interaction_valid = false or neutral on initialization frame
 
 This prevents jump impulses and stuck gestures.
 
+### 9.5 Temporal-filter event names
+
+F1 and F2 use the same deterministic filter event names:
+
+```text
+timestamp_discontinuity
+    non-increasing timestamp or equivalent invalid continuous-time
+    transition that causes reset/reinitialization
+
+reset_gap_exceeded
+    a usable measurement arrives after the accepted-measurement gap
+    exceeds reset_gap_s
+
+loss_gap_exceeded
+    an unusable/missing observation causes elapsed loss duration to
+    exceed reset_gap_s
+```
+A short loss that retains filter state emits no temporal-filter event.
+An event is emitted only on the frame where the corresponding transition
+is detected. It MUST NOT be repeated on subsequent frames merely because
+the filter remains uninitialized.
+The temporal core exposes these events through the public filter
+diagnostics so that the runtime can populate TrackingFrame.events and
+events.csv.
+For the course baseline, these handled temporal reset/discontinuity
+events are logged with severity warning. Event details SHOULD include
+at least the active filter mode and whether a reset occurred.
+The same event semantics apply to F1 and F2.
+
 ## 10. Gesture mapping
 
 ### 10.1 Rotation

@@ -434,6 +434,66 @@ Existing results invalidated:
 
 No — no F2 implementation/final experimental results exist.
 
+### G4 contract correction — temporal filter event propagation
+
+Change:
+
+Added explicit filter-event propagation through `FilterDiagnostics.events`
+to `TrackingFrame.events` and `RunLogger.log_event`. Frozen the existing
+temporal event names for F1/F2.
+
+Reason:
+
+The temporal filter cores already detect timestamp/loss/reset events, and
+the run artifact contract already includes `TrackingFrame.events` and
+`events.csv`, but the public `LandmarkFilter` return contract had no path
+for carrying those events to the runtime. ReplayRuntime therefore could
+not preserve them without duplicating temporal state logic.
+
+Canonical file/section changed:
+
+`02_ARCHITECTURE_AND_CONTRACTS.md`, FilterDiagnostics / TrackingFrame /
+LandmarkFilter logging semantics;
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, tracking-loss/discontinuity event
+semantics.
+
+Code/modules affected:
+
+Core FilterDiagnostics contract;
+Raw/fixed/adaptive LandmarkFilter implementations;
+ReplayRuntime;
+run logging integration and tests.
+
+Algorithmic impact:
+
+None. Existing timestamp, loss, reset, and reacquisition decisions are
+unchanged.
+
+Experimental impact:
+
+Future F1/F2 run artifacts preserve temporal reset/discontinuity events
+needed for auditability and exclusion/debugging.
+
+Compatibility impact:
+
+In-memory `FilterDiagnostics` gains an events field. Existing CSV column
+schemas are unchanged; the already-defined events artifact will begin
+receiving the events that were previously dropped.
+
+Tests added/updated:
+
+Core contract tests;
+Raw/F1/F2 public-filter tests;
+ReplayRuntime event propagation tests;
+events.csv logging tests.
+
+Existing results invalidated:
+
+No — no final F1/F2 experimental result set exists. Earlier development
+runs may lack these event records and must not be treated as final
+event-complete runs.
+
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:
