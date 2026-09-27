@@ -324,6 +324,60 @@ Filtered output:
 
 The fixed baseline MUST use constant configured `f_min`, `beta`, and `d_cutoff`. A filter omitting derivative low-pass filtering MUST NOT be named the canonical fixed 1-Euro baseline.
 
+### 7.1.1 Canonical source and project integration boundary
+
+The canonical fixed 1-Euro scalar baseline is based on:
+
+Casiez, G., Roussel, N., & Vogel, D. (2012).
+*1€ Filter: A Simple Speed-based Low-pass Filter for Noisy Input
+in Interactive Systems.* CHI 2012, 2527–2530.
+DOI: 10.1145/2207676.2208639.
+
+Appendix A is the normative algorithm reference for the course
+baseline.
+
+Canonical scalar terminology:
+
+```text
+x_i       current raw measurement
+x_hat_i   filtered output
+dx_i      raw derivative estimate
+dx_hat_i  low-pass filtered derivative
+dt_i      accepted timestamp interval
+f_c_i     adaptive signal cutoff
+```
+For an ordinary update:
+dx_i = (x_i - x_hat_{i-1}) / dt_i
+dx_hat_i = LPF(dx_i, d_cutoff)
+f_c_i = f_min + beta * abs(dx_hat_i)
+x_hat_i = LPF(x_i, f_c_i)
+
+The previous term in the derivative is the previous filtered signal
+output, not the previous raw measurement.
+On the first accepted sample after initialization or reset:
+dx_i = 0
+x_hat_i initializes from x_i
+
+The project derives:
+dt_i = timestamp_i - timestamp_previous_accepted
+
+rather than assuming a requested camera FPS.
+The following behaviors are project integration contracts and MUST NOT
+be presented as contributions of the original 1-Euro paper:
+- tracking-loss handling;
+- timestamp-discontinuity detection;
+- reset-gap behavior;
+- reacquisition initialization;
+- landmark-vector/shared-speed application;
+- project logging and diagnostics.
+The project scalar F1 implementation MUST remain numerically consistent
+with the Appendix A structure before project-specific vectorization and
+runtime integration are applied.
+The authors' reference implementation and published ground-truth data
+MAY be used as additional regression evidence. They do not replace the
+project's explicit unit tests for equations, timestamps, initialization,
+reset, and loss behavior.
+
 ### 7.2 Project vectorization
 
 The canonical algorithm above is scalar. For landmark vectors, the project baseline defines this application rule:
