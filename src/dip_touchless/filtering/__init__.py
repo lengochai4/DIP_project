@@ -13,6 +13,10 @@ from .one_euro_landmarks import (
     LandmarkOneEuroDiagnostics,
     LandmarkOneEuroResult,
 )
+from .one_euro_temporal import (
+    FixedOneEuroTemporalCore,
+    FixedOneEuroTemporalResult,
+)
 from .raw import RawLandmarkFilter
 
 __all__ = [
@@ -24,4 +28,6 @@ __all__ = [
     "ScalarOneEuroFilter",
     "ScalarOneEuroResult",
     "low_pass_alpha",
+    "FixedOneEuroTemporalCore",
+    "FixedOneEuroTemporalResult",
 ]
