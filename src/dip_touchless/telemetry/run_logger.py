@@ -391,87 +391,107 @@ class FileRunLogger:
         roi = frame.roi
 
         self._frames_writer.writerow(
-            {
-                "run_id": frame.run_id,
-                "frame_id": frame.frame_id,
-                "timestamp_s": frame.timestamp_s,
-                "tracking_status": frame.status.value,
-                "roi_x": roi.x,
-                "roi_y": roi.y,
-                "roi_width": roi.width,
-                "roi_height": roi.height,
-                "roi_state": roi.state.value,
-                "illumination_state": (
-                    illumination.state.value
-                ),
-                "enhancement_active": (
-                    illumination.enhancement_active
-                ),
-                "mean_v": illumination.mean_v,
-                "std_v": illumination.std_v,
-                "p10_v": illumination.p10_v,
-                "p90_v": illumination.p90_v,
-                "robust_range_v": (
-                    illumination.robust_range_v
-                ),
-                "quality_valid": quality.valid,
-                "quality_value": quality.value,
-                "quality_source": quality.source.value,
-                "quality_semantic_name": (
-                    quality.semantic_name
-                ),
-                "filter_mode": diagnostics.mode.value,
-                "dt_s": diagnostics.dt_s,
-                "speed": diagnostics.speed,
-                "beta": diagnostics.beta,
-                "min_cutoff_hz": (
-                    diagnostics.min_cutoff_hz
-                ),
-                "final_cutoff_hz": (
-                    diagnostics.final_cutoff_hz
-                ),
-                "signal_alpha": (
-                    diagnostics.signal_alpha
-                ),
-                "derivative_alpha": (
-                    diagnostics.derivative_alpha
-                ),
-                "reset_occurred": (
-                    diagnostics.reset_occurred
-                ),
-                "preprocess_ms": timings.preprocess_ms,
-                "tracking_ms": timings.tracking_ms,
-                "filtering_ms": timings.filtering_ms,
-                "gesture_ms": timings.gesture_ms,
-                "compute_total_ms": (
-                    timings.compute_total_ms
-                ),
-                "interaction_valid": (
-                    interaction.interaction_valid
-                    if interaction is not None
-                    else None
-                ),
-                "pointer_x": pointer_x,
-                "pointer_y": pointer_y,
-                "pinch_ratio": (
-                    interaction.pinch_ratio
-                    if interaction is not None
-                    else None
-                ),
-                "pinch_active": (
-                    interaction.pinch_active
-                    if interaction is not None
-                    else None
-                ),
-                "rotation_dx": rotation_dx,
-                "rotation_dy": rotation_dy,
-                "scale_delta": (
-                    interaction.scale_delta
-                    if interaction is not None
-                    else None
-                ),
-            }
-        )
+        {
+            "run_id": frame.run_id,
+            "frame_id": frame.frame_id,
+            "timestamp_s": frame.timestamp_s,
+            "tracking_status": frame.status.value,
+
+            # ROI may be unavailable.
+            "roi_x": roi.x if roi is not None else None,
+            "roi_y": roi.y if roi is not None else None,
+            "roi_width": roi.width if roi is not None else None,
+            "roi_height": roi.height if roi is not None else None,
+            "roi_state": (
+                roi.state.value
+                if roi is not None
+                else None
+            ),
+
+            # Illumination analysis may not have been executed.
+            "illumination_state": (
+                illumination.state.value
+                if illumination is not None
+                else None
+            ),
+            "enhancement_active": (
+                illumination.enhancement_active
+                if illumination is not None
+                else None
+            ),
+            "mean_v": (
+                illumination.mean_v
+                if illumination is not None
+                else None
+            ),
+            "std_v": (
+                illumination.std_v
+                if illumination is not None
+                else None
+            ),
+            "p10_v": (
+                illumination.p10_v
+                if illumination is not None
+                else None
+            ),
+            "p90_v": (
+                illumination.p90_v
+                if illumination is not None
+                else None
+            ),
+            "robust_range_v": (
+                illumination.robust_range_v
+                if illumination is not None
+                else None
+            ),
+
+            "quality_valid": quality.valid,
+            "quality_value": quality.value,
+            "quality_source": quality.source.value,
+            "quality_semantic_name": quality.semantic_name,
+
+            "filter_mode": diagnostics.mode.value,
+            "dt_s": diagnostics.dt_s,
+            "speed": diagnostics.speed,
+            "beta": diagnostics.beta,
+            "min_cutoff_hz": diagnostics.min_cutoff_hz,
+            "final_cutoff_hz": diagnostics.final_cutoff_hz,
+            "signal_alpha": diagnostics.signal_alpha,
+            "derivative_alpha": diagnostics.derivative_alpha,
+            "reset_occurred": diagnostics.reset_occurred,
+
+            "preprocess_ms": timings.preprocess_ms,
+            "tracking_ms": timings.tracking_ms,
+            "filtering_ms": timings.filtering_ms,
+            "gesture_ms": timings.gesture_ms,
+            "compute_total_ms": timings.compute_total_ms,
+
+            "interaction_valid": (
+                interaction.interaction_valid
+                if interaction is not None
+                else None
+            ),
+            "pointer_x": pointer_x,
+            "pointer_y": pointer_y,
+            "pinch_ratio": (
+                interaction.pinch_ratio
+                if interaction is not None
+                else None
+            ),
+            "pinch_active": (
+                interaction.pinch_active
+                if interaction is not None
+                else None
+            ),
+            "rotation_dx": rotation_dx,
+            "rotation_dy": rotation_dy,
+            "scale_delta": (
+                interaction.scale_delta
+                if interaction is not None
+                else None
+            ),
+        }
+    )
 
         self._logged_frame_ids.add(frame.frame_id)
 
