@@ -324,49 +324,154 @@ Filtered output:
 
 The fixed baseline MUST use constant configured `f_min`, `beta`, and `d_cutoff`. A filter omitting derivative low-pass filtering MUST NOT be named the canonical fixed 1-Euro baseline.
 
-### 7.2 Project vectorization
+### 7.1.1 Canonical source and project integration boundary
 
-The canonical algorithm above is scalar. For landmark vectors, the project baseline defines this application rule:
+The canonical fixed 1-Euro scalar baseline is based on:
 
-1. derivative-filter each configured coordinate component;
-2. compute a shared speed from the filtered derivative vector;
-3. derive one shared signal cutoff from that speed;
-4. filter each coordinate using that shared cutoff.
+Casiez, G., Roussel, N., & Vogel, D. (2012).
+*1€ Filter: A Simple Speed-based Low-pass Filter for Noisy Input
+in Interactive Systems.* CHI 2012, 2527–2530.
+DOI: 10.1145/2207676.2208639.
 
-For interaction speed, x/y normalized-frame motion is the default. Including model-relative z requires an explicit justification because its scale/semantics differ.
+Appendix A is the normative algorithm reference for the course
+baseline.
 
-This vector application is a project design choice; it is not claimed as part of the original canonical scalar algorithm.
-
-## 8. Proposed bounded adaptive 1-Euro
-
-The proposed method extends Section 7 without removing derivative filtering.
-
-### 8.1 Velocity-dependent beta — required proposed behavior
-
-Let `v_t` be the norm of the configured filtered derivative vector:
-
-\[
-v_t=\|\hat{\mathbf d}_t\|
-\]
-
-Optional configured safety cap:
-
-\[
-v_t \leftarrow min(v_t, v_{max})
-\]
-
-Adaptive beta:
-
-\[
-\beta(v_t)=clip(\beta_{base}+k_vv_t,\beta_{min},\beta_{max})
-\]
-
-Required invariants:
+Canonical scalar terminology:
 
 ```text
-0 <= beta_min <= beta_base <= beta_max
-k_v >= 0
+x_i       current raw measurement
+x_hat_i   filtered output
+dx_i      raw derivative estimate
+dx_hat_i  low-pass filtered derivative
+dt_i      accepted timestamp interval
+f_c_i     adaptive signal cutoff
 ```
+For an ordinary update:
+dx_i = (x_i - x_hat_{i-1}) / dt_i
+dx_hat_i = LPF(dx_i, d_cutoff)
+f_c_i = f_min + beta * abs(dx_hat_i)
+x_hat_i = LPF(x_i, f_c_i)
+
+The previous term in the derivative is the previous filtered signal
+output, not the previous raw measurement.
+On the first accepted sample after initialization or reset:
+dx_i = 0
+x_hat_i initializes from x_i
+
+The project derives:
+dt_i = timestamp_i - timestamp_previous_accepted
+
+rather than assuming a requested camera FPS.
+The following behaviors are project integration contracts and MUST NOT
+be presented as contributions of the original 1-Euro paper:
+- tracking-loss handling;
+- timestamp-discontinuity detection;
+- reset-gap behavior;
+- reacquisition initialization;
+- landmark-vector/shared-speed application;
+- project logging and diagnostics.
+The project scalar F1 implementation MUST remain numerically consistent
+with the Appendix A structure before project-specific vectorization and
+runtime integration are applied.
+The authors' reference implementation and published ground-truth data
+MAY be used as additional regression evidence. They do not replace the
+project's explicit unit tests for equations, timestamps, initialization,
+reset, and loss behavior.
+
+### 7.2 Project vectorization
+
+The canonical algorithm above is scalar. The project applies it to hand
+landmarks using one independent 2D filter vector per landmark.
+
+For landmark `j`, the baseline filtering vector is:
+
+\[
+\mathbf p_{j,t} =
+\begin{bmatrix}
+x_{j,t} \\
+y_{j,t}
+\end{bmatrix}
+\]
+
+where x/y are full-frame normalized coordinates.
+
+For each landmark independently:
+
+1. maintain separate signal low-pass state for x and y;
+2. maintain separate derivative low-pass state for x and y;
+3. derive raw x/y derivatives using the previous filtered x/y outputs;
+4. low-pass both derivatives using the same configured `d_cutoff`;
+5. compute the landmark speed:
+
+\[
+v_{j,t}
+=
+\sqrt{
+\hat d_{x,j,t}^{\,2}
++
+\hat d_{y,j,t}^{\,2}
+}
+\]
+
+6. derive one shared signal cutoff for that landmark:
+
+\[
+f_{c,j,t}
+=
+f_{min}
++
+\beta v_{j,t}
+\]
+
+7. use the same `f_{c,j,t}` and therefore the same signal alpha to
+filter both x and y of that landmark.
+
+The cutoff is shared between x/y of one landmark. It is NOT derived from
+a concatenated vector containing all 21 landmarks.
+
+Each landmark maintains independent temporal state; motion of one
+landmark MUST NOT alter the signal cutoff of another landmark.
+
+The baseline does not include MediaPipe model-relative z in the speed
+norm because x/y and z do not share the same coordinate semantics or
+scale.
+
+For the fixed course baseline:
+
+```text
+filtered x = fixed 1-Euro x/y-vector result
+filtered y = fixed 1-Euro x/y-vector result
+filtered z = raw model-relative z pass-through
+```
+
+Preserving z unchanged keeps its provider semantics explicit while
+avoiding an unjustified mixed-space velocity norm.
+Adding z to temporal filtering or to the speed vector requires an
+explicit algorithm/specification change and experimental justification.
+This vector application is a project design choice; it is not claimed
+as part of the original canonical scalar 1-Euro algorithm.
+
+### 7.3 Fixed-filter public diagnostic summary
+
+The fixed landmark filter maintains independent speed/cutoff state per
+landmark as defined in Section 7.2.
+
+When mapped to the scalar public `FilterDiagnostics` contract, the
+frame-level representative landmark is selected by:
+
+```text
+largest per-landmark x/y speed
+tie → lowest landmark index
+```
+The public speed, final_cutoff_hz, and signal_alpha come from that
+same representative landmark.
+This aggregation is for logging/diagnostics only. It MUST NOT feed back
+into any landmark's filtering calculation.
+Because all landmark derivative filters use the same accepted dt and
+configured d_cutoff, derivative_alpha is common to all landmarks in
+an ordinary update.
+The same frame-level summary rule SHOULD be retained for the adaptive
+F2 path so F1/F2 diagnostics remain comparable.
 
 ### 8.2 Quality-dependent minimum cutoff — optional
 
@@ -439,6 +544,11 @@ finite output
 Invalid values trigger explicit failure/reset handling; they are not silently converted into plausible measurements.
 
 ## 9. Tracking loss, discontinuity, and reacquisition
+
+Unless explicitly overridden by a later algorithm section, the
+tracking-loss, timestamp-discontinuity, reset, and reacquisition
+semantics in this section apply to both F1 fixed 1-Euro and F2 adaptive
+1-Euro. F2 reuses these safety semantics rather than redefining them.
 
 ### 9.1 Invalid/no-hand observation
 

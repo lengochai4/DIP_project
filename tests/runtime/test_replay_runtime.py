@@ -22,7 +22,10 @@ from dip_touchless.preprocessing import (
     IlluminationDecisionStabilizer,
     ROIManager,
 )
-from dip_touchless.filtering import RawLandmarkFilter
+from dip_touchless.filtering import (
+    FixedOneEuroLandmarkFilter,
+    RawLandmarkFilter,
+)
 from dip_touchless.runtime import ReplayRuntime
 from dip_touchless.telemetry import (
     FileRunLogger,
@@ -133,6 +136,58 @@ class FakeProvider:
     def close(self) -> None:
         self.closed = True
 
+
+class MovingFakeProvider:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def process(
+        self,
+        frame,
+    ) -> LandmarkObservation:
+        movement = (
+            0.0
+            if frame.frame_id == 0
+            else 0.30
+        )
+
+        landmarks = tuple(
+            Landmark(
+                index=index,
+                x=(
+                    0.10
+                    + index * 0.001
+                    + movement
+                ),
+                y=0.20,
+                z=-0.01,
+                coordinate_space=(
+                    CoordinateSpace.FRAME_NORMALIZED
+                ),
+            )
+            for index in range(21)
+        )
+
+        return LandmarkObservation(
+            frame_id=frame.frame_id,
+            timestamp_s=frame.timestamp_s,
+            status=TrackingStatus.VALID,
+            landmarks=landmarks,
+            handedness_label="Right",
+            handedness_score=0.9,
+            quality=MeasurementQuality.unavailable(),
+            hand_bbox=ROI(
+                x=8,
+                y=8,
+                width=8,
+                height=8,
+                state=ROIState.TRACKING,
+            ),
+            provider_name="moving-fake-provider",
+        )
+
+    def close(self) -> None:
+        self.closed = True
 
 def test_replay_runtime_writes_raw_machine_readable_run(
     tmp_path: Path,
@@ -276,6 +331,269 @@ def test_replay_runtime_writes_raw_machine_readable_run(
         "raw",
         "filtered",
     }
+
+    assert fake_capture.released is True
+    assert provider.closed is True
+
+
+def test_replay_runtime_logs_fixed_one_euro_diagnostics(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frames = [
+        np.zeros(
+            (16, 16, 3),
+            dtype=np.uint8,
+        ),
+        np.ones(
+            (16, 16, 3),
+            dtype=np.uint8,
+        ),
+    ]
+
+    fake_capture = FakeVideoCapture(
+        frames,
+        fps=20.0,
+    )
+
+    monkeypatch.setattr(
+        cv2,
+        "VideoCapture",
+        lambda _: fake_capture,
+    )
+
+    video_path = (
+        tmp_path / "fixed-one-euro-fixture.mp4"
+    )
+    video_path.touch()
+
+    run_id = "fixed-one-euro-integration-run"
+
+    source = ReplayFrameSource(
+        video_path,
+        run_id=run_id,
+    )
+
+    provider = MovingFakeProvider()
+
+    resolved = resolve_config(
+        DEFAULT_CONFIG,
+        overrides={
+            "runtime": {
+                "mode": "replay",
+                "replay_source": str(
+                    video_path
+                ),
+            },
+            "filter": {
+                "mode": "ONE_EURO_FIXED",
+                "min_cutoff_hz": 1.0,
+                "beta": 0.5,
+                "derivative_cutoff_hz": 1.0,
+                "reset_gap_s": 0.5,
+            },
+        },
+    )
+
+    filter_config = (
+        resolved.data["filter"]
+    )
+
+    landmark_filter = (
+        FixedOneEuroLandmarkFilter(
+            min_cutoff_hz=(
+                filter_config[
+                    "min_cutoff_hz"
+                ]
+            ),
+            beta=filter_config["beta"],
+            derivative_cutoff_hz=(
+                filter_config[
+                    "derivative_cutoff_hz"
+                ]
+            ),
+            reset_gap_s=(
+                filter_config[
+                    "reset_gap_s"
+                ]
+            ),
+        )
+    )
+
+    metadata = build_run_metadata(
+        resolved,
+        run_id=run_id,
+        code_revision="test-revision",
+    )
+
+    runtime = ReplayRuntime(
+        source=source,
+        provider=provider,
+        validator=MeasurementValidator(),
+        landmark_filter=landmark_filter,
+        logger=FileRunLogger(
+            tmp_path / "runs"
+        ),
+    )
+
+    processed = runtime.run(
+        metadata=metadata,
+        resolved_config=resolved.to_dict(),
+    )
+
+    assert processed == 2
+
+    run_dir = (
+        tmp_path
+        / "runs"
+        / run_id
+    )
+
+    with (
+        run_dir / "frames.csv"
+    ).open(
+        newline="",
+        encoding="utf-8",
+    ) as file:
+        frame_rows = list(
+            csv.DictReader(file)
+        )
+
+    assert len(frame_rows) == 2
+
+    first = frame_rows[0]
+    second = frame_rows[1]
+
+    assert first["filter_mode"] == (
+        "ONE_EURO_FIXED"
+    )
+
+    assert first["dt_s"] == ""
+
+    assert float(
+        first["speed"]
+    ) == pytest.approx(0.0)
+
+    assert float(
+        first["beta"]
+    ) == pytest.approx(0.5)
+
+    assert float(
+        first["min_cutoff_hz"]
+    ) == pytest.approx(1.0)
+
+    assert float(
+        first["final_cutoff_hz"]
+    ) == pytest.approx(1.0)
+
+    assert first["signal_alpha"] == ""
+    assert first["derivative_alpha"] == ""
+
+    assert first["reset_occurred"] == (
+        "False"
+    )
+
+    assert second["filter_mode"] == (
+        "ONE_EURO_FIXED"
+    )
+
+    # Replay source at 20 FPS gives dt = 0.05 s.
+    assert float(
+        second["dt_s"]
+    ) == pytest.approx(0.05)
+
+    assert float(
+        second["speed"]
+    ) > 0.0
+
+    assert float(
+        second["beta"]
+    ) == pytest.approx(0.5)
+
+    assert float(
+        second["min_cutoff_hz"]
+    ) == pytest.approx(1.0)
+
+    assert float(
+        second["final_cutoff_hz"]
+    ) > 1.0
+
+    assert (
+        0.0
+        < float(
+            second["signal_alpha"]
+        )
+        <= 1.0
+    )
+
+    assert (
+        0.0
+        < float(
+            second["derivative_alpha"]
+        )
+        <= 1.0
+    )
+
+    assert second["reset_occurred"] == (
+        "False"
+    )
+
+    with (
+        run_dir / "landmarks.csv"
+    ).open(
+        newline="",
+        encoding="utf-8",
+    ) as file:
+        landmark_rows = list(
+            csv.DictReader(file)
+        )
+
+    # Two valid frames:
+    # 21 raw + 21 filtered per frame.
+    assert len(landmark_rows) == 84
+
+    second_raw = next(
+        row
+        for row in landmark_rows
+        if (
+            row["frame_id"] == "1"
+            and row["stage"] == "raw"
+            and row["landmark_index"] == "0"
+        )
+    )
+
+    second_filtered = next(
+        row
+        for row in landmark_rows
+        if (
+            row["frame_id"] == "1"
+            and row["stage"] == "filtered"
+            and row["landmark_index"] == "0"
+        )
+    )
+
+    raw_x = float(
+        second_raw["x"]
+    )
+
+    filtered_x = float(
+        second_filtered["x"]
+    )
+
+    # Frame 0 x was 0.10 and frame 1 raw x is 0.40.
+    # Fixed 1-Euro must smooth the ordinary update.
+    assert raw_x == pytest.approx(
+        0.40
+    )
+
+    assert 0.10 < filtered_x < raw_x
+
+    # z is intentionally pass-through in F1.
+    assert float(
+        second_filtered["z"]
+    ) == pytest.approx(
+        float(second_raw["z"])
+    )
 
     assert fake_capture.released is True
     assert provider.closed is True

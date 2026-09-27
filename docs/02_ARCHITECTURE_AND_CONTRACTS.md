@@ -367,7 +367,53 @@ class FilterDiagnostics:
     derivative_alpha: float | None
     reset_occurred: bool
 ```
+For vector landmark filters, the scalar diagnostic fields are a
+frame-level summary and do not redefine the per-landmark filtering
+algorithm.
 
+For an accepted ordinary fixed/adaptive landmark update:
+
+```text
+speed
+    = maximum finite per-landmark x/y speed for that frame
+
+final_cutoff_hz
+signal_alpha
+    = values belonging to the same landmark that produced `speed`
+
+derivative_alpha
+    = common derivative alpha for the frame
+      because all filtered x/y components use the same accepted `dt`
+      and configured derivative cutoff
+```
+If multiple landmarks tie for maximum speed, the lowest landmark index
+MUST be selected so serialization remains deterministic.
+For a filter initialization/reinitialization frame:
+```python
+dt_s = None
+speed = 0
+beta = configured beta
+min_cutoff_hz = configured minimum cutoff
+final_cutoff_hz = configured minimum cutoff
+signal_alpha = None
+derivative_alpha = None
+```
+For a frame with no accepted landmark measurement:
+```python
+dt_s = None
+speed = None
+final_cutoff_hz = None
+signal_alpha = None
+derivative_alpha = None
+```
+Configured parameter fields such as beta and min_cutoff_hz MAY
+remain populated so the active filter configuration remains explicit.
+reset_occurred reports whether filter state was reset while processing
+that observation.
+The frame-level summary is diagnostic metadata only. Final jitter and
+responsiveness outcomes MUST be computed from the recorded landmark
+trajectories rather than treating this summary speed as an experimental
+outcome.
 ### 10.8 `StageTimings`
 
 ```python
