@@ -25,6 +25,11 @@ from .adaptive_policy import (
     bounded_final_cutoff_hz,
     effective_min_cutoff_hz,
 )
+from .adaptive_one_euro_landmarks import (
+    AdaptiveLandmarkDiagnostics,
+    AdaptiveLandmarkResult,
+    AdaptiveOneEuroLandmarkCore,
+)
 from .raw import RawLandmarkFilter
 
 __all__ = [
@@ -42,4 +47,7 @@ __all__ = [
     "adaptive_beta",
     "bounded_final_cutoff_hz",
     "effective_min_cutoff_hz",
+    "AdaptiveLandmarkDiagnostics",
+    "AdaptiveLandmarkResult",
+    "AdaptiveOneEuroLandmarkCore",
 ]
