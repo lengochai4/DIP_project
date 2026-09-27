@@ -126,6 +126,36 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "roi.coast_frames must be a non-negative integer"
         )
 
+    coast_expand_ratio = roi.get("coast_expand_ratio")
+    if (
+        not isinstance(coast_expand_ratio, (int, float))
+        or isinstance(coast_expand_ratio, bool)
+        or coast_expand_ratio < 0
+    ):
+        raise ConfigValidationError(
+            "roi.coast_expand_ratio must be a non-negative number"
+        )
+
+    min_width = roi.get("min_width")
+    if (
+        not isinstance(min_width, int)
+        or isinstance(min_width, bool)
+        or min_width <= 0
+    ):
+        raise ConfigValidationError(
+            "roi.min_width must be a positive integer"
+        )
+
+    min_height = roi.get("min_height")
+    if (
+        not isinstance(min_height, int)
+        or isinstance(min_height, bool)
+        or min_height <= 0
+    ):
+        raise ConfigValidationError(
+            "roi.min_height must be a positive integer"
+        )
+
     ema_alpha = illumination.get("ema_alpha")
     if (
         not isinstance(ema_alpha, (int, float))

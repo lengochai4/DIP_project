@@ -14,8 +14,10 @@ runtime:
 
 roi:
   padding_ratio: 0.20
+  coast_expand_ratio: 0.15
   coast_frames: 5
-  fallback_full_frame: true
+  min_width: 1
+  min_height: 1
 
 illumination:
   ema_alpha: 0.20

@@ -182,3 +182,39 @@ def test_multi_hand_mode_is_rejected_for_baseline() -> None:
                 }
             },
         )
+
+
+def test_negative_coast_expand_ratio_is_rejected() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "roi": {
+                    "coast_expand_ratio": -0.1,
+                }
+            },
+        )
+
+
+def test_non_positive_roi_min_width_is_rejected() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "roi": {
+                    "min_width": 0,
+                }
+            },
+        )
+
+
+def test_non_positive_roi_min_height_is_rejected() -> None:
+    with pytest.raises(ConfigValidationError):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "roi": {
+                    "min_height": 0,
+                }
+            },
+        )
