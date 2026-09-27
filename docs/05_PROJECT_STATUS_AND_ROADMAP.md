@@ -326,6 +326,58 @@ Existing results invalidated:
 
 No — no final fixed/adaptive temporal-filter experiment results exist.
 
+### G3 contract clarification — frame-level filter diagnostics
+
+Change:
+
+Defined the scalar public `FilterDiagnostics` fields for per-landmark
+vector filtering. Frame-level `speed` is the maximum per-landmark x/y
+speed; `final_cutoff_hz` and `signal_alpha` come from the same landmark.
+Ties use the lowest landmark index. Initialization and no-measurement
+semantics were also defined.
+
+Reason:
+
+The public contract contains one scalar diagnostic set while the frozen
+G3 landmark vectorization maintains independent speed/cutoff state for
+each landmark. Leaving the mapping unspecified would make logs
+ambiguous.
+
+Canonical file/section changed:
+
+`02_ARCHITECTURE_AND_CONTRACTS.md`, `FilterDiagnostics`;
+`03_ALGORITHM_AND_EXPERIMENTS.md`, fixed-filter diagnostics and common
+loss/reset semantics.
+
+Code/modules affected:
+
+Fixed/adaptive LandmarkFilter wrappers, ReplayRuntime integration,
+RunLogger serialization tests, later analysis diagnostics.
+
+Algorithmic impact:
+
+None on landmark filtering equations. The aggregation is diagnostic
+only and MUST NOT feed back into filtering.
+
+Experimental impact:
+
+F1/F2 frame diagnostics become deterministic and comparable. Primary
+jitter/responsiveness metrics remain trajectory-based.
+
+Compatibility impact:
+
+No completed fixed/adaptive final experiment logs exist. Existing Raw
+logs are unaffected.
+
+Tests added/updated:
+
+Upcoming G3.6 tests will verify max-speed representative selection,
+deterministic tie handling, initialization/no-measurement diagnostics,
+reset reporting, and runtime serialization.
+
+Existing results invalidated:
+
+No — no final F1/F2 experimental results exist.
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:

@@ -451,6 +451,27 @@ explicit algorithm/specification change and experimental justification.
 This vector application is a project design choice; it is not claimed
 as part of the original canonical scalar 1-Euro algorithm.
 
+### 7.3 Fixed-filter public diagnostic summary
+
+The fixed landmark filter maintains independent speed/cutoff state per
+landmark as defined in Section 7.2.
+
+When mapped to the scalar public `FilterDiagnostics` contract, the
+frame-level representative landmark is selected by:
+
+```text
+largest per-landmark x/y speed
+tie → lowest landmark index
+```
+The public speed, final_cutoff_hz, and signal_alpha come from that
+same representative landmark.
+This aggregation is for logging/diagnostics only. It MUST NOT feed back
+into any landmark's filtering calculation.
+Because all landmark derivative filters use the same accepted dt and
+configured d_cutoff, derivative_alpha is common to all landmarks in
+an ordinary update.
+The same frame-level summary rule SHOULD be retained for the adaptive
+F2 path so F1/F2 diagnostics remain comparable.
 
 ### 8.2 Quality-dependent minimum cutoff — optional
 
@@ -523,6 +544,11 @@ finite output
 Invalid values trigger explicit failure/reset handling; they are not silently converted into plausible measurements.
 
 ## 9. Tracking loss, discontinuity, and reacquisition
+
+Unless explicitly overridden by a later algorithm section, the
+tracking-loss, timestamp-discontinuity, reset, and reacquisition
+semantics in this section apply to both F1 fixed 1-Euro and F2 adaptive
+1-Euro. F2 reuses these safety semantics rather than redefining them.
 
 ### 9.1 Invalid/no-hand observation
 
