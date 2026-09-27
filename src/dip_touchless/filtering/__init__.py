@@ -8,9 +8,17 @@ from .one_euro_scalar import (
     ScalarOneEuroFilter,
     ScalarOneEuroResult,
 )
+from .one_euro_landmarks import (
+    FixedOneEuroLandmarkCore,
+    LandmarkOneEuroDiagnostics,
+    LandmarkOneEuroResult,
+)
 from .raw import RawLandmarkFilter
 
 __all__ = [
+    "FixedOneEuroLandmarkCore",
+    "LandmarkOneEuroDiagnostics",
+    "LandmarkOneEuroResult",
     "RawLandmarkFilter",
     "ScalarLowPassFilter",
     "ScalarOneEuroFilter",
