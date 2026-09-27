@@ -1,6 +1,7 @@
 import csv
 import json
 from pathlib import Path
+from dataclasses import replace
 
 from dip_touchless.configuration import (
     resolve_config,
@@ -154,6 +155,11 @@ def test_metadata_contains_reproducibility_identity(
     assert stored["code_revision"] == "abc123"
     assert stored["config_hash"] == resolved.sha256
     assert stored["log_schema_version"] == "1"
+    assert stored["dependency_versions"]["mediapipe"] == "1.0.1"
+    assert (
+        stored["dependency_versions"]["opencv-contrib-python"]
+        == "4.14.0.94"
+    )
 
 
 def test_logger_serializes_unavailable_quality(
@@ -268,3 +274,52 @@ def test_event_log_remains_parseable(
     )
 
     assert details["message"] == "fixture"
+
+
+def test_logger_serializes_pre_g2_diagnostics_as_unavailable(
+    tmp_path: Path,
+) -> None:
+    resolved = resolve_config(DEFAULT_CONFIG)
+
+    metadata = build_run_metadata(
+        resolved,
+        run_id="test-run",
+        code_revision="abc123",
+    )
+
+    logger = FileRunLogger(tmp_path)
+
+    logger.start_run(
+        metadata,
+        resolved.to_dict(),
+    )
+
+    frame = replace(
+        _tracking_frame("test-run"),
+        roi=None,
+        illumination=None,
+    )
+
+    logger.log_tracking_frame(frame)
+    logger.close()
+
+    with (
+        tmp_path
+        / "test-run"
+        / "frames.csv"
+    ).open(
+        newline="",
+        encoding="utf-8",
+    ) as file:
+        rows = list(csv.DictReader(file))
+
+    assert len(rows) == 1
+
+    row = rows[0]
+
+    assert row["roi_x"] == ""
+    assert row["roi_state"] == ""
+
+    assert row["illumination_state"] == ""
+    assert row["mean_v"] == ""
+    assert row["enhancement_active"] == ""

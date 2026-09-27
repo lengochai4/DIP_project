@@ -7,6 +7,7 @@ entering downstream Core modules.
 from __future__ import annotations
 
 import math
+import numpy as np
 from dataclasses import dataclass
 
 from .enums import (
@@ -25,7 +26,7 @@ class FramePacket:
     run_id: str
     frame_id: int
     timestamp_s: float
-    image: object
+    image: np.ndarray
     color_space: ColorSpace
     source_name: str
 
@@ -38,6 +39,12 @@ class FramePacket:
             raise ValueError("run_id must not be empty")
         if not self.source_name:
             raise ValueError("source_name must not be empty")
+        if not isinstance(self.image, np.ndarray):
+            raise TypeError("image must be a numpy.ndarray")
+        if self.image.size == 0:
+            raise ValueError("image must not be empty")
+        if not isinstance(self.color_space, ColorSpace):
+            raise TypeError("color_space must be a ColorSpace")
 
 
 @dataclass(frozen=True)
@@ -158,8 +165,8 @@ class TrackingFrame:
     raw_landmarks: tuple[Landmark, ...]
     filtered_landmarks: tuple[Landmark, ...]
     quality: MeasurementQuality
-    roi: ROI
-    illumination: IlluminationMetrics
+    roi: ROI | None
+    illumination: IlluminationMetrics | None
     filter_diagnostics: FilterDiagnostics
     timings: StageTimings
     events: tuple[str, ...]

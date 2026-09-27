@@ -1,8 +1,14 @@
 import math
 
 import pytest
+import numpy as np
 
 from dip_touchless.core import (
+    FilterDiagnostics,
+    FilterMode,
+    StageTimings,
+    TrackingFrame,
+    TrackingStatus,
     ColorSpace,
     CoordinateSpace,
     FramePacket,
@@ -84,9 +90,57 @@ def test_frame_packet_accepts_explicit_color_space() -> None:
         run_id="run-test",
         frame_id=0,
         timestamp_s=1.0,
-        image=object(),
+        image=np.zeros((2, 2, 3), dtype=np.uint8),
         color_space=ColorSpace.BGR,
         source_name="test-source",
     )
 
     assert frame.color_space is ColorSpace.BGR
+
+
+def test_frame_packet_rejects_empty_image() -> None:
+    with pytest.raises(ValueError):
+        FramePacket(
+            run_id="run-test",
+            frame_id=0,
+            timestamp_s=1.0,
+            image=np.empty((0, 0, 3), dtype=np.uint8),
+            color_space=ColorSpace.BGR,
+            source_name="test-source",
+        )
+
+
+def test_pre_g2_tracking_frame_allows_unavailable_roi_and_illumination() -> None:
+    frame = TrackingFrame(
+        run_id="run-test",
+        frame_id=0,
+        timestamp_s=0.0,
+        status=TrackingStatus.NO_HAND,
+        raw_landmarks=(),
+        filtered_landmarks=(),
+        quality=MeasurementQuality.unavailable(),
+        roi=None,
+        illumination=None,
+        filter_diagnostics=FilterDiagnostics(
+            mode=FilterMode.RAW,
+            dt_s=None,
+            speed=None,
+            beta=None,
+            min_cutoff_hz=None,
+            final_cutoff_hz=None,
+            signal_alpha=None,
+            derivative_alpha=None,
+            reset_occurred=False,
+        ),
+        timings=StageTimings(
+            preprocess_ms=0.0,
+            tracking_ms=0.0,
+            filtering_ms=0.0,
+            gesture_ms=0.0,
+            compute_total_ms=0.0,
+        ),
+        events=(),
+    )
+
+    assert frame.roi is None
+    assert frame.illumination is None

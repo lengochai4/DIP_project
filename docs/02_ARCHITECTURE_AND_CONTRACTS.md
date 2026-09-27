@@ -394,15 +394,21 @@ class TrackingFrame:
     raw_landmarks: tuple[Landmark, ...]
     filtered_landmarks: tuple[Landmark, ...]
     quality: MeasurementQuality
-    roi: ROI
-    illumination: IlluminationMetrics
+    roi: ROI | None
+    illumination: IlluminationMetrics | None
     filter_diagnostics: FilterDiagnostics
     timings: StageTimings
     events: tuple[str, ...]
 ```
 
 This is the primary research/logging boundary. Analysis SHOULD depend on this contract or serialized equivalents, not on the renderer.
+For pre-G2 Raw-baseline runs, `roi` and `illumination` MAY be `None`
+when those stages have not been executed.
 
+`None` means explicitly unavailable/not executed; it MUST NOT be
+replaced by fabricated zero-valued ROI or illumination measurements.
+
+Once the G2 preprocessing path is enabled, both fields MUST be populated.
 ### 10.10 `InteractionState`
 
 ```python
@@ -434,9 +440,18 @@ Replay EOF may return `None`; camera failure must be distinguishable from normal
 
 ```python
 class LandmarkProvider(Protocol):
-    def process(self, frame_rgb: np.ndarray, timestamp_s: float) -> LandmarkObservation: ...
+    def process(self, frame: FramePacket) -> LandmarkObservation: ...
     def close(self) -> None: ...
 ```
+The provider receives the project-owned FramePacket so frame identity,
+timestamp, and declared color space remain coupled.
+
+For the required MediaPipe adapter, the input FramePacket MUST be BGR.
+The adapter owns the explicit BGR → RGB conversion before constructing
+the MediaPipe image.
+
+The emitted LandmarkObservation MUST preserve frame.frame_id and
+frame.timestamp_s exactly.
 
 ```python
 class LandmarkFilter(Protocol):

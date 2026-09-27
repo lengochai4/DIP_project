@@ -21,6 +21,8 @@ data/*
 !data/.gitkeep
 results/*
 !results/.gitkeep
+models/*.task
+!models/.gitkeep
 
 # Runtime logs
 runs/

@@ -35,14 +35,9 @@ class FrameSource(Protocol):
 class LandmarkProvider(Protocol):
     def process(
         self,
-        frame_rgb: Any,
-        timestamp_s: float,
+        frame: FramePacket,
     ) -> LandmarkObservation:
-        """Convert an RGB frame into a project-owned observation."""
-        ...
-
-    def close(self) -> None:
-        """Release provider resources."""
+        """Convert one project-owned frame into a landmark observation."""
         ...
 
 

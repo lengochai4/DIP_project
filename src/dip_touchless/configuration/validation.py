@@ -59,6 +59,23 @@ def _require_non_negative_number(
         )
 
 
+def _require_unit_interval(
+    section: Mapping[str, Any],
+    key: str,
+    section_name: str,
+) -> None:
+    value = section.get(key)
+
+    if (
+        not isinstance(value, (int, float))
+        or isinstance(value, bool)
+        or not 0.0 <= value <= 1.0
+    ):
+        raise ConfigValidationError(
+            f"{section_name}.{key} must be in [0, 1]"
+        )
+
+
 def validate_config(config: Mapping[str, Any]) -> None:
     """Validate project-level configuration semantics."""
 
@@ -75,6 +92,7 @@ def validate_config(config: Mapping[str, Any]) -> None:
     roi = config["roi"]
     illumination = config["illumination"]
     clahe = config["clahe"]
+    tracking = config["tracking"]
     filter_config = config["filter"]
     gesture = config["gesture"]
     renderer = config["renderer"]
@@ -143,6 +161,29 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "clahe.tile_grid_size must contain two positive integers"
         )
 
+    num_hands = tracking.get("num_hands")
+
+    if (
+        not isinstance(num_hands, int)
+        or isinstance(num_hands, bool)
+        or num_hands != 1
+    ):
+        raise ConfigValidationError(
+            "tracking.num_hands must be 1 for the current "
+            "single-control-hand baseline"
+        )
+
+    for key in (
+        "min_hand_detection_confidence",
+        "min_hand_presence_confidence",
+        "min_tracking_confidence",
+    ):
+        _require_unit_interval(
+            tracking,
+            key,
+            "tracking",
+        )
+    
     _require_positive_number(
         filter_config,
         "derivative_cutoff_hz",
