@@ -405,3 +405,32 @@ def test_representative_tie_prefers_lower_index() -> None:
     assert representative.beta == pytest.approx(
         0.4
     )
+
+
+def test_timestamp_event_reaches_adaptive_public_diagnostics() -> None:
+    landmark_filter = _filter()
+
+    landmark_filter.update(
+        _observation(
+            timestamp_s=2.0,
+            status=TrackingStatus.VALID,
+            landmarks=(
+                _landmark(0, 0.0, 0.0),
+            ),
+        )
+    )
+
+    _, diagnostics = landmark_filter.update(
+        _observation(
+            timestamp_s=2.0,
+            status=TrackingStatus.VALID,
+            landmarks=(
+                _landmark(0, 0.9, 0.8),
+            ),
+        )
+    )
+
+    assert diagnostics.reset_occurred is True
+    assert diagnostics.events == (
+        "timestamp_discontinuity",
+    )

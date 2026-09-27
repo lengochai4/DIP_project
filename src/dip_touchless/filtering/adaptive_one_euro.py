@@ -118,6 +118,11 @@ class AdaptiveOneEuroLandmarkFilter:
                 reset_occurred=(
                     result.reset_occurred
                 ),
+                events=(
+                    ()
+                    if result.event is None
+                    else (result.event,)
+                ),
             )
 
         representative = (
@@ -147,6 +152,11 @@ class AdaptiveOneEuroLandmarkFilter:
             ),
             reset_occurred=(
                 result.reset_occurred
+            ),
+            events=(
+                ()
+                if result.event is None
+                else (result.event,)
             ),
         )
 

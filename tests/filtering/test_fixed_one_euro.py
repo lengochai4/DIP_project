@@ -400,3 +400,58 @@ def test_representative_tie_prefers_lower_landmark_index() -> None:
     )
 
     assert representative.landmark_index == 2
+
+
+def test_ordinary_update_has_no_filter_event() -> None:
+    landmark_filter = _filter()
+
+    landmark_filter.update(
+        _observation(
+            timestamp_s=1.0,
+            status=TrackingStatus.VALID,
+            landmarks=(
+                _landmark(0, 0.0, 0.0),
+            ),
+        )
+    )
+
+    _, diagnostics = landmark_filter.update(
+        _observation(
+            timestamp_s=1.1,
+            status=TrackingStatus.VALID,
+            landmarks=(
+                _landmark(0, 0.2, 0.0),
+            ),
+        )
+    )
+
+    assert diagnostics.events == ()
+
+
+def test_reset_gap_event_reaches_public_diagnostics() -> None:
+    landmark_filter = _filter()
+
+    landmark_filter.update(
+        _observation(
+            timestamp_s=1.0,
+            status=TrackingStatus.VALID,
+            landmarks=(
+                _landmark(0, 0.0, 0.0),
+            ),
+        )
+    )
+
+    _, diagnostics = landmark_filter.update(
+        _observation(
+            timestamp_s=2.0,
+            status=TrackingStatus.VALID,
+            landmarks=(
+                _landmark(0, 0.8, 0.7),
+            ),
+        )
+    )
+
+    assert diagnostics.reset_occurred is True
+    assert diagnostics.events == (
+        "reset_gap_exceeded",
+    )
