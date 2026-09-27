@@ -53,7 +53,8 @@ The six canonical specification files remain the normative project source of tru
 G0 — BOOTSTRAP AND CONTRACTS: COMPLETE
 G1 — RAW BASELINE + REPLAY: COMPLETE
 G2 — DIP PREPROCESSING: COMPLETE
-G3 — CANONICAL FIXED 1-EURO: NOT STARTED
+G3 — CANONICAL FIXED 1-EURO: COMPLETE
+G4 — BOUNDED ADAPTIVE 1-EURO: NOT STARTED
 ```
 
 G0–G1 completion establishes the engineering baseline:
@@ -72,49 +73,52 @@ This does not imply that DIP preprocessing, temporal filtering, gesture behavior
 
 ## 4. Current task
 
-**Task G3 — Implement canonical fixed 1-Euro filtering.**
+**Task G4 — Implement the bounded adaptive 1-Euro filter.**
 
-Before implementation, verify the canonical 1-Euro formulation against
-the original/reference source, including derivative low-pass filtering
-and the role of `d_cutoff`.
+G3 canonical fixed 1-Euro is technically complete.
 
-Required implementation direction:
+G3 completion evidence includes:
+
+- canonical 1-Euro reference/provenance verification;
+- reusable low-pass primitive and alpha validation;
+- canonical scalar 1-Euro implementation with derivative low-pass `d_cutoff`;
+- regression against the published OneEuroFilter ground-truth fixture;
+- project-specific independent per-landmark x/y vectorization;
+- shared x/y cutoff within each landmark and independent state across landmarks;
+- model-relative z pass-through in the fixed baseline;
+- timestamp-derived `dt`;
+- safe short-loss state retention without fake measurements;
+- long-loss and timestamp-discontinuity reset behavior;
+- deterministic reinitialization after reset;
+- public `ONE_EURO_FIXED` `LandmarkFilter` implementation;
+- deterministic frame-level diagnostic summary semantics;
+- fixed-filter configuration validation;
+- ReplayRuntime and FileRunLogger integration through the existing public contracts;
+- deterministic synthetic tests covering constant, step, ramp, sine,
+  noise, known noisy trajectory, and nonuniform valid `dt`;
+- full automated project suite passing with 225 tests.
+
+Key G3 implementation/evidence commits:
 
 ```text
-validated landmark signal
-    ↓
-timestamp-derived dt
-    ↓
-filtered derivative using d_cutoff
-    ↓
-fixed min_cutoff + fixed beta
-    ↓
-signal low-pass
-    ↓
-filter diagnostics
-    ↓
-safe reset/discontinuity handling
-
+fab66d0 docs: verify canonical one euro reference
+0294fdb feat: add canonical low pass primitives
+7381fb0 feat: add canonical scalar one euro filter
+49f3c82 docs: clarify landmark one euro vectorization
+db0df50 feat: add fixed one euro landmark vector core
+7e60e03 feat: add fixed one euro temporal state handling
+01e1b37 docs: define one euro diagnostic summary semantics
+ce37135 feat: expose fixed one euro landmark filter
+20ec3d3 feat: define fixed one euro configuration
+596367e test: integrate fixed one euro replay logging
+f56192c test: add one euro reference regression
+c96f834 test: add one euro synthetic acceptance suite
 ```
-G2 completion evidence includes:
-- ROI SEARCHING/TRACKING/COASTING state machine;
-- full-frame pixel ROI geometry with clamping and safe fallback;
-- hand bounding-box derivation from normalized landmarks;
-- HSV V-channel illumination descriptors;
-- mean, standard deviation, P10, P90 and robust-range diagnostics;
-- EMA-smoothed illumination decision signals;
-- separate enter/exit hysteresis;
-- NORMAL / LOW_LIGHT / LOW_CONTRAST / DIFFICULT states;
-- adaptive / always / bypass CLAHE policies;
-- CLAHE applied only to HSV V;
-- unchanged full-frame BGR detector geometry;
-- explicit final enhancement_active semantics;
-- runtime integration using previous-frame hand geometry;
-- machine-readable ROI and illumination diagnostics;
-- real replay → preprocessing → MediaPipe → Raw → logger smoke test;
-- full automated test suite passing.
-No G3 fixed 1-Euro, G4 adaptive filter, gesture, renderer, or final
-experiment result is claimed complete by this status.
+G3 completion establishes the canonical F1 baseline. It does not imply
+that the adaptive F2 method, gesture behavior, rendered interaction, or
+final experiment outcomes have been validated.
+The next implementation stage is G4. G4 reuses the already frozen
+timestamp/loss/reset safety semantics rather than redefining them.
 
 ### G1 contract correction — LandmarkProvider input
 
@@ -382,11 +386,16 @@ No — no final F1/F2 experimental results exist.
 
 Proceed in this order unless a documented blocker requires rearrangement:
 
-1. **G2 DIP preprocessing** — ROI state machine, illumination descriptors/hysteresis, adaptive CLAHE/bypass, unchanged full-frame provider geometry.
-2. **G3 Canonical fixed 1-Euro** — derivative low-pass `d_cutoff`, fixed parameters, diagnostics, reset behavior, and synthetic tests.
-3. **G4 Bounded adaptive 1-Euro** — velocity-dependent adaptation, optional valid quality branch, cutoff bounds, and safe loss/reacquisition handling.
-4. **G5 Gesture + 3D Extension** — normalized pinch/hysteresis, bounded rotation/scale mapping, renderer-independent `InteractionState`, and minimal rendered STEM scene.
-5. **G6 Minimal experiment tooling** — replay profiles, paired comparisons, run/trial manifests, required descriptive metrics, and reproducibility capture.
-6. **G7 Final evaluation** — collect final trials, regenerate plots/tables from recorded artifacts, write evidence-bounded results, and package the final demo/report.
+1. **G4 Bounded adaptive 1-Euro** — velocity-dependent adaptation,
+   optional valid quality branch, cutoff bounds, and reuse of the frozen
+   loss/reset/reacquisition semantics.
+2. **G5 Gesture + 3D Extension** — normalized pinch/hysteresis, bounded
+   rotation/scale mapping, renderer-independent `InteractionState`, and
+   minimal rendered STEM scene.
+3. **G6 Minimal experiment tooling** — replay profiles, paired comparisons,
+   run/trial manifests, required descriptive metrics, and reproducibility capture.
+4. **G7 Final evaluation** — collect final trials, regenerate plots/tables
+   from recorded artifacts, write evidence-bounded results, and package the
+   final demo/report.
 
-Do not prioritize renderer polish ahead of G2–G4 correctness.
+Do not prioritize renderer polish ahead of G4 correctness.
