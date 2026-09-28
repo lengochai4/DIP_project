@@ -1,7 +1,7 @@
 ## 2. Current implementation evidence
 
 As of 2026-09-28, the implementation repository has been verified
-through Gate G5.
+through Gate G6.
 
 Verified evidence includes:
 
@@ -49,9 +49,27 @@ Verified evidence includes:
 - physical no-hand / hand-enter / hand-leave / hand-reacquire smoke test completed successfully;
 - clean camera/provider/logger/renderer shutdown verified in the live demo;
 - final G5 automated project suite passing with 378 tests.
+- frozen G6 primary experiment protocol before final data collection;
+- explicit F0/F1/F2 and P0/P1 experiment profiles;
+- deterministic single-replay experiment entry point;
+- manifest-driven paired batch execution preserving one replay source across compared conditions;
+- immutable batch index preserving exact trial/profile/run/source identity;
+- analysis loader consuming logger-produced metadata, resolved config, frames, landmarks, and events without manual raw-log editing;
+- primary A1 radial RMS jitter metric on filtered landmark 8 in FRAME_NORMALIZED coordinates;
+- primary A2 trajectory-deviation RMSE relative to F0 using common usable frame IDs;
+- primary Experiment B valid hand-observation rate using VALID and REACQUIRED statuses;
+- paired timestamp/frame alignment checks for comparative metrics;
+- automatic CSV/table and Matplotlib plot regeneration from indexed run artifacts;
+- generated-analysis provenance preserving batch identity, run IDs, analysis window, planned comparisons, exclusion rules, run code revision, config hash, model/source identity, and analysis code revision;
+- SHA-256 capture for available local model and replay-source files;
+- explicit unavailable checksum semantics when a referenced file is not available;
+- no inferential statistics or optional performance benchmark added to the minimum course gate;
+- final G6 targeted acceptance suite passing with 47 tests;
+- final automated project regression suite passing with 425 tests.
 
-G0–G5 are technically complete. Experiment tooling, final evaluation,
-and final research outcomes are not claimed complete by this status.
+G0–G6 are technically complete. Final controlled data collection,
+final evaluation, report conclusions, and final research outcomes are
+not claimed complete by this status.
 
 ## 3. Current stage
 
@@ -72,7 +90,8 @@ G2 — DIP PREPROCESSING: COMPLETE
 G3 — CANONICAL FIXED 1-EURO: COMPLETE
 G4 — BOUNDED ADAPTIVE 1-EURO: COMPLETE
 G5 — GESTURE + 3D EXTENSION: COMPLETE
-G6 — EXPERIMENT READINESS: NOT STARTED
+G6 — EXPERIMENT READINESS: COMPLETE
+G7 — FINAL EVALUATION / PACKAGE: NOT STARTED
 ```
 
 G0–G1 completion establishes the engineering baseline:
@@ -87,14 +106,60 @@ deterministic frame acquisition
 → structured machine-readable logs
 ```
 
-G0–G5 completion establishes the implemented Core and interaction-demo
-pipeline. It does not imply that the project hypotheses are supported,
-that one method outperforms another, or that final experimental claims
-have been validated.
+G0–G6 completion establishes the implemented Core, interaction-demo,
+and reproducible experiment-tooling pipeline. It does not imply that the
+project hypotheses are supported, that one method outperforms another,
+or that final experimental claims have been validated. Those claims
+remain dependent on the controlled final experiments in G7.
 
 ## 4. Current task
 
-**Task G6 — Implement minimal experiment tooling and reproducible evaluation preparation.**
+**Task G7 — Run the final controlled evaluation and package the submission.**
+
+G6 experiment readiness is technically complete.
+
+G6 completion evidence includes:
+
+- primary A1/A2/B metrics frozen before final data collection;
+- baseline-isolated F0/F1/F2 and P0/P1 profiles;
+- deterministic single-replay execution;
+- manifest-driven paired replay batches;
+- immutable batch indexes preserving exact run identities;
+- analysis loading directly from machine-readable run artifacts;
+- common-frame paired metric alignment;
+- radial RMS jitter implementation for A1;
+- F0-relative trajectory-deviation RMSE for A2;
+- valid hand-observation rate for Experiment B;
+- automatic metrics CSV and plot regeneration;
+- model and replay-source SHA-256 capture when files are available;
+- resolved configuration, code revision, schema, dependency, system,
+  model/source, and run identity preserved through run metadata;
+- predefined exclusion rules preserved through batch and generated-analysis provenance;
+- analysis provenance linking generated outputs back to exact run IDs,
+  configs, source/model hashes, and analysis revision;
+- no optional inferential statistics required or introduced;
+- G6 targeted acceptance: 47 passed;
+- final G6 full regression: 425 passed.
+
+Key G6 implementation/evidence commits:
+
+```text
+f2b9cca docs: freeze g6 primary experiment metrics
+cb2e285 feat: define g6 experiment profiles
+2b9af8f feat: add deterministic experiment replay runner
+53ad036 feat: add paired experiment batch runner
+f67c7cb feat: add run artifact analysis loader
+6e16d2b feat: add primary experiment metrics
+bede648 feat: persist experiment batch index
+edbd1a4 feat: regenerate experiment tables and plots
+6f119e9 feat: capture experiment file checksums
+78725b9 feat: preserve analysis provenance and exclusions
+```
+
+G6 completion establishes experiment readiness only. No final A1, A2,
+or Experiment B outcome has yet been collected, and no superiority,
+jitter-reduction, robustness, accuracy, FPS, latency, or statistical
+claim is made from the G6 tooling tests.
 
 G5 gesture mapping and the minimal 3D STEM Extension are technically complete.
 
@@ -635,19 +700,88 @@ Existing results invalidated:
 
 No — no final G5 interaction experiments/results exist.
 
+### G6 experiment-design decision — primary metrics and baseline isolation
+
+Change:
+
+Frozen the minimum course primary metrics and comparison isolation rules:
+
+- A1 F0/F1/F2 primary metric: radial RMS jitter of filtered landmark 8;
+- A2 F0/F1/F2 primary metric: 2D trajectory-deviation RMSE relative to
+  F0 on the identical dynamic replay;
+- Experiment B P0/P1 primary metric: valid hand-observation rate;
+- A1/A2 hold preprocessing constant at P1;
+- Experiment B holds temporal filtering constant at F0 / Raw;
+- paired conditions use the same source, timestamps, predefined analysis
+  window, and common usable frame IDs where applicable.
+
+Reason:
+
+The canonical experiment specification required choosing one primary
+metric before final comparison but intentionally did not preselect the
+metric. G6 tooling requires those choices to be frozen before final data
+collection so analysis code cannot select favorable metrics after viewing
+results.
+
+Canonical file/section changed:
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, Experiments A1, A2, and B.
+
+Code/modules affected:
+
+Future G6 experiment manifests, analysis loaders, metric functions,
+batch runner, result tables, and plot regeneration.
+
+Algorithmic impact:
+
+None. F0, F1, F2, P0, and P1 processing algorithms are unchanged.
+
+Experimental impact:
+
+Defines the primary descriptive outcomes that will support RQ1/RQ2 and
+prevents preprocessing and temporal-filter conditions from being changed
+simultaneously in their primary comparisons.
+
+Compatibility impact:
+
+No final experiment result set exists. Development runs produced before
+this decision may be used for tooling/debugging but MUST NOT be mixed into
+final tables unless they satisfy the frozen protocol.
+
+Tests added/updated:
+
+Upcoming G6 tests will cover metric calculations, paired frame alignment,
+manifest validation, deterministic condition expansion, and analysis of
+generated run artifacts without manual CSV editing.
+
+Existing results invalidated:
+
+No — no final A1/A2/B result set has been collected.
+
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:
 
-1. **G6 Minimal experiment tooling** — experiment profiles/manifests,
-   deterministic replay batch execution, paired F0/F1/F2 and P0/P1
-   comparisons, required descriptive metrics, exclusion handling,
-   reproducibility capture, and plot/table regeneration.
+1. **G7 Final controlled evaluation** — define the actual final A1, A2,
+   and Experiment B manifests, including recorded source identities,
+   actual trial counts, predefined analysis windows/warmup, and exclusion
+   rules before inspecting final outcomes.
 
-2. **G7 Final evaluation** — collect the final controlled trials,
-   regenerate required plots/tables from recorded artifacts, write
-   evidence-bounded results for RQ1–RQ3, document limitations/threats
-   to validity, and package the final demo/report.
+2. **Run final paired replay experiments** — execute F0/F1/F2 for the
+   static and dynamic RQ2 sources and P0/P1 for the required illumination
+   conditions using the frozen G6 tooling.
 
-Do not expand renderer/UI scope during G6 unless required to preserve
-the already-established G5 interaction demonstration.
+3. **Regenerate final evidence** — produce the required trajectories,
+   primary metric tables/plots, illumination comparison outputs, and
+   DIP-focused before/after visual evidence directly from recorded artifacts.
+
+4. **Submission demo application/presentation shell** — after the final
+   experiment evidence is secured, add only the presentation-oriented UI
+   needed for the final demo: camera preview, tracking/ROI/illumination/filter
+   status, pinch/interaction state, 3D view, start/stop/reset controls, and
+   run/log identity. Do not alter Core algorithms or experiment semantics.
+
+5. **Final report/package** — write evidence-bounded Results, Discussion,
+   limitations/threats to validity, and Conclusions for RQ1–RQ3; package
+   reproducibility instructions, model acquisition/checksum information,
+   selected result assets, and the final demo.

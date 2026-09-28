@@ -99,6 +99,7 @@ def validate_config(config: Mapping[str, Any]) -> None:
     tracking = config["tracking"]
     filter_config = config["filter"]
     gesture = config["gesture"]
+    experiment = config["experiment"]
     renderer = config["renderer"]
 
     _require_non_negative_integer(
@@ -506,6 +507,12 @@ def validate_config(config: Mapping[str, Any]) -> None:
             key,
             "gesture",
         )
+
+    _require_non_negative_number(
+        experiment,
+        "warmup_s",
+        "experiment",
+    )
 
     if renderer.get("enabled"):
         _require_positive_number(

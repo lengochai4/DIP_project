@@ -1,0 +1,14 @@
+runtime:
+  mode: "replay"
+
+clahe:
+  policy: "adaptive"
+
+filter:
+  mode: "ONE_EURO_ADAPTIVE"
+
+experiment:
+  condition: "F2"
+
+renderer:
+  enabled: false

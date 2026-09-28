@@ -1,0 +1,14 @@
+runtime:
+  mode: "replay"
+
+clahe:
+  policy: "adaptive"
+
+filter:
+  mode: "RAW"
+
+experiment:
+  condition: "P1"
+
+renderer:
+  enabled: false
