@@ -1278,6 +1278,31 @@ $$
 J_{RMS}=\sqrt{\frac{1}{N}\sum_i[(x_i-\bar{x})^2+(y_i-\bar{y})^2]}
 $$
 
+#### Course-baseline primary selection for A1
+
+The primary static-stability metric for the final F0/F1/F2 comparison is
+radial RMS jitter.
+
+The course comparison uses:
+
+```text
+landmark index: 8
+stage: filtered
+coordinate space: FRAME_NORMALIZED
+metric: radial RMS jitter around the trial mean
+```
+
+F0, F1, and F2 MUST be evaluated on the same replay source, timestamps,
+predefined analysis window, and common usable frame IDs.
+
+For the temporal-filter experiment, preprocessing is held constant at P1
+(adaptive ROI preprocessing) for F0/F1/F2 so that preprocessing condition
+is not changed together with temporal-filter condition.
+
+Startup warmup is excluded according to the experiment manifest. Frames
+outside the predefined analysis window MUST NOT be selected after viewing
+the metric outcome.
+
 No required percentage reduction is specified. The measured result may favor, tie, or disfavor the proposed method.
 
 ### A2. Dynamic responsiveness — required, one primary metric only
@@ -1300,6 +1325,43 @@ Choose **one primary responsiveness metric** before final comparison. Simple acc
 * transition/threshold delay;
 * cross-correlation lag;
 * trajectory deviation.
+
+#### Course-baseline primary selection for A2
+
+The primary responsiveness characterization for the final F0/F1/F2
+comparison is 2D trajectory-deviation RMSE relative to F0 on the same
+recorded dynamic source.
+
+For common usable frame IDs:
+
+$$
+D_{RMSE}
+=
+\sqrt{
+\frac{1}{N}
+\sum_i
+[(x_{m,i}-x_{F0,i})^2
++(y_{m,i}-y_{F0,i})^2]
+}
+$$
+
+where `m` is the compared filter condition.
+
+The course comparison uses:
+
+```text
+landmark index: 8
+stage: filtered
+coordinate space: FRAME_NORMALIZED
+reference trajectory: F0 on the identical replay source
+```
+
+By definition, F0 has zero deviation from itself. The metric therefore
+characterizes how much F1/F2 alter the measured dynamic trajectory relative
+to the Raw baseline; it MUST NOT be described as physical ground-truth
+accuracy or sensor-to-photon latency.
+
+As in A1, preprocessing is held constant at P1 for F0/F1/F2.
 
 Additional responsiveness metrics are OPTIONAL.
 
@@ -1324,6 +1386,29 @@ For the course baseline, choose **one primary tracking/stability outcome** befor
 * valid hand-observation rate; or
 * valid landmark rate; or
 * landmark jitter/stability under the lighting condition.
+
+#### Course-baseline primary selection for Experiment B
+
+The primary illumination-robustness outcome is valid hand-observation rate:
+
+$$
+R_{valid}
+=
+\frac{N_{usable}}{N_{analyzed}}
+$$
+
+where a usable hand observation has tracking status `VALID` or
+`REACQUIRED`.
+
+P0 and P1 MUST be evaluated on matched source content and the same
+predefined analysis window whenever possible.
+
+For the P0/P1 preprocessing comparison, temporal filtering is held
+constant at F0 / Raw so that preprocessing condition is not changed
+together with temporal-filter condition.
+
+Illumination descriptors and stabilized illumination state remain required
+context for interpreting this outcome.
 
 Illumination descriptors/state MUST be recorded so the image-processing condition is documented.
 

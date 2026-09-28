@@ -635,6 +635,64 @@ Existing results invalidated:
 
 No — no final G5 interaction experiments/results exist.
 
+### G6 experiment-design decision — primary metrics and baseline isolation
+
+Change:
+
+Frozen the minimum course primary metrics and comparison isolation rules:
+
+- A1 F0/F1/F2 primary metric: radial RMS jitter of filtered landmark 8;
+- A2 F0/F1/F2 primary metric: 2D trajectory-deviation RMSE relative to
+  F0 on the identical dynamic replay;
+- Experiment B P0/P1 primary metric: valid hand-observation rate;
+- A1/A2 hold preprocessing constant at P1;
+- Experiment B holds temporal filtering constant at F0 / Raw;
+- paired conditions use the same source, timestamps, predefined analysis
+  window, and common usable frame IDs where applicable.
+
+Reason:
+
+The canonical experiment specification required choosing one primary
+metric before final comparison but intentionally did not preselect the
+metric. G6 tooling requires those choices to be frozen before final data
+collection so analysis code cannot select favorable metrics after viewing
+results.
+
+Canonical file/section changed:
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, Experiments A1, A2, and B.
+
+Code/modules affected:
+
+Future G6 experiment manifests, analysis loaders, metric functions,
+batch runner, result tables, and plot regeneration.
+
+Algorithmic impact:
+
+None. F0, F1, F2, P0, and P1 processing algorithms are unchanged.
+
+Experimental impact:
+
+Defines the primary descriptive outcomes that will support RQ1/RQ2 and
+prevents preprocessing and temporal-filter conditions from being changed
+simultaneously in their primary comparisons.
+
+Compatibility impact:
+
+No final experiment result set exists. Development runs produced before
+this decision may be used for tooling/debugging but MUST NOT be mixed into
+final tables unless they satisfy the frozen protocol.
+
+Tests added/updated:
+
+Upcoming G6 tests will cover metric calculations, paired frame alignment,
+manifest validation, deterministic condition expansion, and analysis of
+generated run artifacts without manual CSV editing.
+
+Existing results invalidated:
+
+No — no final A1/A2/B result set has been collected.
+
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:
