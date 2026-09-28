@@ -819,6 +819,206 @@ No. A1 regeneration previously failed before producing final metric
 outputs. The raw run artifacts and frozen source recordings remain
 valid.
 
+
+### G7 final evaluation evidence snapshot — A1/A2/B
+
+Status:
+
+Final paired replay collection and primary analysis have been executed for
+A1, A2, B-normal, and B-lowlight using the frozen G7 sources, predefined
+2.0--10.0 s analysis window, frozen manifests, and exclusion policy.
+
+No source recording, analysis window, primary metric, or comparison condition
+was replaced after inspecting outcomes.
+
+Analysis regeneration revision:
+
+`abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f`
+
+#### A1 — static temporal stability
+
+Batch:
+
+`G7-A1-STATIC-20260928T144254479591Z`
+
+Primary metric:
+
+`radial_rms_jitter`
+
+Recorded trials:
+
+3
+
+Evaluable trials:
+
+2
+
+Observed results:
+
+- `trial-001`, common usable frames = 5:
+  - F0 = `0.006607584161915466`
+  - F1 = `0.001628449479902759`
+  - F2 = `0.001629070583985972`
+- `trial-002`:
+  - paired primary metric unavailable;
+  - reason = `no_common_usable_frames`;
+  - the trial remains in the final experiment record.
+- `trial-003`, common usable frames = 128:
+  - F0 = `0.030597141717346094`
+  - F1 = `0.026704461422596908`
+  - F2 = `0.026753300347156422`
+
+Evidence-bounded interpretation:
+
+- F1 and F2 both have lower radial RMS jitter than F0 in the two evaluable
+  trials.
+- F1 and F2 are very close to each other in both evaluable trials.
+- `trial-001` contains only five common usable frames, so its numeric value
+  is weak descriptive evidence.
+- The three-trial source-group size is small; no population-level or
+  inferential superiority claim is supported.
+
+#### A2 — dynamic responsiveness characterization
+
+Batch:
+
+`G7-A2-DYNAMIC-20260928T151157912799Z`
+
+Primary metric:
+
+`trajectory_deviation_rmse`
+
+Recorded trials:
+
+3
+
+Evaluable trials:
+
+0
+
+All three trials retain explicit unavailable primary-metric records with:
+
+`no_common_usable_frames`
+
+Diagnostic result:
+
+- `trial-001`: all 360 replay frames were `NO_HAND`;
+- `trial-002`: all 360 replay frames were `NO_HAND`;
+- `trial-003`: one `VALID` raw-landmark frame occurred at frame 33, outside
+  the predefined 2.0--10.0 s primary analysis window; the analysis window
+  contained no usable landmark frame;
+- within each trial, the raw usable-frame sets were identical across
+  F0/F1/F2, so the unavailable result is not evidence of a filter-specific
+  alignment difference.
+
+Evidence-bounded interpretation:
+
+The final A2 source set does not provide an evaluable quantitative
+trajectory-deviation result. Therefore the final RQ2 evidence can describe
+the observed A1 static-jitter behavior, but the predefined primary
+responsiveness characterization is unavailable and must remain an explicit
+limitation.
+
+No A2 source is replaced and the analysis window is not changed after seeing
+this outcome.
+
+#### Experiment B — illumination robustness
+
+Primary metric:
+
+`valid_hand_observation_rate`
+
+Temporal filtering was held at F0 / Raw.
+
+##### B-normal
+
+Batch:
+
+`G7-B-NORMAL-20260928T151702564004Z`
+
+Recorded/evaluable trials:
+
+3 / 3
+
+Each condition used 241 analyzed frames per trial.
+
+Observed P0 / P1 rates:
+
+- `trial-001`: `0.02074688796680498 / 0.02074688796680498`
+- `trial-002`: `0.0 / 0.0`
+- `trial-003`: `0.5311203319502075 / 0.5311203319502075`
+
+P0 and P1 therefore produced the same primary outcome in each tested
+normal-light trial.
+
+##### B-lowlight
+
+Batch:
+
+`G7-B-LOWLIGHT-20260928T152103579608Z`
+
+Recorded/evaluable trials:
+
+3 / 3
+
+Each condition used 241 analyzed frames per trial.
+
+Observed P0 / P1 rates:
+
+- `trial-001`: `0.0 / 0.0`
+- `trial-002`: `0.0 / 0.0`
+- `trial-003`: `0.0 / 0.0`
+
+The retained source sidecars label these three recordings
+`low-light-room`. Auto-exposure and auto-white-balance state were recorded
+as `unknown`, so no claim is made about whether camera auto controls
+compensated for the physical lighting change.
+
+Illumination-activation audit:
+
+- B-normal P1: stabilized state was `NORMAL` and
+  `enhancement_active=False` for all 723 analyzed frames;
+- B-lowlight P1: stabilized state was also `NORMAL` and
+  `enhancement_active=False` for all 723 analyzed frames.
+
+Therefore the final P0/P1 equality must not be described as evidence that
+CLAHE itself is ineffective. Under the tested sources and resolved
+configuration, the adaptive activation policy did not request/apply CLAHE,
+so P1 resolved to the unenhanced path throughout the analyzed frames.
+
+Evidence-bounded RQ1 interpretation:
+
+Under the tested final conditions, adaptive preprocessing did not increase
+valid hand-observation rate relative to bypass. The challenging-light source
+group also exposes an activation-policy limitation: despite being acquired
+and documented as `low-light-room`, the runtime illumination classifier
+remained `NORMAL`, so the final experiment does not provide a direct
+CLAHE-active-versus-bypass tracking comparison.
+
+This limitation must remain explicit in the Results and Discussion and must
+not be converted into a general claim about CLAHE effectiveness.
+
+#### Current RQ evidence boundary
+
+RQ1:
+
+The primary P0/P1 metric is available for all normal and low-light trials.
+No improvement was observed, but the low-light P1 path never activated
+CLAHE, limiting the conclusion to the tested adaptive policy and source
+conditions.
+
+RQ2:
+
+Static-jitter evidence is available for two of three A1 trials. The primary
+A2 responsiveness metric is unavailable for all three final dynamic trials
+because the predefined analysis windows contain no common usable landmarks.
+
+RQ3:
+
+The existing G5 physical interaction smoke test demonstrates practical
+interaction behavior but is not treated as an RQ1/RQ2 quantitative result.
+Final demo/presentation evidence remains to be packaged separately.
+
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:
