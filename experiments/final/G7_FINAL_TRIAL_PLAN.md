@@ -200,6 +200,21 @@ The following are not valid exclusion reasons:
 Tracking failures and NO_HAND frames in Experiment B remain part of the
 primary valid-observation-rate outcome.
 
+### Undefined paired primary metric
+
+A recorded trial is retained even when the predefined A1/A2 analysis
+window contains no common usable F0/F1/F2 landmark frames.
+
+In that case:
+
+- the trial is not excluded;
+- the paired primary metric is reported as unavailable;
+- the reason is recorded as `no_common_usable_frames`;
+- the evaluable-trial count is reported separately from the recorded
+  trial count;
+- no replacement recording is substituted for the original final trial
+  solely because of tracking failure.
+
 ## 9. Final trial count
 
 Planned unique recorded sources:

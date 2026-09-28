@@ -157,9 +157,10 @@ edbd1a4 feat: regenerate experiment tables and plots
 ```
 
 G6 completion establishes experiment readiness only. No final A1, A2,
-or Experiment B outcome has yet been collected, and no superiority,
+or Experiment B metric outcome has been reported, and no superiority,
 jitter-reduction, robustness, accuracy, FPS, latency, or statistical
-claim is made from the G6 tooling tests.
+claim is made from the G6 tooling tests. Final claims depend on the G7
+controlled trials and their regenerated analysis.
 
 G5 gesture mapping and the minimal 3D STEM Extension are technically complete.
 
@@ -757,6 +758,66 @@ generated run artifacts without manual CSV editing.
 Existing results invalidated:
 
 No — no final A1/A2/B result set has been collected.
+
+### G7 experiment-protocol clarification — unavailable paired metric
+
+Change:
+
+Defined explicit handling for A1/A2 trials whose predefined paired
+analysis window contains zero common usable F0/F1/F2 landmark frames.
+
+Such a trial remains in the final experiment record, but its paired
+primary metric is marked unavailable with reason
+`no_common_usable_frames`. Analysis continues for other trials.
+
+Reason:
+
+The first final A1 batch exposed a previously unspecified edge case:
+one retained final trial contained no usable landmark observations in
+the predefined analysis window for any F0/F1/F2 condition. The frozen
+exclusion policy correctly prevents removing that trial for poor
+tracking/NO_HAND behavior, while the radial RMS metric cannot be
+numerically calculated without usable landmark samples.
+
+Canonical file/section changed:
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, paired A1/A2 metric availability.
+
+Code/modules affected:
+
+`analysis/regenerate.py`, analysis tests, and possibly metric-result
+serialization helpers. Core algorithms, acquisition, tracking provider,
+preprocessing, filtering, and recorded sources are unchanged.
+
+Algorithmic impact:
+
+None.
+
+Experimental impact:
+
+The planned and recorded trial remains part of the experiment. The
+primary paired metric is calculated only for trials having a non-empty
+common usable landmark-frame set. Generated outputs must explicitly
+retain unavailable trials and report the evaluable-trial count.
+
+Compatibility impact:
+
+The existing G7 A1 batch and all nine recorded final sources remain
+valid. No A1 primary metric output had been successfully generated
+before this clarification. No source is replaced and no analysis window
+is changed.
+
+Tests added/updated:
+
+Analysis regeneration tests will verify that an empty common paired set
+produces an explicit unavailable metric record rather than aborting the
+entire batch, while ordinary evaluable trials remain unchanged.
+
+Existing results invalidated:
+
+No. A1 regeneration previously failed before producing final metric
+outputs. The raw run artifacts and frozen source recordings remain
+valid.
 
 ## 5. Immediate next tasks
 
