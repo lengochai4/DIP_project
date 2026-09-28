@@ -1,7 +1,7 @@
 ## 2. Current implementation evidence
 
-As of 2026-09-27, the implementation repository has been verified
-through Gate G4.
+As of 2026-09-28, the implementation repository has been verified
+through Gate G5.
 
 Verified evidence includes:
 
@@ -35,10 +35,23 @@ Verified evidence includes:
 - replay integration tests covering deterministic frame identity, timestamps, Raw output, no-hand behavior, logging, and resource release;
 - successful end-to-end replay → MediaPipe → Raw → logger smoke test;
 - automated G1 test suite executed successfully.
+- deterministic normalized pinch ratio and pinch hysteresis;
+- bounded/deadzoned renderer-independent rotation and scale commands;
+- explicit neutral initialization, loss/reset, and reacquisition behavior;
+- `GestureEngine` consuming filtered project-domain landmarks and producing `InteractionState`;
+- ReplayRuntime interaction integration and interaction-state logging;
+- renderer-independent `Stem3DSceneState` with bounded accumulated scale;
+- optional Pygame/PyOpenGL 3D Extension with lazy graphics imports;
+- Extension boundary tests confirming renderer/application modules do not import Core algorithm internals;
+- synchronous `RealtimeRuntime` exposing the latest public `InteractionState`;
+- visible synthetic OpenGL renderer smoke test;
+- live webcam → preprocessing → MediaPipe → filter → gesture → `InteractionState` → 3D Extension integration;
+- physical no-hand / hand-enter / hand-leave / hand-reacquire smoke test completed successfully;
+- clean camera/provider/logger/renderer shutdown verified in the live demo;
+- final G5 automated project suite passing with 378 tests.
 
-G0–G4 are technically complete. Gesture mapping, rendered 3D
-interaction, experiment tooling, final evaluation, and final research
-outcomes are not claimed complete by this status.
+G0–G5 are technically complete. Experiment tooling, final evaluation,
+and final research outcomes are not claimed complete by this status.
 
 ## 3. Current stage
 
@@ -58,7 +71,8 @@ G1 — RAW BASELINE + REPLAY: COMPLETE
 G2 — DIP PREPROCESSING: COMPLETE
 G3 — CANONICAL FIXED 1-EURO: COMPLETE
 G4 — BOUNDED ADAPTIVE 1-EURO: COMPLETE
-G5 — GESTURE + 3D EXTENSION: NOT STARTED
+G5 — GESTURE + 3D EXTENSION: COMPLETE
+G6 — EXPERIMENT READINESS: NOT STARTED
 ```
 
 G0–G1 completion establishes the engineering baseline:
@@ -73,11 +87,61 @@ deterministic frame acquisition
 → structured machine-readable logs
 ```
 
-This does not imply that DIP preprocessing, temporal filtering, gesture behavior, rendered interaction, or final experimental claims have been validated.
+G0–G5 completion establishes the implemented Core and interaction-demo
+pipeline. It does not imply that the project hypotheses are supported,
+that one method outperforms another, or that final experimental claims
+have been validated.
 
 ## 4. Current task
 
-**Task G5 — Implement gesture mapping and the minimal 3D STEM Extension.**
+**Task G6 — Implement minimal experiment tooling and reproducible evaluation preparation.**
+
+G5 gesture mapping and the minimal 3D STEM Extension are technically complete.
+
+G5 completion evidence includes:
+
+- palm-width-normalized pinch ratio with strict hysteresis;
+- bounded/deadzoned rotation and scale mapping;
+- deterministic neutral initialization, loss/reset, and reacquisition;
+- public renderer-independent `InteractionState`;
+- `GestureEngine` using filtered project-domain landmarks only;
+- ReplayRuntime interaction generation and logging;
+- renderer-independent 3D scene-state accumulation;
+- optional Pygame/PyOpenGL renderer;
+- Extension/Core dependency-boundary tests;
+- synchronous RealtimeRuntime with latest `InteractionState`;
+- synthetic visible 3D renderer smoke;
+- physical webcam → MediaPipe → Core → InteractionState → 3D smoke;
+- verified no-hand, enter, leave, and reacquisition behavior;
+- clean shutdown of runtime and renderer resources;
+- final automated G5 regression suite: 378 passed.
+
+Key G5 implementation/evidence commits:
+
+```text
+8435352 docs: freeze deterministic gesture semantics
+0b978ba feat: add gesture configuration
+f464c04 feat: add gesture math
+ba7a2cd feat: add deterministic gesture engine
+b5e2c1d feat: integrate gesture interaction into replay
+55cc986 feat: add stem3d scene state
+319c043 feat: add optional stem3d renderer
+495587e feat: add visible stem3d smoke demo
+7d88e9c feat: add realtime interaction runtime
+eaa1c18 feat: add live touchless stem3d demo
+```
+
+Physical G5 smoke evidence:
+
+```text
+live run 1: 386 processed frames, clean shutdown
+live run 2: 1141 processed frames, clean shutdown
+manual acceptance: no-hand / enter / leave / reacquire / shutdown PASS
+```
+
+G5 completion demonstrates practical rendered interaction and safe runtime
+behavior. It does not claim experimental superiority, accuracy, FPS,
+latency, or final RQ3 research outcome.
 
 G4 bounded adaptive 1-Euro is technically complete.
 
@@ -125,10 +189,10 @@ e7be912 feat: share temporal semantics across one euro filters
 G4 completion establishes the project F2 temporal baseline. It does not
 claim that F2 outperforms F0/F1; that conclusion remains dependent on
 future recorded experiments.
-The next implementation stage is G5. G5 must preserve the Core/Extension
-boundary: gesture processing consumes filtered project-domain landmarks,
-and the 3D Extension consumes InteractionState rather than reaching into
-filter, tracking, or preprocessing internals.
+G5 followed G4 and preserves the Core/Extension boundary: gesture
+processing consumes filtered project-domain landmarks, and the 3D
+Extension consumes InteractionState rather than reaching into filter,
+tracking, or preprocessing internals.
 
 
 ### G1 contract correction — LandmarkProvider input
@@ -560,10 +624,12 @@ before this decision.
 
 Tests added/updated:
 
-Upcoming G5 tests will cover normalized pinch, denominator protection,
-hysteresis, rotation deadzone/gain/clamp, scale deadzone/gain/clamp,
-loss reset, first-frame neutrality, temporal-filter-reset neutrality,
-and reacquisition neutrality.
+G5 tests cover normalized pinch, denominator protection, hysteresis,
+rotation deadzone/gain/clamp, scale deadzone/gain/clamp, loss reset,
+first-frame neutrality, temporal-filter-reset neutrality, reacquisition
+neutrality, scene-state accumulation and bounds, Extension/Core dependency
+boundaries, ReplayRuntime/RealtimeRuntime interaction integration, and
+clean renderer/runtime behavior.
 
 Existing results invalidated:
 
@@ -573,16 +639,15 @@ No — no final G5 interaction experiments/results exist.
 
 Proceed in this order unless a documented blocker requires rearrangement:
 
-1. **G4 Bounded adaptive 1-Euro** — velocity-dependent adaptation,
-   optional valid quality branch, cutoff bounds, and reuse of the frozen
-   loss/reset/reacquisition semantics.
-2. **G5 Gesture + 3D Extension** — normalized pinch/hysteresis, bounded
-   rotation/scale mapping, renderer-independent `InteractionState`, and
-   minimal rendered STEM scene.
-3. **G6 Minimal experiment tooling** — replay profiles, paired comparisons,
-   run/trial manifests, required descriptive metrics, and reproducibility capture.
-4. **G7 Final evaluation** — collect final trials, regenerate plots/tables
-   from recorded artifacts, write evidence-bounded results, and package the
-   final demo/report.
+1. **G6 Minimal experiment tooling** — experiment profiles/manifests,
+   deterministic replay batch execution, paired F0/F1/F2 and P0/P1
+   comparisons, required descriptive metrics, exclusion handling,
+   reproducibility capture, and plot/table regeneration.
 
-Do not prioritize renderer polish ahead of G4 correctness.
+2. **G7 Final evaluation** — collect the final controlled trials,
+   regenerate required plots/tables from recorded artifacts, write
+   evidence-bounded results for RQ1–RQ3, document limitations/threats
+   to validity, and package the final demo/report.
+
+Do not expand renderer/UI scope during G6 unless required to preserve
+the already-established G5 interaction demonstration.
