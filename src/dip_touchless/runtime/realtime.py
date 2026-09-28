@@ -1,4 +1,4 @@
-"""Deterministic replay runtime."""
+"""Synchronous realtime interaction runtime."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from dip_touchless.core import (
     FramePacket,
     FrameSource,
     GestureEngine,
+    InteractionState,
     IlluminationMetrics,
     LandmarkFilter,
     LandmarkProvider,
@@ -29,13 +30,8 @@ from dip_touchless.preprocessing import (
 from dip_touchless.tracking import MeasurementValidator
 
 
-class ReplayRuntime:
-    """Run the deterministic replay tracking pipeline.
-
-    Preprocessing is optional so the original G1 Raw baseline remains
-    executable. When G2 preprocessing is enabled, all four preprocessing
-    components must be supplied together.
-    """
+class RealtimeRuntime:
+    """Run the synchronous realtime interaction pipeline."""
 
     def __init__(
         self,
@@ -46,6 +42,14 @@ class ReplayRuntime:
         landmark_filter: LandmarkFilter,
         logger: RunLogger,
         gesture_engine: GestureEngine | None = None,
+        interaction_consumer: (
+            Callable[[InteractionState], object]
+            | None
+        ) = None,
+        stop_requested: (
+            Callable[[], bool]
+            | None
+        ) = None,
         roi_manager: ROIManager | None = None,
         illumination_analyzer: IlluminationAnalyzer | None = None,
         illumination_decision: IlluminationDecisionStabilizer | None = None,
@@ -79,6 +83,13 @@ class ReplayRuntime:
         self._filter = landmark_filter
         self._logger = logger
         self._gesture_engine = gesture_engine
+        self._interaction_consumer = (
+            interaction_consumer
+        )
+        self._stop_requested = stop_requested
+        self._latest_interaction_state: (
+            InteractionState | None
+        ) = None
 
         self._roi_manager = roi_manager
         self._illumination_analyzer = (
@@ -99,6 +110,14 @@ class ReplayRuntime:
 
         return self._roi_manager is not None
 
+    @property
+    def latest_interaction_state(
+        self,
+    ) -> InteractionState | None:
+        """Most recent public interaction state."""
+
+        return self._latest_interaction_state
+
     def run(
         self,
         *,
@@ -108,6 +127,7 @@ class ReplayRuntime:
         """Execute one deterministic replay run."""
 
         processed_frames = 0
+        self._latest_interaction_state = None
 
         # ROI for frame t is selected from the most recent observation
         # available before frame t is processed. Therefore current-frame
@@ -134,6 +154,12 @@ class ReplayRuntime:
             self._source.open()
 
             while True:
+                if (
+                    self._stop_requested is not None
+                    and self._stop_requested()
+                ):
+                    break
+
                 packet = self._source.read()
 
                 if packet is None:
@@ -275,6 +301,18 @@ class ReplayRuntime:
                     self._logger.log_interaction_state(
                         interaction_state
                     )
+
+                    self._latest_interaction_state = (
+                        interaction_state
+                    )
+
+                    if (
+                        self._interaction_consumer
+                        is not None
+                    ):
+                        self._interaction_consumer(
+                            interaction_state
+                        )
 
                 processed_frames += 1
 

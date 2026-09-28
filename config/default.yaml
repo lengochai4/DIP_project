@@ -3,6 +3,7 @@ project:
   config_schema_version: "1"
 
 camera:
+  index: 0
   width: 640
   height: 480
   requested_fps: 30
@@ -70,8 +71,25 @@ filter:
     quality_adaptation_enabled: false
 
 gesture:
+  pointer_landmark_index: 8
+
+  pinch_thumb_landmark_index: 4
+  pinch_index_landmark_index: 8
+
+  hand_scale_landmark_a: 5
+  hand_scale_landmark_b: 17
+  hand_scale_epsilon: 0.000001
+
   pinch_on: 0.30
   pinch_off: 0.40
+
+  rotation_deadzone: 0.005
+  rotation_gain: 2.0
+  rotation_max_delta_rad: 0.10
+
+  scale_deadzone: 0.01
+  scale_gain: 1.0
+  scale_max_delta: 0.10
 
 logging:
   schema_version: "1"
@@ -87,3 +105,8 @@ renderer:
   enabled: true
   width: 1280
   height: 720
+  target_fps: 60
+
+  initial_scale: 1.0
+  min_scale: 0.5
+  max_scale: 2.0

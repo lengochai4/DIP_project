@@ -21,6 +21,39 @@ def test_default_config_resolves() -> None:
     assert len(resolved.sha256) == 64
 
 
+def test_default_camera_index_is_valid() -> None:
+    resolved = resolve_config(
+        DEFAULT_CONFIG
+    )
+
+    assert resolved.data["camera"]["index"] == 0
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        -1,
+        1.5,
+        True,
+        "0",
+    ],
+)
+def test_invalid_camera_index_is_rejected(
+    value,
+) -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "camera": {
+                    "index": value,
+                },
+            },
+        )
+
+
 def test_override_has_highest_precedence() -> None:
     resolved = resolve_config(
         DEFAULT_CONFIG,
@@ -590,5 +623,198 @@ def test_quality_adaptation_cannot_be_enabled_without_source() -> None:
                         ),
                     }
                 }
+            },
+        )
+
+
+def test_default_gesture_configuration_is_resolved() -> None:
+    resolved = resolve_config(
+        DEFAULT_CONFIG
+    )
+
+    gesture = resolved.data["gesture"]
+
+    assert gesture["pointer_landmark_index"] == 8
+    assert gesture["pinch_thumb_landmark_index"] == 4
+    assert gesture["pinch_index_landmark_index"] == 8
+
+    assert gesture["hand_scale_landmark_a"] == 5
+    assert gesture["hand_scale_landmark_b"] == 17
+
+    assert gesture["hand_scale_epsilon"] > 0.0
+
+    assert (
+        gesture["pinch_on"]
+        < gesture["pinch_off"]
+    )
+
+    assert gesture["rotation_deadzone"] >= 0.0
+    assert gesture["rotation_gain"] >= 0.0
+    assert gesture["rotation_max_delta_rad"] > 0.0
+
+    assert gesture["scale_deadzone"] >= 0.0
+    assert gesture["scale_gain"] >= 0.0
+    assert gesture["scale_max_delta"] > 0.0
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("pointer_landmark_index", -1),
+        ("pointer_landmark_index", 1.5),
+        ("pointer_landmark_index", True),
+        ("pinch_thumb_landmark_index", -1),
+        ("pinch_index_landmark_index", -1),
+        ("hand_scale_landmark_a", -1),
+        ("hand_scale_landmark_b", -1),
+    ],
+)
+def test_invalid_gesture_landmark_index_is_rejected(
+    key: str,
+    value: object,
+) -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "gesture": {
+                    key: value,
+                },
+            },
+        )
+
+
+def test_same_pinch_landmarks_are_rejected() -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "gesture": {
+                    "pinch_thumb_landmark_index": 8,
+                    "pinch_index_landmark_index": 8,
+                },
+            },
+        )
+
+
+def test_same_hand_scale_landmarks_are_rejected() -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "gesture": {
+                    "hand_scale_landmark_a": 5,
+                    "hand_scale_landmark_b": 5,
+                },
+            },
+        )
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("hand_scale_epsilon", 0.0),
+        ("hand_scale_epsilon", -0.1),
+        ("rotation_deadzone", -0.1),
+        ("rotation_gain", -0.1),
+        ("rotation_max_delta_rad", 0.0),
+        ("scale_deadzone", -0.1),
+        ("scale_gain", -0.1),
+        ("scale_max_delta", 0.0),
+    ],
+)
+def test_invalid_gesture_numeric_value_is_rejected(
+    key: str,
+    value: float,
+) -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "gesture": {
+                    key: value,
+                },
+            },
+        )
+
+
+def test_negative_pinch_threshold_is_rejected() -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "gesture": {
+                    "pinch_on": -0.1,
+                },
+            },
+        )
+
+
+def test_default_renderer_scene_configuration_is_resolved() -> None:
+    resolved = resolve_config(
+        DEFAULT_CONFIG
+    )
+
+    renderer = resolved.data[
+        "renderer"
+    ]
+
+    assert renderer["target_fps"] > 0
+
+    assert (
+        renderer["min_scale"]
+        <= renderer["initial_scale"]
+        <= renderer["max_scale"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("target_fps", 0.0),
+        ("initial_scale", 0.0),
+        ("min_scale", 0.0),
+        ("max_scale", 0.0),
+    ],
+)
+def test_invalid_renderer_positive_value_is_rejected(
+    key: str,
+    value: float,
+) -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "renderer": {
+                    key: value,
+                },
+            },
+        )
+
+
+def test_invalid_renderer_scale_order_is_rejected() -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "renderer": {
+                    "min_scale": 2.0,
+                    "initial_scale": 1.0,
+                    "max_scale": 3.0,
+                },
             },
         )

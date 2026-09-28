@@ -1,0 +1,1 @@
+"""Application extensions for DIP Touchless STEM."""

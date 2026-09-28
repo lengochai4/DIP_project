@@ -576,6 +576,71 @@ class InteractionState:
 
 The renderer may derive application-specific state but MUST NOT mutate Core state.
 
+`InteractionState` has the following public semantics:
+
+```text
+run_id
+    copied from the source TrackingFrame
+
+frame_id
+    copied from the source TrackingFrame
+
+timestamp_s
+    copied from the source TrackingFrame
+
+interaction_valid
+    true only for an ordinary usable continuation frame;
+    false for loss, invalid input, initialization, reset, and
+    reacquisition-neutral frames
+
+pointer_xy
+    filtered configured pointer-landmark x/y in FRAME_NORMALIZED
+    coordinates when the current frame is gesture-usable;
+    otherwise None
+
+pinch_ratio
+    normalized thumb-index distance divided by configured hand scale
+    when gesture-usable;
+    otherwise None
+
+pinch_active
+    hysteretic pinch state;
+    false whenever interaction state is reset or invalid
+
+rotation_delta
+    renderer-independent (yaw_delta_rad, pitch_delta_rad);
+    neutral value is (0.0, 0.0)
+
+scale_delta
+    renderer-independent signed dimensionless scale command;
+    positive means enlarge, negative means shrink;
+    neutral value is 0.0
+```
+
+Gesture equations and state transitions are owned by
+`03_ALGORITHM_AND_EXPERIMENTS.md`.
+
+The 3D Extension MAY accumulate these commands into renderer-specific
+object state, but MUST NOT reinterpret tracking/filter internals or
+mutate Core state.
+
+The project-owned gesture interface is:
+
+```python
+class GestureEngine(Protocol):
+    def update(
+        self,
+        frame: TrackingFrame,
+    ) -> InteractionState: ...
+
+    def reset(self) -> None: ...
+```
+
+`GestureEngine.update` consumes only project-owned public data. The
+baseline gesture implementation MUST derive interaction commands from
+`TrackingFrame.filtered_landmarks`, not from raw landmarks or provider
+objects.
+
 ## 11. Public interfaces
 
 ```python
