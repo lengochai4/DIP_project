@@ -18,10 +18,14 @@ dependencies = [
 dev = [
     "pytest>=8",
 ]
+demo3d = [
+    "pygame==2.6.1",
+    "PyOpenGL==3.1.10",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
