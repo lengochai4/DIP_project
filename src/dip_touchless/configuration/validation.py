@@ -101,6 +101,12 @@ def validate_config(config: Mapping[str, Any]) -> None:
     gesture = config["gesture"]
     renderer = config["renderer"]
 
+    _require_non_negative_integer(
+        camera,
+        "index",
+        "camera",
+    )
+
     _require_positive_number(camera, "width", "camera")
     _require_positive_number(camera, "height", "camera")
     _require_positive_number(camera, "requested_fps", "camera")

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-import yaml 
+import yaml
 
 from dip_touchless.configuration import (
     ConfigValidationError,
@@ -19,6 +19,39 @@ def test_default_config_resolves() -> None:
 
     assert resolved.data["runtime"]["mode"] == "realtime"
     assert len(resolved.sha256) == 64
+
+
+def test_default_camera_index_is_valid() -> None:
+    resolved = resolve_config(
+        DEFAULT_CONFIG
+    )
+
+    assert resolved.data["camera"]["index"] == 0
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        -1,
+        1.5,
+        True,
+        "0",
+    ],
+)
+def test_invalid_camera_index_is_rejected(
+    value,
+) -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "camera": {
+                    "index": value,
+                },
+            },
+        )
 
 
 def test_override_has_highest_precedence() -> None:

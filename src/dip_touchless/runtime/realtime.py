@@ -124,7 +124,7 @@ class RealtimeRuntime:
         metadata: Mapping[str, Any],
         resolved_config: Mapping[str, Any],
     ) -> int:
-        """Execute one synchronous realtime run."""
+        """Execute one deterministic replay run."""
 
         processed_frames = 0
         self._latest_interaction_state = None

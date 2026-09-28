@@ -143,7 +143,7 @@ def test_invalid_interaction_renders_unchanged_scene() -> None:
         "mediapipe",
     ],
 )
-def test_extension_does_not_import_algorithm_internals(
+def test_stem3d_extension_modules_do_not_import_algorithm_internals(
     forbidden_import: str,
 ) -> None:
     extension_root = (
@@ -154,14 +154,19 @@ def test_extension_does_not_import_algorithm_internals(
         / "stem3d"
     )
 
-    source = "\n".join(
+    # live_demo is the composition root: it wires Core components into the
+    # Extension. The boundary restriction applies to the Extension modules
+    # that consume InteractionState, not to the composition root.
+    extension_modules = (
         path.read_text(
             encoding="utf-8",
         )
         for path in extension_root.glob(
             "*.py"
         )
+        if path.name != "live_demo.py"
     )
+    source = "\n".join(extension_modules)
 
     assert (
         forbidden_import
