@@ -63,8 +63,18 @@ class PrimaryMetricRow:
     profile: str
     run_id: str
     metric_name: str
-    value: float
+    value: float | None
     sample_count: int
+    available: bool
+    unavailable_reason: str | None
+
+
+_NO_COMMON_USABLE_ERROR = (
+    "no common usable landmark frames"
+)
+_NO_COMMON_USABLE_REASON = (
+    "no_common_usable_frames"
+)
 
 
 def _nonempty_string(
@@ -521,35 +531,81 @@ def _metric_rows(
             end_s=index.analysis_end_s,
         )
 
-        if index.primary_metric == "radial_rms_jitter":
-            results: Mapping[str, MetricResult] = (
-                radial_rms_jitter_comparison(
+        try:
+            if index.primary_metric == "radial_rms_jitter":
+                results: Mapping[str, MetricResult] = (
+                    radial_rms_jitter_comparison(
+                        trial_runs,
+                        start_s=index.analysis_start_s,
+                        end_s=index.analysis_end_s,
+                    )
+                )
+            elif (
+                index.primary_metric
+                == "trajectory_deviation_rmse"
+            ):
+                results = trajectory_deviation_comparison(
                     trial_runs,
+                    reference_condition="F0",
                     start_s=index.analysis_start_s,
                     end_s=index.analysis_end_s,
                 )
-            )
-        elif index.primary_metric == "trajectory_deviation_rmse":
-            results = trajectory_deviation_comparison(
-                trial_runs,
-                reference_condition="F0",
-                start_s=index.analysis_start_s,
-                end_s=index.analysis_end_s,
-            )
-        elif index.primary_metric == "valid_hand_observation_rate":
-            results = {
-                profile: valid_hand_observation_rate(
-                    run,
-                    start_s=index.analysis_start_s,
-                    end_s=index.analysis_end_s,
+            elif (
+                index.primary_metric
+                == "valid_hand_observation_rate"
+            ):
+                results = {
+                    profile: valid_hand_observation_rate(
+                        run,
+                        start_s=index.analysis_start_s,
+                        end_s=index.analysis_end_s,
+                    )
+                    for profile, run in trial_runs.items()
+                }
+            else:
+                raise RegenerationError(
+                    "unsupported primary metric: "
+                    f"{index.primary_metric}"
                 )
-                for profile, run in trial_runs.items()
+
+        except MetricCalculationError as exc:
+            paired_metrics = {
+                "radial_rms_jitter",
+                "trajectory_deviation_rmse",
             }
-        else:
-            raise RegenerationError(
-                "unsupported primary metric: "
-                f"{index.primary_metric}"
-            )
+
+            if (
+                index.primary_metric in paired_metrics
+                and str(exc) == _NO_COMMON_USABLE_ERROR
+            ):
+                for profile in trial_runs:
+                    rows.append(
+                        PrimaryMetricRow(
+                            batch_id=index.batch_id,
+                            experiment_id=index.experiment_id,
+                            trial_id=trial_id,
+                            profile=profile,
+                            run_id=run_id_lookup[
+                                (
+                                    trial_id,
+                                    profile,
+                                )
+                            ],
+                            metric_name=(
+                                index.primary_metric
+                            ),
+                            value=None,
+                            sample_count=0,
+                            available=False,
+                            unavailable_reason=(
+                                _NO_COMMON_USABLE_REASON
+                            ),
+                        )
+                    )
+
+                continue
+
+            raise
 
         for profile, result in results.items():
             rows.append(
@@ -562,6 +618,8 @@ def _metric_rows(
                     metric_name=result.name,
                     value=result.value,
                     sample_count=result.sample_count,
+                    available=True,
+                    unavailable_reason=None,
                 )
             )
 
@@ -588,6 +646,8 @@ def _write_metrics_csv(
                 "metric_name",
                 "value",
                 "sample_count",
+                "available",
+                "unavailable_reason",
             ),
         )
         writer.writeheader()
@@ -601,8 +661,18 @@ def _write_metrics_csv(
                     "profile": row.profile,
                     "run_id": row.run_id,
                     "metric_name": row.metric_name,
-                    "value": row.value,
+                    "value": (
+                        ""
+                        if row.value is None
+                        else row.value
+                    ),
                     "sample_count": row.sample_count,
+                    "available": str(
+                        row.available
+                    ).lower(),
+                    "unavailable_reason": (
+                        row.unavailable_reason or ""
+                    ),
                 }
             )
 
@@ -617,16 +687,42 @@ def _write_primary_plot(
 
     import matplotlib.pyplot as plt
 
-    profiles = tuple(dict.fromkeys(row.profile for row in rows))
+    profiles = tuple(
+        dict.fromkeys(
+            row.profile
+            for row in rows
+        )
+    )
     figure, axes = plt.subplots()
+    has_numeric_value = False
 
     for x, profile in enumerate(profiles):
         values = [
             row.value
             for row in rows
-            if row.profile == profile
+            if (
+                row.profile == profile
+                and row.available
+                and row.value is not None
+            )
         ]
-        axes.scatter([x] * len(values), values)
+
+        if values:
+            has_numeric_value = True
+            axes.scatter(
+                [x] * len(values),
+                values,
+            )
+
+    if not has_numeric_value:
+        axes.text(
+            0.5,
+            0.5,
+            "No evaluable primary metric values",
+            transform=axes.transAxes,
+            horizontalalignment="center",
+            verticalalignment="center",
+        )
 
     axes.set_xticks(range(len(profiles)), profiles)
     axes.set_xlabel("Condition")
@@ -781,12 +877,80 @@ def _file_sha256(
     return digest.hexdigest()
 
 
+def _metric_availability_summary(
+    index: LoadedBatchIndex,
+    rows: tuple[PrimaryMetricRow, ...],
+) -> dict[str, Any]:
+    recorded_trial_ids = tuple(
+        dict.fromkeys(
+            entry.trial_id
+            for entry in index.runs
+        )
+    )
+
+    evaluable_trial_count = 0
+    unavailable_trials = []
+
+    for trial_id in recorded_trial_ids:
+        trial_rows = tuple(
+            row
+            for row in rows
+            if row.trial_id == trial_id
+        )
+
+        if not trial_rows:
+            raise RegenerationError(
+                "missing primary metric rows for "
+                f"trial: {trial_id}"
+            )
+
+        availability = {
+            row.available
+            for row in trial_rows
+        }
+
+        if len(availability) != 1:
+            raise RegenerationError(
+                "mixed primary metric availability "
+                f"within trial: {trial_id}"
+            )
+
+        if True in availability:
+            evaluable_trial_count += 1
+            continue
+
+        reasons = {
+            row.unavailable_reason
+            for row in trial_rows
+        }
+
+        if reasons != {_NO_COMMON_USABLE_REASON}:
+            raise RegenerationError(
+                "invalid unavailable reason for "
+                f"trial: {trial_id}"
+            )
+
+        unavailable_trials.append(
+            {
+                "trial_id": trial_id,
+                "reason": next(iter(reasons)),
+            }
+        )
+
+    return {
+        "recorded_trial_count": len(recorded_trial_ids),
+        "evaluable_trial_count": evaluable_trial_count,
+        "unavailable_trials": unavailable_trials,
+    }
+
+
 def _write_provenance(
     index: LoadedBatchIndex,
     grouped: Mapping[
         str,
         Mapping[str, RunArtifacts],
     ],
+    rows: tuple[PrimaryMetricRow, ...],
     *,
     batch_index_path: Path,
     output_path: Path,
@@ -826,6 +990,13 @@ def _write_provenance(
             }
         )
 
+    metric_availability = (
+        _metric_availability_summary(
+            index,
+            rows,
+        )
+    )
+
     payload = {
         "schema_version": "1",
         "batch_id": index.batch_id,
@@ -847,6 +1018,21 @@ def _write_provenance(
         },
         "analysis": {
             "code_revision": analysis_code_revision,
+            "recorded_trial_count": (
+                metric_availability[
+                    "recorded_trial_count"
+                ]
+            ),
+            "evaluable_trial_count": (
+                metric_availability[
+                    "evaluable_trial_count"
+                ]
+            ),
+            "unavailable_trials": (
+                metric_availability[
+                    "unavailable_trials"
+                ]
+            ),
         },
         "runs": run_rows,
     }
@@ -907,6 +1093,7 @@ def regenerate_batch(
     _write_provenance(
         index,
         grouped,
+        rows,
         batch_index_path=batch_index,
         output_path=output_dir / "provenance.json",
         analysis_code_revision=resolved_analysis_revision,
