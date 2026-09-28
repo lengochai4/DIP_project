@@ -425,21 +425,80 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "documented quality source is configured"
         )
 
-    pinch_on = gesture.get("pinch_on")
-    pinch_off = gesture.get("pinch_off")
-
-    if not all(
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        for value in (pinch_on, pinch_off)
+    for key in (
+        "pointer_landmark_index",
+        "pinch_thumb_landmark_index",
+        "pinch_index_landmark_index",
+        "hand_scale_landmark_a",
+        "hand_scale_landmark_b",
     ):
-        raise ConfigValidationError(
-            "gesture pinch thresholds must be numeric"
+        _require_non_negative_integer(
+            gesture,
+            key,
+            "gesture",
         )
 
-    if not pinch_on < pinch_off:
+    if (
+        gesture["pinch_thumb_landmark_index"]
+        == gesture["pinch_index_landmark_index"]
+    ):
         raise ConfigValidationError(
-            "gesture.pinch_on must be less than gesture.pinch_off"
+            "gesture pinch landmarks must be distinct"
+        )
+
+    if (
+        gesture["hand_scale_landmark_a"]
+        == gesture["hand_scale_landmark_b"]
+    ):
+        raise ConfigValidationError(
+            "gesture hand-scale landmarks must be distinct"
+        )
+
+    _require_positive_number(
+        gesture,
+        "hand_scale_epsilon",
+        "gesture",
+    )
+    _require_non_negative_number(
+        gesture,
+        "pinch_on",
+        "gesture",
+    )
+    _require_non_negative_number(
+        gesture,
+        "pinch_off",
+        "gesture",
+    )
+
+    if not (
+        gesture["pinch_on"]
+        < gesture["pinch_off"]
+    ):
+        raise ConfigValidationError(
+            "gesture.pinch_on must be less than "
+            "gesture.pinch_off"
+        )
+
+    for key in (
+        "rotation_deadzone",
+        "rotation_gain",
+        "scale_deadzone",
+        "scale_gain",
+    ):
+        _require_non_negative_number(
+            gesture,
+            key,
+            "gesture",
+        )
+
+    for key in (
+        "rotation_max_delta_rad",
+        "scale_max_delta",
+    ):
+        _require_positive_number(
+            gesture,
+            key,
+            "gesture",
         )
 
     if renderer.get("enabled"):
@@ -469,4 +528,22 @@ def _require_byte_range_number(
     ):
         raise ConfigValidationError(
             f"{section_name}.{key} must be in [0, 255]"
+        )
+
+
+def _require_non_negative_integer(
+    section: Mapping[str, Any],
+    key: str,
+    section_name: str,
+) -> None:
+    value = section.get(key)
+
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or value < 0
+    ):
+        raise ConfigValidationError(
+            f"{section_name}.{key} must be "
+            "a non-negative integer"
         )
