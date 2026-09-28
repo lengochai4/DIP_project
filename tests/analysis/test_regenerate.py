@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import json
 from pathlib import Path
 
@@ -191,6 +192,9 @@ def test_regenerate_batch_creates_primary_assets(
         batch_index=batch_index,
         runs_root=tmp_path / "runs",
         output_root=tmp_path / "results",
+        analysis_code_revision=(
+            "test-analysis-revision"
+        ),
     )
 
     with (output_dir / "metrics.csv").open(
@@ -211,3 +215,46 @@ def test_regenerate_batch_creates_primary_assets(
     assert (output_dir / "primary_metric.png").stat().st_size > 0
     assert (output_dir / "trajectories.csv").is_file()
     assert (output_dir / "trajectory_xy.png").stat().st_size > 0
+
+    provenance_path = output_dir / "provenance.json"
+    provenance = json.loads(
+        provenance_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert provenance["analysis"]["code_revision"] == (
+        "test-analysis-revision"
+    )
+    assert provenance["exclusion_rules"] == [
+        "startup warmup"
+    ]
+    assert provenance["planned_comparisons"] == [
+        ["f0", "f1"],
+        ["f0", "f2"],
+    ]
+    assert provenance["batch_index"]["sha256"] == (
+        hashlib.sha256(
+            batch_index.read_bytes()
+        ).hexdigest()
+    )
+    assert [
+        row["run_id"]
+        for row in provenance["runs"]
+    ] == [
+        "run-f0",
+        "run-f1",
+        "run-f2",
+    ]
+    assert all(
+        row["config_hash"]
+        for row in provenance["runs"]
+    )
+    assert all(
+        row["run_code_revision"] == "test-revision"
+        for row in provenance["runs"]
+    )
+    assert all(
+        row["source_data"]["sha256"]
+        for row in provenance["runs"]
+    )

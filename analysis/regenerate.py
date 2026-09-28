@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -42,9 +44,14 @@ class IndexedRun:
 class LoadedBatchIndex:
     batch_id: str
     experiment_id: str
+    manifest_path: str | None
     analysis_start_s: float
     analysis_end_s: float | None
     primary_metric: str
+    planned_comparisons: tuple[
+        tuple[str, str], ...
+    ]
+    exclusion_rules: tuple[str, ...]
     runs: tuple[IndexedRun, ...]
 
 
@@ -140,6 +147,94 @@ def load_batch_index(
         payload.get("primary_metric"),
         name="primary_metric",
     )
+
+    manifest_path = payload.get(
+        "manifest_path"
+    )
+
+    if (
+        manifest_path is not None
+        and (
+            not isinstance(manifest_path, str)
+            or not manifest_path.strip()
+        )
+    ):
+        raise RegenerationError(
+            "manifest_path must be a non-empty "
+            "string or null"
+        )
+
+    raw_comparisons = payload.get(
+        "planned_comparisons"
+    )
+
+    if (
+        not isinstance(raw_comparisons, list)
+        or not raw_comparisons
+    ):
+        raise RegenerationError(
+            "planned_comparisons must be "
+            "a non-empty list"
+        )
+
+    comparisons: list[tuple[str, str]] = []
+
+    for index, comparison in enumerate(raw_comparisons):
+        if (
+            not isinstance(comparison, list)
+            or len(comparison) != 2
+        ):
+            raise RegenerationError(
+                f"planned_comparisons[{index}] "
+                "must contain two profiles"
+            )
+
+        left, right = comparison
+
+        if (
+            not isinstance(left, str)
+            or not left.strip()
+            or not isinstance(right, str)
+            or not right.strip()
+        ):
+            raise RegenerationError(
+                "comparison profiles must be "
+                "non-empty strings"
+            )
+
+        comparisons.append(
+            (
+                left.strip().lower(),
+                right.strip().lower(),
+            )
+        )
+
+    raw_exclusions = payload.get(
+        "exclusion_rules"
+    )
+
+    if (
+        not isinstance(raw_exclusions, list)
+        or not raw_exclusions
+    ):
+        raise RegenerationError(
+            "exclusion_rules must be "
+            "a non-empty list"
+        )
+
+    exclusion_rules: list[str] = []
+
+    for index, rule in enumerate(raw_exclusions):
+        if (
+            not isinstance(rule, str)
+            or not rule.strip()
+        ):
+            raise RegenerationError(
+                f"exclusion_rules[{index}] "
+                "must be a non-empty string"
+            )
+
+        exclusion_rules.append(rule.strip())
 
     window = payload.get("analysis_window")
 
@@ -254,6 +349,21 @@ def load_batch_index(
             )
         )
 
+    indexed_profiles = {
+        run.profile
+        for run in runs
+    }
+
+    for left, right in comparisons:
+        if (
+            left not in indexed_profiles
+            or right not in indexed_profiles
+        ):
+            raise RegenerationError(
+                "planned comparison references "
+                "a profile absent from the batch"
+            )
+
     trial_sources: dict[str, Path] = {}
 
     for run in runs:
@@ -270,6 +380,7 @@ def load_batch_index(
     return LoadedBatchIndex(
         batch_id=batch_id,
         experiment_id=experiment_id,
+        manifest_path=manifest_path,
         analysis_start_s=float(start_s),
         analysis_end_s=(
             float(end_s)
@@ -277,6 +388,8 @@ def load_batch_index(
             else None
         ),
         primary_metric=primary_metric,
+        planned_comparisons=tuple(comparisons),
+        exclusion_rules=tuple(exclusion_rules),
         runs=tuple(runs),
     )
 
@@ -629,11 +742,132 @@ def _write_trajectory_example(
     return True
 
 
+def _git_revision() -> str | None:
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "rev-parse",
+                "HEAD",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+    ):
+        return None
+
+    revision = result.stdout.strip()
+    return revision or None
+
+
+def _file_sha256(
+    path: Path,
+) -> str:
+    digest = hashlib.sha256()
+
+    with path.open("rb") as file:
+        for chunk in iter(
+            lambda: file.read(1024 * 1024),
+            b"",
+        ):
+            digest.update(chunk)
+
+    return digest.hexdigest()
+
+
+def _write_provenance(
+    index: LoadedBatchIndex,
+    grouped: Mapping[
+        str,
+        Mapping[str, RunArtifacts],
+    ],
+    *,
+    batch_index_path: Path,
+    output_path: Path,
+    analysis_code_revision: str | None,
+) -> None:
+    run_rows = []
+
+    for entry in index.runs:
+        run = grouped[
+            entry.trial_id
+        ][entry.profile.upper()]
+        metadata = run.metadata
+
+        run_rows.append(
+            {
+                "trial_id": entry.trial_id,
+                "profile": entry.profile,
+                "run_id": entry.run_id,
+                "spec_version": metadata.get(
+                    "spec_version"
+                ),
+                "run_code_revision": metadata.get(
+                    "code_revision"
+                ),
+                "log_schema_version": metadata.get(
+                    "log_schema_version"
+                ),
+                "config_hash": metadata.get(
+                    "config_hash"
+                ),
+                "source_data": metadata.get(
+                    "source_data"
+                ),
+                "provider": metadata.get(
+                    "provider"
+                ),
+            }
+        )
+
+    payload = {
+        "schema_version": "1",
+        "batch_id": index.batch_id,
+        "experiment_id": index.experiment_id,
+        "manifest_path": index.manifest_path,
+        "primary_metric": index.primary_metric,
+        "analysis_window": {
+            "start_s": index.analysis_start_s,
+            "end_s": index.analysis_end_s,
+        },
+        "planned_comparisons": [
+            [left, right]
+            for left, right in index.planned_comparisons
+        ],
+        "exclusion_rules": list(index.exclusion_rules),
+        "batch_index": {
+            "path": str(batch_index_path.resolve()),
+            "sha256": _file_sha256(batch_index_path),
+        },
+        "analysis": {
+            "code_revision": analysis_code_revision,
+        },
+        "runs": run_rows,
+    }
+
+    output_path.write_text(
+        json.dumps(
+            payload,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 def regenerate_batch(
     *,
     batch_index: Path,
     runs_root: Path,
     output_root: Path,
+    analysis_code_revision: str | None = None,
 ) -> Path:
     """Regenerate primary metric table and plots from a batch index."""
 
@@ -648,6 +882,11 @@ def regenerate_batch(
 
     output_dir = output_root / index.batch_id
     output_dir.mkdir(parents=True, exist_ok=True)
+    resolved_analysis_revision = (
+        analysis_code_revision
+        if analysis_code_revision is not None
+        else _git_revision()
+    )
 
     _write_metrics_csv(rows, output_dir / "metrics.csv")
     _write_primary_plot(rows, output_dir / "primary_metric.png")
@@ -664,6 +903,14 @@ def regenerate_batch(
     if not has_trajectory:
         trajectories_path.unlink(missing_ok=True)
         trajectory_plot_path.unlink(missing_ok=True)
+
+    _write_provenance(
+        index,
+        grouped,
+        batch_index_path=batch_index,
+        output_path=output_dir / "provenance.json",
+        analysis_code_revision=resolved_analysis_revision,
+    )
 
     return output_dir
 
