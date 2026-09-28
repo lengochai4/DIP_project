@@ -1,0 +1,39 @@
+schema_version: "1"
+
+experiment_id: "G7-A2-DYNAMIC"
+
+profiles:
+  - f0
+  - f1
+  - f2
+
+model: "../../models/hand_landmarker.task"
+
+warmup_s: 2.0
+
+analysis_window:
+  start_s: 2.0
+  end_s: 10.0
+
+primary_metric: "trajectory_deviation_rmse"
+
+planned_comparisons:
+  - [f0, f1]
+  - [f0, f2]
+
+exclusion_rules:
+  - "Exclude complete trial only if recorded source is corrupted or unreadable."
+  - "Exclude complete trial if replay timestamps are invalid or non-monotonic."
+  - "Exclude complete trial if paired frame/timestamp invariants fail because of source/runtime failure."
+  - "Exclude complete trial for complete camera/source acquisition failure."
+  - "Do not exclude poor tracking, NO_HAND frames, high deviation, unfavorable outcomes, or post-hoc noisy segments."
+
+trials:
+  - trial_id: "trial-001"
+    source: "../../runs/final_sources/dynamic_normal/trial-001.avi"
+
+  - trial_id: "trial-002"
+    source: "../../runs/final_sources/dynamic_normal/trial-002.avi"
+
+  - trial_id: "trial-003"
+    source: "../../runs/final_sources/dynamic_normal/trial-003.avi"
