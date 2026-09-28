@@ -510,6 +510,65 @@ No — no final F1/F2 experimental result set exists. Earlier development
 runs may lack these event records and must not be treated as final
 event-complete runs.
 
+### G5 algorithm/interface decision — deterministic gesture mapping
+
+Change:
+
+Defined the course-baseline gesture mapping and GestureEngine contract:
+configured landmark roles, palm-width-normalized pinch, pinch
+hysteresis, bounded/deadzoned pointer rotation, pinch-ratio scale delta,
+and explicit neutral loss/reset/reacquisition behavior.
+
+Reason:
+
+The previous G5 specification required normalized pinch, hysteresis,
+rotation/scale deadzones and clamps, but did not define the exact
+landmark roles, scale mapping, public InteractionState field semantics,
+or initialization/reacquisition state transitions. Implementing those
+details without a specification decision would make gesture behavior
+ambiguous.
+
+Canonical file/section changed:
+
+`02_ARCHITECTURE_AND_CONTRACTS.md`, InteractionState and public
+interfaces;
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, Gesture mapping.
+
+Code/modules affected:
+
+future `interaction` / gesture modules, configuration validation,
+ReplayRuntime/RealtimeRuntime gesture integration, interaction logging,
+and 3D STEM Extension.
+
+Algorithmic impact:
+
+Defines the project-specific G5 gesture algorithm. It does not alter Raw,
+fixed 1-Euro, adaptive 1-Euro, ROI, illumination, or landmark-provider
+behavior.
+
+Experimental impact:
+
+RQ1/RQ2 preprocessing and temporal-filter baselines are unchanged.
+Future RQ3 demo behavior must use this gesture mapping and preserve its
+resolved configuration.
+
+Compatibility impact:
+
+No implemented G5 gesture engine or final RQ3 interaction result existed
+before this decision.
+
+Tests added/updated:
+
+Upcoming G5 tests will cover normalized pinch, denominator protection,
+hysteresis, rotation deadzone/gain/clamp, scale deadzone/gain/clamp,
+loss reset, first-frame neutrality, temporal-filter-reset neutrality,
+and reacquisition neutrality.
+
+Existing results invalidated:
+
+No — no final G5 interaction experiments/results exist.
+
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:

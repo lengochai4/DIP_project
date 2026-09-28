@@ -867,65 +867,276 @@ The same event semantics apply to F1 and F2.
 
 ## 10. Gesture mapping
 
-### 10.1 Rotation
+Gesture mapping consumes filtered project-domain landmarks only. It MUST NOT read MediaPipe objects or renderer state.
 
-Use filtered index-fingertip x/y displacement:
+The baseline landmark roles are configurable and use these engineering defaults:
 
-$$
-\Delta x=x_t-x_{t-1},\qquad \Delta y=y_t-y_{t-1}
-$$
+```text
+pointer landmark          = index fingertip, landmark 8
+pinch thumb landmark      = thumb tip, landmark 4
+pinch index landmark      = index fingertip, landmark 8
+hand-scale landmark pair  = index MCP 5 and pinky MCP 17
+```
 
-Apply configured deadzone, gain, and maximum-delta clamp before emitting yaw/pitch-style rotation deltas.
+These indices are structural configuration, not measured research results.
 
-Quaternion composition MAY be used by the extension for stable 3D rotation accumulation.
+### 10.1 Pointer and rotation
+
+Let the filtered pointer position be:
+
+\[
+p_t=(x_t,y_t)
+\]
+
+For two consecutive usable interaction frames:
+
+\[
+\Delta x=x_t-x_{t-1}, \qquad
+\Delta y=y_t-y_{t-1}
+\]
+
+Define the continuous deadzone function:
+
+\[
+D(a,z)=
+\begin{cases}
+0, & |a|\le z \\
+\operatorname{sign}(a)(|a|-z), & |a|>z
+\end{cases}
+\]
+
+The baseline rotation command is:
+
+\[
+\Delta yaw
+=
+clip(
+g_r D(\Delta x,z_r),
+-\Delta r_{max},
++\Delta r_{max}
+)
+\]
+
+\[
+\Delta pitch
+=
+clip(
+-g_r D(\Delta y,z_r),
+-\Delta r_{max},
++\Delta r_{max}
+)
+\]
+
+where image y increases downward, so the minus sign makes upward hand motion produce positive pitch.
+
+`rotation_delta` is:
+
+```text
+(yaw_delta_rad, pitch_delta_rad)
+```
+
+and is expressed in radians.
+
+Required configurable parameters:
+
+```text
+pointer_landmark_index
+rotation_deadzone
+rotation_gain
+rotation_max_delta_rad
+```
+
+Starter/default values are engineering choices and MUST NOT be described as optimal research results.
 
 ### 10.2 Scale-normalized pinch
 
-Thumb-index 2D distance:
+Thumb-index 2D distance is:
 
-$$
-d_p=\|p_{index}-p_{thumb}\|_{xy}
-$$
+\[
+d_p =
+\|p_{pinch-index}-p_{thumb}\|_{xy}
+\]
 
-Define documented hand scale from a configured stable landmark pair/palm measure:
+Hand scale is the 2D distance between the configured palm-scale landmarks:
 
-$$
-r_p=\frac{d_p}{max(s_h,\epsilon)}
-$$
+\[
+s_h =
+\|p_{scale-a}-p_{scale-b}\|_{xy}
+\]
 
-Use `r_p` rather than a fixed absolute image-normalized distance.
+The normalized pinch ratio is:
 
-Hysteresis is required:
+\[
+r_p =
+\frac{d_p}
+{\max(s_h,\epsilon)}
+\]
+
+where `hand_scale_epsilon > 0`.
+
+The baseline therefore remains independent of an absolute image-normalized pinch distance.
+
+Pinch hysteresis is:
 
 ```text
 inactive → active when r_p < pinch_on
 
 active   → inactive when r_p > pinch_off
 
-pinch_on < pinch_off
+otherwise retain the previous state
+
+0 <= pinch_on < pinch_off
 ```
 
-Tracking loss invalidates/releases pinch safely.
+Equality with either threshold does not itself change state.
 
-### 10.3 Render selection — optional
+Required configurable parameters:
 
-If implemented, selection uses a **render-view picking ray**:
+```text
+pinch_thumb_landmark_index
+pinch_index_landmark_index
+hand_scale_landmark_a
+hand_scale_landmark_b
+hand_scale_epsilon
+pinch_on
+pinch_off
+```
+
+### 10.3 Scale delta
+
+Scaling uses change in normalized pinch ratio while the pinch is continuously active.
+
+For consecutive frames:
+
+\[
+\Delta r_p = r_{p,t}-r_{p,t-1}
+\]
+
+Positive `scale_delta` means enlarge and negative `scale_delta` means shrink.
+
+When pinch was active on the previous frame and remains active on the current frame:
+
+\[
+\Delta s
+=
+clip(
+g_s D(\Delta r_p,z_s),
+-\Delta s_{max},
++\Delta s_{max}
+)
+\]
+
+Otherwise:
+
+\[
+\Delta s=0
+\]
+
+Therefore pinch activation and pinch release frames are scale-neutral.
+
+`scale_delta` is a renderer-independent signed dimensionless command. The 3D Extension owns the final object-scale accumulation and object-scale bounds.
+
+Required configurable parameters:
+
+```text
+scale_deadzone
+scale_gain
+scale_max_delta
+```
+
+### 10.4 Gesture validity, loss, reset, and reacquisition
+
+A frame is gesture-usable only when the required filtered landmarks are present with finite coordinates.
+
+If the frame is unusable because of tracking loss, invalid/missing filtered landmarks, or missing required landmark indices:
+
+```text
+interaction_valid = false
+pointer_xy = None
+pinch_ratio = None
+pinch_active = false
+rotation_delta = (0.0, 0.0)
+scale_delta = 0.0
+```
+
+The GestureEngine MUST clear its previous pointer, pinch, and scale-reference state.
+
+The next usable frame after any such invalid frame is an initialization frame.
+
+The following are also initialization/neutral transitions:
+
+```text
+first usable frame after GestureEngine.reset()
+TrackingStatus.REACQUIRED
+filter_diagnostics.reset_occurred == true
+```
+
+On an initialization frame:
+
+```text
+interaction_valid = false
+pointer_xy = current filtered pointer
+pinch_ratio = current normalized pinch ratio
+pinch_active = false
+rotation_delta = (0.0, 0.0)
+scale_delta = 0.0
+```
+
+The current pointer and ratio become references for the next usable frame.
+
+On an ordinary usable continuation frame:
+
+```text
+interaction_valid = true
+pointer_xy = current filtered pointer
+pinch_ratio = current normalized pinch ratio
+pinch_active = hysteresis result
+rotation_delta = bounded/deadzoned rotation command
+scale_delta = bounded/deadzoned scale command
+```
+
+This rule prevents acquisition, tracking loss, temporal-filter reset, and reacquisition from producing one-frame motion impulses or a stuck pinch.
+
+### 10.5 Gesture configuration invariants
+
+Configuration validation MUST enforce:
+
+```text
+all landmark indices are integers >= 0
+pinch thumb/index landmarks are distinct
+hand-scale landmark endpoints are distinct
+
+hand_scale_epsilon > 0
+
+0 <= pinch_on < pinch_off
+
+rotation_deadzone >= 0
+rotation_gain >= 0
+rotation_max_delta_rad > 0
+
+scale_deadzone >= 0
+scale_gain >= 0
+scale_max_delta > 0
+```
+
+All numeric values MUST be finite.
+
+### 10.6 Render selection — optional
+
+If implemented, selection uses a render-view picking ray:
 
 ```text
 filtered x/y
-
 → viewport
-
 → NDC
-
 → inverse projection/view
-
 → renderer world ray
-
 → ray-object/plane intersection
 ```
 
-It MUST NOT be described as physical touch sensing or metric camera-ray depth reconstruction. It is optional if it threatens completion of core DIP experiments.
+It MUST NOT be described as physical touch sensing or metric camera-ray depth reconstruction.
+
+Picking remains optional for the course baseline.
 
 ## 11. Required filter/config invariants
 
