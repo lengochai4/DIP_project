@@ -12,6 +12,7 @@ from dip_touchless.configuration import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = PROJECT_ROOT / "config" / "default.yaml"
+EXPERIMENT_CONFIG_DIR = PROJECT_ROOT / "config" / "experiments"
 
 
 def test_default_config_resolves() -> None:
@@ -19,6 +20,119 @@ def test_default_config_resolves() -> None:
 
     assert resolved.data["runtime"]["mode"] == "realtime"
     assert len(resolved.sha256) == 64
+
+
+def test_default_experiment_warmup_is_zero() -> None:
+    resolved = resolve_config(
+        DEFAULT_CONFIG
+    )
+
+    assert (
+        resolved.data["experiment"]["warmup_s"]
+        == 0.0
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        -0.1,
+        float("nan"),
+        float("inf"),
+        True,
+        "1.0",
+    ],
+)
+def test_invalid_experiment_warmup_is_rejected(
+    value,
+) -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "experiment": {
+                    "warmup_s": value,
+                },
+            },
+        )
+
+
+@pytest.mark.parametrize(
+    (
+        "profile_name",
+        "condition",
+        "clahe_policy",
+        "filter_mode",
+    ),
+    [
+        (
+            "f0.yaml",
+            "F0",
+            "adaptive",
+            "RAW",
+        ),
+        (
+            "f1.yaml",
+            "F1",
+            "adaptive",
+            "ONE_EURO_FIXED",
+        ),
+        (
+            "f2.yaml",
+            "F2",
+            "adaptive",
+            "ONE_EURO_ADAPTIVE",
+        ),
+        (
+            "p0.yaml",
+            "P0",
+            "bypass",
+            "RAW",
+        ),
+        (
+            "p1.yaml",
+            "P1",
+            "adaptive",
+            "RAW",
+        ),
+    ],
+)
+def test_g6_experiment_profile_semantics(
+    profile_name,
+    condition,
+    clahe_policy,
+    filter_mode,
+) -> None:
+    resolved = resolve_config(
+        DEFAULT_CONFIG,
+        profile_path=(
+            EXPERIMENT_CONFIG_DIR
+            / profile_name
+        ),
+    )
+
+    assert (
+        resolved.data["runtime"]["mode"]
+        == "replay"
+    )
+    assert (
+        resolved.data["renderer"]["enabled"]
+        is False
+    )
+    assert (
+        resolved.data["experiment"]["condition"]
+        == condition
+    )
+    assert (
+        resolved.data["clahe"]["policy"]
+        == clahe_policy
+    )
+    assert (
+        resolved.data["filter"]["mode"]
+        == filter_mode
+    )
 
 
 def test_default_camera_index_is_valid() -> None:

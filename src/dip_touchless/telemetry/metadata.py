@@ -85,6 +85,7 @@ def build_run_metadata(
         "experiment_id": experiment.get("experiment_id"),
         "condition": experiment.get("condition"),
         "trial_id": experiment.get("trial_id"),
+        "warmup_s": experiment.get("warmup_s"),
         "spec_version": spec_version,
         "code_revision": code_revision or _git_revision(),
         "log_schema_version": logging_config["schema_version"],

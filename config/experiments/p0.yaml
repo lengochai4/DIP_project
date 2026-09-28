@@ -1,0 +1,14 @@
+runtime:
+  mode: "replay"
+
+clahe:
+  policy: "bypass"
+
+filter:
+  mode: "RAW"
+
+experiment:
+  condition: "P0"
+
+renderer:
+  enabled: false
