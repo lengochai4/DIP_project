@@ -23,6 +23,7 @@ from .enums import (
 )
 from .interfaces import (
     FrameSource,
+    GestureEngine,
     LandmarkFilter,
     LandmarkProvider,
     RunLogger,
@@ -50,4 +51,5 @@ __all__ = [
     "LandmarkFilter",
     "LandmarkProvider",
     "RunLogger",
+    "GestureEngine",
 ]

@@ -54,6 +54,19 @@ class LandmarkFilter(Protocol):
         ...
 
 
+class GestureEngine(Protocol):
+    def update(
+        self,
+        frame: TrackingFrame,
+    ) -> InteractionState:
+        """Map one tracking frame into renderer-independent interaction state."""
+        ...
+
+    def reset(self) -> None:
+        """Clear all gesture temporal state."""
+        ...
+
+
 class RunLogger(Protocol):
     def start_run(
         self,
