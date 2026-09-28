@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import platform
 import subprocess
 import uuid
@@ -55,6 +56,31 @@ def _dependency_version(
         return None
 
 
+def _file_sha256(
+    path_value: str | Path | None,
+) -> str | None:
+    """Return SHA-256 for an available local file."""
+
+    if not path_value:
+        return None
+
+    path = Path(path_value)
+
+    if not path.is_file():
+        return None
+
+    digest = hashlib.sha256()
+
+    with path.open("rb") as file:
+        for chunk in iter(
+            lambda: file.read(1024 * 1024),
+            b"",
+        ):
+            digest.update(chunk)
+
+    return digest.hexdigest()
+
+
 def build_run_metadata(
     resolved: ResolvedConfig,
     *,
@@ -73,6 +99,9 @@ def build_run_metadata(
     logging_config = config["logging"]
 
     model_path = tracking.get("model_path")
+    replay_source = runtime.get(
+        "replay_source"
+    )
 
     model_filename = (
         Path(model_path).name
@@ -93,6 +122,7 @@ def build_run_metadata(
         "python_version": platform.python_version(),
         "dependency_versions": {
             "PyYAML": _dependency_version("PyYAML"),
+            "matplotlib": _dependency_version("matplotlib"),
             "numpy": _dependency_version("numpy"),
             "opencv-contrib-python": _dependency_version(
                 "opencv-contrib-python"
@@ -102,7 +132,9 @@ def build_run_metadata(
         "provider": {
             "name": tracking.get("provider"),
             "model_filename": model_filename,
-            "model_checksum": None,
+            "model_checksum": _file_sha256(
+                model_path
+            ),
         },
         "camera": {
             "backend": camera.get("backend"),
@@ -114,8 +146,10 @@ def build_run_metadata(
             "observed": None,
         },
         "source_data": {
-            "identity": runtime.get("replay_source"),
-            "sha256": None,
+            "identity": replay_source,
+            "sha256": _file_sha256(
+                replay_source
+            ),
         },
         "system": {
             "platform": platform.platform(),
