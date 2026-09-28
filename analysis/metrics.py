@@ -280,6 +280,7 @@ def trajectory_deviation_rmse(
     reference: RunArtifacts,
     compared: RunArtifacts,
     *,
+    frame_ids: Sequence[int] | None = None,
     landmark_index: int = DEFAULT_LANDMARK_INDEX,
     stage: str = DEFAULT_STAGE,
     coordinate_space: str = DEFAULT_COORDINATE_SPACE,
@@ -288,14 +289,22 @@ def trajectory_deviation_rmse(
 ) -> MetricResult:
     """Compute A2 trajectory deviation from the F0 reference."""
 
-    common_ids = common_landmark_frame_ids(
-        (reference, compared),
-        landmark_index=landmark_index,
-        stage=stage,
-        coordinate_space=coordinate_space,
-        start_s=start_s,
-        end_s=end_s,
-    )
+    if frame_ids is None:
+        common_ids = common_landmark_frame_ids(
+            (reference, compared),
+            landmark_index=landmark_index,
+            stage=stage,
+            coordinate_space=coordinate_space,
+            start_s=start_s,
+            end_s=end_s,
+        )
+    else:
+        common_ids = tuple(frame_ids)
+
+        if not common_ids:
+            raise MetricCalculationError(
+                "trajectory deviation has no samples"
+            )
 
     _require_matching_timestamps(
         (reference, compared),
@@ -324,21 +333,27 @@ def trajectory_deviation_rmse(
         )
     )
 
-    mean_squared_deviation = math.fsum(
-        (
+    try:
+        mean_squared_deviation = math.fsum(
             (
-                compared_landmarks[frame_id].x
-                - reference_landmarks[frame_id].x
+                (
+                    compared_landmarks[frame_id].x
+                    - reference_landmarks[frame_id].x
+                )
+                ** 2
+                + (
+                    compared_landmarks[frame_id].y
+                    - reference_landmarks[frame_id].y
+                )
+                ** 2
             )
-            ** 2
-            + (
-                compared_landmarks[frame_id].y
-                - reference_landmarks[frame_id].y
-            )
-            ** 2
-        )
-        for frame_id in common_ids
-    ) / len(common_ids)
+            for frame_id in common_ids
+        ) / len(common_ids)
+    except KeyError as exc:
+        raise MetricCalculationError(
+            "requested frame is missing the "
+            "target landmark"
+        ) from exc
 
     return MetricResult(
         name="trajectory_deviation_rmse",
@@ -347,6 +362,57 @@ def trajectory_deviation_rmse(
         ),
         sample_count=len(common_ids),
     )
+
+
+def trajectory_deviation_comparison(
+    runs: Mapping[str, RunArtifacts],
+    *,
+    reference_condition: str = "F0",
+    landmark_index: int = DEFAULT_LANDMARK_INDEX,
+    stage: str = DEFAULT_STAGE,
+    coordinate_space: str = DEFAULT_COORDINATE_SPACE,
+    start_s: float = 0.0,
+    end_s: float | None = None,
+) -> dict[str, MetricResult]:
+    """Compute A2 on one common paired landmark frame set."""
+
+    if reference_condition not in runs:
+        raise MetricCalculationError(
+            f"missing reference condition: "
+            f"{reference_condition}"
+        )
+
+    run_values = tuple(runs.values())
+
+    common_ids = common_landmark_frame_ids(
+        run_values,
+        landmark_index=landmark_index,
+        stage=stage,
+        coordinate_space=coordinate_space,
+        start_s=start_s,
+        end_s=end_s,
+    )
+
+    _require_matching_timestamps(
+        run_values,
+        common_ids,
+    )
+
+    reference = runs[reference_condition]
+
+    return {
+        condition: trajectory_deviation_rmse(
+            reference,
+            run,
+            frame_ids=common_ids,
+            landmark_index=landmark_index,
+            stage=stage,
+            coordinate_space=coordinate_space,
+            start_s=start_s,
+            end_s=end_s,
+        )
+        for condition, run in runs.items()
+    }
 
 
 def valid_hand_observation_rate(

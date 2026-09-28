@@ -13,6 +13,7 @@ from .metrics import (
     common_landmark_frame_ids,
     radial_rms_jitter,
     radial_rms_jitter_comparison,
+    trajectory_deviation_comparison,
     trajectory_deviation_rmse,
     valid_hand_observation_rate,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "load_run_artifacts",
     "radial_rms_jitter",
     "radial_rms_jitter_comparison",
+    "trajectory_deviation_comparison",
     "trajectory_deviation_rmse",
     "valid_hand_observation_rate",
 ]

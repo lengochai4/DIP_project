@@ -10,6 +10,7 @@ from analysis import (
     common_landmark_frame_ids,
     radial_rms_jitter,
     radial_rms_jitter_comparison,
+    trajectory_deviation_comparison,
     trajectory_deviation_rmse,
     valid_hand_observation_rate,
 )
@@ -198,6 +199,51 @@ def test_reference_deviation_from_itself_is_zero() -> None:
     )
 
     assert result.value == pytest.approx(0.0)
+
+
+def test_a2_comparison_uses_one_common_frame_set() -> None:
+    f0 = _run(
+        name="f0",
+        points={
+            0: (0.0, 0.0, 0.0),
+            1: (0.1, 1.0, 0.0),
+            2: (0.2, 2.0, 0.0),
+        },
+    )
+
+    f1 = _run(
+        name="f1",
+        points={
+            0: (0.0, 0.1, 0.0),
+            1: (0.1, 1.1, 0.0),
+            2: (0.2, 2.1, 0.0),
+        },
+    )
+
+    f2 = _run(
+        name="f2",
+        points={
+            1: (0.1, 1.2, 0.0),
+            2: (0.2, 2.2, 0.0),
+        },
+    )
+
+    results = trajectory_deviation_comparison(
+        {
+            "F0": f0,
+            "F1": f1,
+            "F2": f2,
+        }
+    )
+
+    assert {
+        result.sample_count
+        for result in results.values()
+    } == {2}
+
+    assert results["F0"].value == pytest.approx(
+        0.0
+    )
 
 
 def test_paired_metric_rejects_timestamp_mismatch() -> None:
