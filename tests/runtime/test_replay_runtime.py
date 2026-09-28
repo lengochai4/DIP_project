@@ -34,6 +34,9 @@ from dip_touchless.telemetry import (
     build_run_metadata,
 )
 from dip_touchless.tracking import MeasurementValidator
+from dip_touchless.interaction import (
+    DeterministicGestureEngine,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -1201,3 +1204,236 @@ def test_replay_runtime_logs_adaptive_filter_event(
 
     assert fake_capture.released is True
     assert provider.closed is True
+
+
+def test_replay_runtime_logs_gesture_interaction_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frames = [
+        np.zeros(
+            (2, 3, 3),
+            dtype=np.uint8,
+        ),
+        np.ones(
+            (2, 3, 3),
+            dtype=np.uint8,
+        ),
+    ]
+
+    fake_capture = FakeVideoCapture(
+        frames,
+        fps=20.0,
+    )
+
+    monkeypatch.setattr(
+        cv2,
+        "VideoCapture",
+        lambda _: fake_capture,
+    )
+
+    video_path = (
+        tmp_path / "gesture-fixture.mp4"
+    )
+    video_path.touch()
+
+    run_id = "gesture-integration-run"
+
+    resolved = resolve_config(
+        DEFAULT_CONFIG,
+        overrides={
+            "runtime": {
+                "mode": "replay",
+                "replay_source": str(
+                    video_path
+                ),
+            },
+            "filter": {
+                "mode": "RAW",
+            },
+        },
+    )
+
+    gesture_config = resolved.data[
+        "gesture"
+    ]
+
+    gesture_engine = (
+        DeterministicGestureEngine(
+            pointer_landmark_index=(
+                gesture_config[
+                    "pointer_landmark_index"
+                ]
+            ),
+            pinch_thumb_landmark_index=(
+                gesture_config[
+                    "pinch_thumb_landmark_index"
+                ]
+            ),
+            pinch_index_landmark_index=(
+                gesture_config[
+                    "pinch_index_landmark_index"
+                ]
+            ),
+            hand_scale_landmark_a=(
+                gesture_config[
+                    "hand_scale_landmark_a"
+                ]
+            ),
+            hand_scale_landmark_b=(
+                gesture_config[
+                    "hand_scale_landmark_b"
+                ]
+            ),
+            hand_scale_epsilon=(
+                gesture_config[
+                    "hand_scale_epsilon"
+                ]
+            ),
+            pinch_on=(
+                gesture_config["pinch_on"]
+            ),
+            pinch_off=(
+                gesture_config["pinch_off"]
+            ),
+            rotation_deadzone=(
+                gesture_config[
+                    "rotation_deadzone"
+                ]
+            ),
+            rotation_gain=(
+                gesture_config[
+                    "rotation_gain"
+                ]
+            ),
+            rotation_max_delta_rad=(
+                gesture_config[
+                    "rotation_max_delta_rad"
+                ]
+            ),
+            scale_deadzone=(
+                gesture_config[
+                    "scale_deadzone"
+                ]
+            ),
+            scale_gain=(
+                gesture_config[
+                    "scale_gain"
+                ]
+            ),
+            scale_max_delta=(
+                gesture_config[
+                    "scale_max_delta"
+                ]
+            ),
+        )
+    )
+
+    metadata = build_run_metadata(
+        resolved,
+        run_id=run_id,
+        code_revision="test-revision",
+    )
+
+    runtime = ReplayRuntime(
+        source=ReplayFrameSource(
+            video_path,
+            run_id=run_id,
+        ),
+        provider=MovingFakeProvider(),
+        validator=MeasurementValidator(),
+        landmark_filter=RawLandmarkFilter(),
+        logger=FileRunLogger(
+            tmp_path / "runs"
+        ),
+        gesture_engine=gesture_engine,
+    )
+
+    processed = runtime.run(
+        metadata=metadata,
+        resolved_config=resolved.to_dict(),
+    )
+
+    assert processed == 2
+
+    frames_path = (
+        tmp_path
+        / "runs"
+        / run_id
+        / "frames.csv"
+    )
+
+    with frames_path.open(
+        newline="",
+        encoding="utf-8",
+    ) as file:
+        rows = list(
+            csv.DictReader(file)
+        )
+
+    assert len(rows) == 2
+
+    first = rows[0]
+    second = rows[1]
+
+    assert first["interaction_valid"] == (
+        "False"
+    )
+
+    assert float(
+        first["pointer_x"]
+    ) == pytest.approx(
+        0.108
+    )
+
+    assert float(
+        first["pointer_y"]
+    ) == pytest.approx(
+        0.20
+    )
+
+    assert float(
+        first["rotation_dx"]
+    ) == pytest.approx(
+        0.0
+    )
+
+    assert float(
+        first["rotation_dy"]
+    ) == pytest.approx(
+        0.0
+    )
+
+    assert float(
+        first["scale_delta"]
+    ) == pytest.approx(
+        0.0
+    )
+
+    assert second["interaction_valid"] == (
+        "True"
+    )
+
+    assert float(
+        second["pointer_x"]
+    ) == pytest.approx(
+        0.408
+    )
+
+    assert float(
+        second["rotation_dx"]
+    ) == pytest.approx(
+        0.10
+    )
+
+    assert float(
+        second["rotation_dy"]
+    ) == pytest.approx(
+        0.0
+    )
+
+    assert second["gesture_ms"] != ""
+
+    assert float(
+        second["gesture_ms"]
+    ) >= 0.0

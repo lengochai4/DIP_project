@@ -5,11 +5,13 @@ from __future__ import annotations
 import math
 import time
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from typing import Any
 
 from dip_touchless.core import (
     FramePacket,
     FrameSource,
+    GestureEngine,
     IlluminationMetrics,
     LandmarkFilter,
     LandmarkProvider,
@@ -43,6 +45,7 @@ class ReplayRuntime:
         validator: MeasurementValidator,
         landmark_filter: LandmarkFilter,
         logger: RunLogger,
+        gesture_engine: GestureEngine | None = None,
         roi_manager: ROIManager | None = None,
         illumination_analyzer: IlluminationAnalyzer | None = None,
         illumination_decision: IlluminationDecisionStabilizer | None = None,
@@ -75,6 +78,7 @@ class ReplayRuntime:
         self._validator = validator
         self._filter = landmark_filter
         self._logger = logger
+        self._gesture_engine = gesture_engine
 
         self._roi_manager = roi_manager
         self._illumination_analyzer = (
@@ -117,6 +121,9 @@ class ReplayRuntime:
             )
 
             self._filter.reset()
+
+            if self._gesture_engine is not None:
+                self._gesture_engine.reset()
 
             if self._roi_manager is not None:
                 self._roi_manager.reset()
@@ -194,14 +201,10 @@ class ReplayRuntime:
                     filtering_end,
                 )
 
-                # Gesture processing starts only in G5.
-                gesture_ms = 0.0
-
-                compute_total_ms = (
+                compute_before_gesture_ms = (
                     preprocess_ms
                     + tracking_ms
                     + filtering_ms
-                    + gesture_ms
                 )
 
                 tracking_frame = TrackingFrame(
@@ -223,17 +226,55 @@ class ReplayRuntime:
                         preprocess_ms=preprocess_ms,
                         tracking_ms=tracking_ms,
                         filtering_ms=filtering_ms,
-                        gesture_ms=gesture_ms,
+                        gesture_ms=0.0,
                         compute_total_ms=(
-                            compute_total_ms
+                            compute_before_gesture_ms
                         ),
                     ),
                     events=diagnostics.events,
                 )
 
+                interaction_state = None
+                gesture_ms = 0.0
+
+                if self._gesture_engine is not None:
+                    gesture_start = self._clock()
+
+                    interaction_state = (
+                        self._gesture_engine.update(
+                            tracking_frame
+                        )
+                    )
+
+                    gesture_end = self._clock()
+
+                    gesture_ms = self._duration_ms(
+                        gesture_start,
+                        gesture_end,
+                    )
+
+                    tracking_frame = replace(
+                        tracking_frame,
+                        timings=StageTimings(
+                            preprocess_ms=preprocess_ms,
+                            tracking_ms=tracking_ms,
+                            filtering_ms=filtering_ms,
+                            gesture_ms=gesture_ms,
+                            compute_total_ms=(
+                                compute_before_gesture_ms
+                                + gesture_ms
+                            ),
+                        ),
+                    )
+
                 self._logger.log_tracking_frame(
                     tracking_frame
                 )
+
+                if interaction_state is not None:
+                    self._logger.log_interaction_state(
+                        interaction_state
+                    )
 
                 processed_frames += 1
 
