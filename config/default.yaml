@@ -104,3 +104,8 @@ renderer:
   enabled: true
   width: 1280
   height: 720
+  target_fps: 60
+
+  initial_scale: 1.0
+  min_scale: 0.5
+  max_scale: 2.0

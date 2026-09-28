@@ -725,3 +725,63 @@ def test_negative_pinch_threshold_is_rejected() -> None:
                 },
             },
         )
+
+
+def test_default_renderer_scene_configuration_is_resolved() -> None:
+    resolved = resolve_config(
+        DEFAULT_CONFIG
+    )
+
+    renderer = resolved.data[
+        "renderer"
+    ]
+
+    assert renderer["target_fps"] > 0
+
+    assert (
+        renderer["min_scale"]
+        <= renderer["initial_scale"]
+        <= renderer["max_scale"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("target_fps", 0.0),
+        ("initial_scale", 0.0),
+        ("min_scale", 0.0),
+        ("max_scale", 0.0),
+    ],
+)
+def test_invalid_renderer_positive_value_is_rejected(
+    key: str,
+    value: float,
+) -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "renderer": {
+                    key: value,
+                },
+            },
+        )
+
+
+def test_invalid_renderer_scale_order_is_rejected() -> None:
+    with pytest.raises(
+        ConfigValidationError
+    ):
+        resolve_config(
+            DEFAULT_CONFIG,
+            overrides={
+                "renderer": {
+                    "min_scale": 2.0,
+                    "initial_scale": 1.0,
+                    "max_scale": 3.0,
+                },
+            },
+        )

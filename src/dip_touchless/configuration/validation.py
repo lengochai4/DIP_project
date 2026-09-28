@@ -512,6 +512,39 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "height",
             "renderer",
         )
+        _require_positive_number(
+            renderer,
+            "target_fps",
+            "renderer",
+        )
+
+        _require_positive_number(
+            renderer,
+            "initial_scale",
+            "renderer",
+        )
+
+        _require_positive_number(
+            renderer,
+            "min_scale",
+            "renderer",
+        )
+
+        _require_positive_number(
+            renderer,
+            "max_scale",
+            "renderer",
+        )
+
+        if not (
+            renderer["min_scale"]
+            <= renderer["initial_scale"]
+            <= renderer["max_scale"]
+        ):
+            raise ConfigValidationError(
+                "renderer scale bounds must satisfy "
+                "min_scale <= initial_scale <= max_scale"
+            )
 
 
 def _require_byte_range_number(
