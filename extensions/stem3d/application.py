@@ -42,6 +42,7 @@ class Stem3DExtension:
             scene_state
         )
         self._renderer = renderer
+        self._renderer_open = False
 
     @property
     def transform(
@@ -53,6 +54,7 @@ class Stem3DExtension:
 
     def open(self) -> None:
         self._renderer.open()
+        self._renderer_open = True
 
     def consume(
         self,
@@ -70,6 +72,15 @@ class Stem3DExtension:
 
         return transform
 
+    def reset(self) -> SceneTransform:
+        """Reset the current scene transform and refresh an open renderer."""
+
+        self._scene_state.reset()
+        transform = self._scene_state.transform
+        if self._renderer_open:
+            self._renderer.render(transform)
+        return transform
+
     def close_requested(
         self,
     ) -> bool:
@@ -79,4 +90,8 @@ class Stem3DExtension:
         )
 
     def close(self) -> None:
-        self._renderer.close()
+        try:
+            if self._renderer_open:
+                self._renderer.close()
+        finally:
+            self._renderer_open = False
