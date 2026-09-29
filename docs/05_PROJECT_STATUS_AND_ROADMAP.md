@@ -1,7 +1,7 @@
 ## 2. Current implementation evidence
 
-As of 2026-09-28, the implementation repository has been verified
-through Gate G6.
+As of 2026-09-29, the implementation repository has been verified
+through Gate G7 and the G7 release is tagged.
 
 Verified evidence includes:
 
@@ -66,10 +66,22 @@ Verified evidence includes:
 - no inferential statistics or optional performance benchmark added to the minimum course gate;
 - final G6 targeted acceptance suite passing with 47 tests;
 - final automated project regression suite passing with 425 tests.
+- frozen G7 final A1/A2/Experiment B trial plans and recorded sources;
+- regenerated, provenance-linked G7 metrics, plots, and selected evidence
+  under `submission/evidence/`;
+- final report and submission instructions included in the tagged tree;
+- recorded G7 full regression of 433 passing tests, as stated in
+  `submission/README.md`;
+- physical final-demo smoke and a separate run recording the exact live
+  execution revision, both with clean shutdown;
+- annotated `g7-final` tag resolving to release commit
+  `f454c6b8325c85199c0122c0e822fe8e76c1526c`.
 
-G0–G6 are technically complete. Final controlled data collection,
-final evaluation, report conclusions, and final research outcomes are
-not claimed complete by this status.
+G0–G7 are complete as the canonical-v1.2 research and submission
+baseline. G7 does not establish universal method superiority: A2's
+primary metric is unavailable in all three final trials, and the
+adaptive P1 path did not activate CLAHE in the analyzed B trials. Final
+claims remain limited to the recorded evidence in `FINAL_REPORT.md`.
 
 ## 3. Current stage
 
@@ -91,7 +103,8 @@ G3 — CANONICAL FIXED 1-EURO: COMPLETE
 G4 — BOUNDED ADAPTIVE 1-EURO: COMPLETE
 G5 — GESTURE + 3D EXTENSION: COMPLETE
 G6 — EXPERIMENT READINESS: COMPLETE
-G7 — FINAL EVALUATION / PACKAGE: NOT STARTED
+G7 — FINAL EVALUATION / PACKAGE: COMPLETE (FROZEN AT `g7-final`)
+G8 — POST-G7 UI / STEM EXTENSION PRODUCTIZATION: PLANNED
 ```
 
 G0–G1 completion establishes the engineering baseline:
@@ -106,15 +119,32 @@ deterministic frame acquisition
 → structured machine-readable logs
 ```
 
-G0–G6 completion establishes the implemented Core, interaction-demo,
-and reproducible experiment-tooling pipeline. It does not imply that the
-project hypotheses are supported, that one method outperforms another,
-or that final experimental claims have been validated. Those claims
-remain dependent on the controlled final experiments in G7.
+G0–G7 completion establishes the implemented Core, interaction demo,
+reproducible experiment tooling, and the final evidence-bounded report.
+It does not imply that the project hypotheses are universally supported
+or that one method outperforms another. The unavailable A2 result and
+inactive adaptive-CLAHE path remain explicit limitations.
+
+G8 is a separate post-G7 presentation/Extension direction. It does not
+change the scope or interpretation of the frozen G7 experiment release.
 
 ## 4. Current task
 
-**Task G7 — Run the final controlled evaluation and package the submission.**
+**Task G8-U1 — Establish the application foundation described in `docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md`.**
+
+The G7 controlled evaluation and submission package are complete and
+frozen at `g7-final`. The active G8 direction is a separately scoped
+post-G7 application/Extension continuation. Start with the application
+controller, immutable presentation state, design tokens, responsive
+layout calculations, and a dashboard shell while preserving the existing
+live demo behavior and the G7/Core boundary.
+
+G8 is not a new research experiment and does not claim commercial
+readiness. Any change to Core semantics, public contracts, experiment
+metrics, or G7 evidence requires the canonical governance and change
+review process.
+
+### G6 experiment-readiness completion record (historical)
 
 G6 experiment readiness is technically complete.
 
@@ -156,11 +186,11 @@ edbd1a4 feat: regenerate experiment tables and plots
 78725b9 feat: preserve analysis provenance and exclusions
 ```
 
-G6 completion establishes experiment readiness only. No final A1, A2,
-or Experiment B metric outcome has been reported, and no superiority,
-jitter-reduction, robustness, accuracy, FPS, latency, or statistical
-claim is made from the G6 tooling tests. Final claims depend on the G7
-controlled trials and their regenerated analysis.
+At the end of G6, tooling completion alone did not establish final
+experiment outcomes or method superiority. G7 outcomes and their
+limitations are recorded in the evidence snapshot below and in
+`FINAL_REPORT.md`; no FPS, latency, accuracy, or inferential-statistics
+claim is made from the G6 tooling tests.
 
 G5 gesture mapping and the minimal 3D STEM Extension are technically complete.
 
@@ -335,7 +365,8 @@ Core contract, logger, and replay-integration tests verify explicit unavailable 
 
 Existing results invalidated:
 
-No — no final G2+ experiment results existed before the correction.
+No — no final G2+ experiment results existed at the time of this
+correction.
 
 ### G2 algorithm decision — illumination state stabilization
 
@@ -383,7 +414,8 @@ EMA/hysteresis/state-transition tests.
 
 Existing results invalidated:
 
-No — no final G2 illumination results exist yet.
+No — no final G2 illumination results existed when this rule was
+recorded.
 
 ### G2 semantic clarification — enhancement_active
 
@@ -419,7 +451,8 @@ enhancement application.
 
 Existing results invalidated:
 
-No — no final G2 preprocessing experiment results exist yet.
+No — no final G2 preprocessing experiment results existed when this
+rule was recorded.
 
 ### G3 algorithm clarification — landmark vectorization scope
 
@@ -443,8 +476,8 @@ Canonical file/section changed:
 
 Code/modules affected:
 
-Future fixed landmark 1-Euro core, temporal-filter wrapper, diagnostics,
-synthetic tests, and adaptive filter extension.
+Fixed landmark 1-Euro core, temporal-filter wrapper, diagnostics,
+synthetic tests, and adaptive-filter extension.
 
 Algorithmic impact:
 
@@ -454,22 +487,24 @@ unchanged.
 
 Experimental impact:
 
-F1/F2 landmark filtering will use independent per-landmark x/y motion
+F1/F2 landmark filtering uses independent per-landmark x/y motion
 rather than a concatenated all-landmark speed vector.
 
 Compatibility impact:
 
-No completed F1/F2 experiment results exist yet.
+At the time of this clarification, no completed F1/F2 experiment results
+existed.
 
 Tests added/updated:
 
-Upcoming G3.4 tests will verify shared x/y cutoff within one landmark,
-independence between landmarks, z pass-through, and preservation of
-landmark identity/coordinate space.
+G3.4 tests cover shared x/y cutoff within one landmark, independence
+between landmarks, z pass-through, and preservation of landmark
+identity/coordinate space.
 
 Existing results invalidated:
 
-No — no final fixed/adaptive temporal-filter experiment results exist.
+No — no final fixed/adaptive temporal-filter experiment results existed
+at the time of this clarification.
 
 ### G3 contract clarification — frame-level filter diagnostics
 
@@ -511,18 +546,19 @@ jitter/responsiveness metrics remain trajectory-based.
 
 Compatibility impact:
 
-No completed fixed/adaptive final experiment logs exist. Existing Raw
-logs are unaffected.
+No completed fixed/adaptive final experiment logs existed at the time of
+this clarification. Existing Raw logs were unaffected.
 
 Tests added/updated:
 
-Upcoming G3.6 tests will verify max-speed representative selection,
-deterministic tie handling, initialization/no-measurement diagnostics,
-reset reporting, and runtime serialization.
+G3.6 tests cover max-speed representative selection, deterministic tie
+handling, initialization/no-measurement diagnostics, reset reporting,
+and runtime serialization.
 
 Existing results invalidated:
 
-No — no final F1/F2 experimental results exist.
+No — no final F1/F2 experimental results existed at the time of this
+clarification.
 
 ### G4 contract clarification — bounded adaptive beta mapping
 
@@ -546,8 +582,8 @@ Canonical file/section changed:
 
 Code/modules affected:
 
-Upcoming adaptive landmark core, adaptive public LandmarkFilter,
-configuration validation, replay/logging tests.
+Adaptive landmark core, adaptive public LandmarkFilter, configuration
+validation, and replay/logging tests.
 
 Algorithmic impact:
 
@@ -557,23 +593,24 @@ Final cutoff remains independently bounded.
 
 Experimental impact:
 
-Defines the F2 method that will later be compared with F0 and F1.
+Defines the F2 method used in the final G7 comparison with F0 and F1.
 Primary F2 does not use measurement-quality adaptation unless a valid
 documented source exists.
 
 Compatibility impact:
 
-No adaptive implementation or final F2 result exists yet.
+No adaptive implementation or final F2 result existed when this decision
+was recorded.
 
 Tests added/updated:
 
-Upcoming G4 tests will cover beta bounds/monotonicity, velocity spikes,
-final cutoff bounds, unavailable quality, invalid dt, reset, and
-reacquisition.
+G4 tests cover beta bounds/monotonicity, velocity spikes, final cutoff
+bounds, unavailable quality, invalid dt, reset, and reacquisition.
 
 Existing results invalidated:
 
-No — no F2 implementation/final experimental results exist.
+No — no F2 implementation or final experimental results existed when
+this decision was recorded.
 
 ### G4 contract correction — temporal filter event propagation
 
@@ -613,14 +650,14 @@ unchanged.
 
 Experimental impact:
 
-Future F1/F2 run artifacts preserve temporal reset/discontinuity events
-needed for auditability and exclusion/debugging.
+F1/F2 run artifacts preserve temporal reset/discontinuity events needed
+for auditability and exclusion/debugging.
 
 Compatibility impact:
 
 In-memory `FilterDiagnostics` gains an events field. Existing CSV column
-schemas are unchanged; the already-defined events artifact will begin
-receiving the events that were previously dropped.
+schemas are unchanged; the events artifact now receives the events that
+were previously dropped.
 
 The existing FileRunLogger already serializes TrackingFrame.events.
 The contract therefore assigns serialization responsibility to RunLogger
@@ -636,9 +673,9 @@ events.csv logging tests.
 
 Existing results invalidated:
 
-No — no final F1/F2 experimental result set exists. Earlier development
-runs may lack these event records and must not be treated as final
-event-complete runs.
+No — no final F1/F2 experimental result set existed when this change
+was made. Earlier development runs may lack these event records and must
+not be treated as final event-complete runs.
 
 ### G5 algorithm/interface decision — deterministic gesture mapping
 
@@ -745,19 +782,21 @@ simultaneously in their primary comparisons.
 
 Compatibility impact:
 
-No final experiment result set exists. Development runs produced before
-this decision may be used for tooling/debugging but MUST NOT be mixed into
-final tables unless they satisfy the frozen protocol.
+No final experiment result set existed when this decision was recorded.
+Development runs produced before this decision may be used for
+tooling/debugging but MUST NOT be mixed into final tables unless they
+satisfy the frozen protocol.
 
 Tests added/updated:
 
-Upcoming G6 tests will cover metric calculations, paired frame alignment,
-manifest validation, deterministic condition expansion, and analysis of
-generated run artifacts without manual CSV editing.
+G6 tests cover metric calculations, paired frame alignment, manifest
+validation, deterministic condition expansion, and analysis of generated
+run artifacts without manual CSV editing.
 
 Existing results invalidated:
 
-No — no final A1/A2/B result set has been collected.
+No — at the time this pre-G7 design decision was recorded, no final
+A1/A2/B result set had been collected.
 
 ### G7 experiment-protocol clarification — unavailable paired metric
 
@@ -809,9 +848,9 @@ is changed.
 
 Tests added/updated:
 
-Analysis regeneration tests will verify that an empty common paired set
-produces an explicit unavailable metric record rather than aborting the
-entire batch, while ordinary evaluable trials remain unchanged.
+Analysis regeneration tests cover empty common paired sets producing an
+explicit unavailable metric record rather than aborting the entire batch,
+while ordinary evaluable trials remain unchanged.
 
 Existing results invalidated:
 
@@ -1074,7 +1113,8 @@ RQ3:
 
 The existing G5 physical interaction smoke test demonstrates practical
 interaction behavior but is not treated as an RQ1/RQ2 quantitative result.
-Final demo/presentation evidence remains to be packaged separately.
+The final demo runs, execution identity, observed interaction, and known
+false-positive limitation are recorded below and in `FINAL_REPORT.md`.
 
 ### G7 final demo physical smoke — 2026-09-29
 
@@ -1123,30 +1163,72 @@ face/background false-positive remains a documented practical limitation.
 No Core algorithm, experiment source, analysis window, or retained G7
 experiment result was changed between the final evidence collection and
 this demo-identity verification.
+
+### G7 release closure and G8 transition — 2026-09-29
+
+G7 is complete and frozen at annotated tag `g7-final`, which resolves to
+release commit `f454c6b8325c85199c0122c0e822fe8e76c1526c`. The tag tree
+contains `FINAL_REPORT.md`, `submission/README.md`, and the selected
+generated assets under `submission/evidence/`. The primary live-demo
+execution revision `6a87dc50f9d3920ed9fd39a2669e266be00f9735` is recorded
+separately in the report and is not the release commit.
+
+The last recorded G7 full regression is 433 passing tests, as reported by
+`submission/README.md`. This is a historical project result; no test suite
+was run as part of this documentation update.
+
+G7 evidence remains bounded: two of three A1 trials have evaluable paired
+metrics; A2 has no evaluable trial; P0 and P1 have equal valid-observation
+rates in the retained B trials, while adaptive P1 never activated CLAHE in
+the analyzed windows. The live demo ran successfully, with an occasional
+face/background false-positive recorded as a limitation. Exact values and
+provenance remain in the report and evidence artifacts.
+
+The current branch `feat/final-ui-extension` starts from the frozen G7
+release. G8 is promoted as a separate post-G7 UI/Extension roadmap. It is
+not a seventh canonical research specification and does not change the
+canonical-v1.2 algorithms, G7 measurements, or report conclusions.
+
+Canonical file/section changed:
+
+`05_PROJECT_STATUS_AND_ROADMAP.md`, current stage/task and immediate
+roadmap; supplemental direction in `06_G8_UI_EXTENSION_PRODUCTIZATION.md`.
+
+Algorithmic and experimental impact:
+
+None. G7 provenance and all final experiment artifacts remain frozen.
+
 ## 5. Immediate next tasks
 
-Proceed in this order unless a documented blocker requires rearrangement:
+G7 is closed. Continue with the post-G7 roadmap in
+`docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md`, in this order:
 
-1. **G7 Final controlled evaluation** — define the actual final A1, A2,
-   and Experiment B manifests, including recorded source identities,
-   actual trial counts, predefined analysis windows/warmup, and exclusion
-   rules before inspecting final outcomes.
+1. **U1 — Application foundation:** add an application controller,
+   immutable presentation state, centralized design tokens, responsive
+   layout calculations, and a dashboard shell. Keep the existing live
+   demo working while extracting responsibilities incrementally.
+2. **U2 — DIP visibility:** present camera, ROI, landmarks, pointer,
+   tracking, illumination, CLAHE, filter, and runtime identity using the
+   public read-only realtime presentation seam.
+3. **U3 — Scene architecture:** define the Extension-owned `STEMScene`
+   lifecycle and local registry, then migrate the existing coordinate
+   cube without changing `InteractionState` semantics.
+4. **U4 — STEM scenes:** add the coordinate-geometry, molecule, and
+   orbital-mechanics experiences through the scene interface.
+5. **U5 — Spatial Control Panel:** add screen-space touchless navigation
+   using normalized `pointer_xy`, valid pinch rising edges, and explicit
+   UI/scene focus routing. Keep all click and focus behavior in the
+   Extension.
+6. **U6 — Evidence mode:** display selected frozen G7 assets and retain
+   unavailable findings and known limitations without editing or
+   regenerating the source evidence.
+7. **U7/U8 — UX hardening and validation:** implement clear loading,
+   error, empty, and disabled states; keyboard fallback; focused tests;
+   and full regression.
+8. **U9/U10 — Physical validation and release:** exercise the complete
+   application with the webcam, document screenshots/demo instructions,
+   record limitations, and create a new post-G7 release identity without
+   moving `g7-final`.
 
-2. **Run final paired replay experiments** — execute F0/F1/F2 for the
-   static and dynamic RQ2 sources and P0/P1 for the required illumination
-   conditions using the frozen G6 tooling.
-
-3. **Regenerate final evidence** — produce the required trajectories,
-   primary metric tables/plots, illumination comparison outputs, and
-   DIP-focused before/after visual evidence directly from recorded artifacts.
-
-4. **Submission demo application/presentation shell** — after the final
-   experiment evidence is secured, add only the presentation-oriented UI
-   needed for the final demo: camera preview, tracking/ROI/illumination/filter
-   status, pinch/interaction state, 3D view, start/stop/reset controls, and
-   run/log identity. Do not alter Core algorithms or experiment semantics.
-
-5. **Final report/package** — write evidence-bounded Results, Discussion,
-   limitations/threats to validity, and Conclusions for RQ1–RQ3; package
-   reproducibility instructions, model acquisition/checksum information,
-   selected result assets, and the final demo.
+G8 is a product-direction phase, not a new scientific evaluation. Do not
+add cloud, account, telemetry-backend, or unrelated platform features.
