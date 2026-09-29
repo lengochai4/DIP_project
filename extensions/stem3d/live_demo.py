@@ -41,6 +41,7 @@ from .ui import (
     ApplicationState,
     LiveDashboard,
     THEME,
+    build_runtime_identity,
     build_presentation_state,
 )
 
@@ -48,6 +49,13 @@ from .ui import (
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = PROJECT_ROOT / "config" / "default.yaml"
 MODEL_PATH = PROJECT_ROOT / "models" / "hand_landmarker.task"
+
+
+def _new_live_demo_run_id(
+    now: datetime | None = None,
+) -> str:
+    timestamp = datetime.now() if now is None else now
+    return "g8-demo-" + timestamp.strftime("%Y%m%d-%H%M%S")
 
 
 class LivePresentation(LiveDashboard):
@@ -230,7 +238,11 @@ def main() -> None:
     )
     cfg = resolved.to_dict()
     renderer_cfg = cfg["renderer"]
-    run_id = "g7-demo-" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    run_id = _new_live_demo_run_id()
+    metadata = build_run_metadata(
+        resolved,
+        run_id=run_id,
+    )
 
     extension = Stem3DExtension(
         scene_state=Stem3DSceneState(
@@ -249,11 +261,15 @@ def main() -> None:
         run_id=run_id,
         extension=extension,
         dashboard=LiveDashboard(),
+        runtime_identity=build_runtime_identity(metadata),
     )
 
     print("DIP Touchless STEM live demo.")
     print("Move index fingertip to rotate; pinch to scale.")
-    print("Press S/ENTER/SPACE to start, R to reset, Q/ESC to stop.")
+    print(
+        "Press S/ENTER/SPACE to start; A=analysis, D=demo, "
+        "R=reset, Q/ESC=stop."
+    )
     print(f"Run ID: {run_id}")
 
     try:
@@ -268,7 +284,7 @@ def main() -> None:
             controller=controller,
         )
         processed = runtime.run(
-            metadata=build_run_metadata(resolved, run_id=run_id),
+            metadata=metadata,
             resolved_config=cfg,
         )
         print(f"Processed frames: {processed}")

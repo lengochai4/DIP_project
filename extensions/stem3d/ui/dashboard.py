@@ -16,9 +16,17 @@ from .layout import (
 from .presentation_model import (
     ApplicationPhase,
     ApplicationState,
+    DashboardMode,
+    LandmarkPresentation,
     PresentationState,
 )
 from .theme import THEME
+
+
+_ANALYSIS_PIPELINE_LINES = (
+    "CAMERA > ROI > HSV ILLUMINATION > ADAPTIVE PREPROCESS",
+    "LANDMARKS > TEMPORAL FILTER > GESTURE > INTERACTION STATE > 3D",
+)
 
 
 class LiveDashboard:
@@ -34,6 +42,7 @@ class LiveDashboard:
         self._reset_action = reset_action
         self._stop = False
         self._window_open = False
+        self._mode = DashboardMode.DEMO
         self._last_size = (
             THEME.default_window_width,
             THEME.default_window_height,
@@ -44,6 +53,10 @@ class LiveDashboard:
         reset_action: Callable[[], None],
     ) -> None:
         self._reset_action = reset_action
+
+    @property
+    def mode(self) -> DashboardMode:
+        return self._mode
 
     def open(self) -> None:
         if self._window_open:
@@ -82,6 +95,7 @@ class LiveDashboard:
                 canvas,
                 layout,
                 state,
+                self._mode,
                 subtitle="TOUCHLESS STEM WORKSPACE",
             )
             self._draw_card(
@@ -172,7 +186,12 @@ class LiveDashboard:
                 scale=THEME.font_small,
                 color=THEME.text_secondary,
             )
-            self._draw_footer(canvas, layout)
+            self._draw_footer(
+                canvas,
+                layout,
+                state,
+                self._mode,
+            )
             cv2.imshow(self.WINDOW_NAME, canvas)
 
             key = cv2.waitKey(30) & 0xFF
@@ -214,6 +233,7 @@ class LiveDashboard:
         *,
         width: int | None = None,
         height: int | None = None,
+        mode: DashboardMode | None = None,
     ) -> np.ndarray:
         """Compose a complete dashboard at a requested responsive size."""
 
@@ -230,7 +250,6 @@ class LiveDashboard:
                 "presentation and application run IDs must match"
             )
 
-        image_height, image_width = image_bgr.shape[:2]
         requested_width = (
             self._last_size[0]
             if width is None
@@ -250,18 +269,34 @@ class LiveDashboard:
             THEME.background,
             dtype=np.uint8,
         )
+        selected_mode = self._mode if mode is None else mode
 
-        self._draw_header(canvas, layout, application)
+        self._draw_header(
+            canvas,
+            layout,
+            application,
+            selected_mode,
+        )
         self._draw_camera(
             canvas,
             layout,
             image_bgr,
             presentation,
+            selected_mode,
         )
         self._draw_scene(canvas, layout, application)
-        self._draw_pipeline(canvas, layout, presentation)
-        self._draw_interaction(canvas, layout, presentation)
-        self._draw_footer(canvas, layout)
+        if selected_mode is DashboardMode.ANALYSIS:
+            self._draw_pipeline(canvas, layout, presentation)
+            self._draw_interaction(canvas, layout, presentation)
+        else:
+            self._draw_demo_status(canvas, layout, presentation)
+            self._draw_demo_interaction(canvas, layout, presentation)
+        self._draw_footer(
+            canvas,
+            layout,
+            application,
+            selected_mode,
+        )
 
         return canvas
 
@@ -271,6 +306,10 @@ class LiveDashboard:
         elif key in {ord("r"), ord("R")}:
             if self._reset_action is not None:
                 self._reset_action()
+        elif key in {ord("a"), ord("A")}:
+            self._mode = DashboardMode.ANALYSIS
+        elif key in {ord("d"), ord("D")}:
+            self._mode = DashboardMode.DEMO
 
     def stop_requested(self) -> bool:
         return self._stop
@@ -316,6 +355,7 @@ class LiveDashboard:
         canvas: np.ndarray,
         layout: DashboardLayout,
         application: ApplicationState,
+        mode: DashboardMode,
         *,
         subtitle: str | None = None,
     ) -> None:
@@ -339,6 +379,22 @@ class LiveDashboard:
             scale=THEME.font_small,
             color=THEME.text_muted,
         )
+        mode_text = mode.value
+        mode_width = self._text_width(
+            mode_text,
+            THEME.font_small,
+        )
+        self._pill(
+            canvas,
+            Rect(
+                rect.right - mode_width - 62,
+                rect.y + 17,
+                mode_width + 48,
+                25,
+            ),
+            mode_text,
+            THEME.accent,
+        )
         phase_color = (
             THEME.error
             if application.phase is ApplicationPhase.ERROR
@@ -351,7 +407,7 @@ class LiveDashboard:
         self._pill(
             canvas,
             Rect(
-                rect.right - status_width - 38,
+                rect.right - status_width - mode_width - 98,
                 rect.y + 17,
                 status_width + 24,
                 25,
@@ -376,6 +432,7 @@ class LiveDashboard:
         layout: DashboardLayout,
         image_bgr: np.ndarray,
         state: PresentationState,
+        mode: DashboardMode,
     ) -> None:
         self._draw_card(canvas, layout.vision, "CAMERA VIEW")
         image_h, image_w = image_bgr.shape[:2]
@@ -418,6 +475,16 @@ class LiveDashboard:
                 cv2.LINE_AA,
             )
 
+        if mode is DashboardMode.ANALYSIS:
+            self._draw_landmarks(
+                canvas,
+                target,
+                image_width=image_w,
+                image_height=image_h,
+                raw_landmarks=state.raw_landmarks,
+                filtered_landmarks=state.filtered_landmarks,
+            )
+
         pointer = state.interaction.pointer_xy
         if pointer is not None:
             px = x1 + round(pointer[0] * max(target.width - 1, 0))
@@ -439,6 +506,12 @@ class LiveDashboard:
             1,
             cv2.LINE_AA,
         )
+        if mode is DashboardMode.ANALYSIS:
+            self._draw_landmark_legend(
+                canvas,
+                target,
+                state,
+            )
 
     def _draw_scene(
         self,
@@ -474,7 +547,22 @@ class LiveDashboard:
     ) -> None:
         self._draw_card(canvas, layout.pipeline, "PIPELINE STATUS")
         x = layout.pipeline.x + THEME.card_padding
-        y = layout.pipeline.y + THEME.card_title_height + 3
+        flow_width = layout.pipeline.width - 2 * THEME.card_padding
+        for line_index, line in enumerate(
+            _ANALYSIS_PIPELINE_LINES
+        ):
+            self._put_text(
+                canvas,
+                line,
+                x,
+                layout.pipeline.y
+                + THEME.analysis_flow_y
+                + line_index * 12,
+                scale=THEME.font_micro,
+                color=THEME.accent,
+                max_width=flow_width,
+            )
+        y = layout.pipeline.y + THEME.analysis_rows_y
         width = layout.pipeline.width - 2 * THEME.card_padding
         roi = state.roi
         light = state.illumination
@@ -516,7 +604,7 @@ class LiveDashboard:
             if light is None
             else "active"
             if light.enhancement_active
-            else "inactive"
+            else "not applied"
         )
         self._value_row(canvas, x, y, width, "CLAHE", enhancement)
         y += THEME.row_height
@@ -535,6 +623,190 @@ class LiveDashboard:
             width,
             "COMPUTE",
             f"{diagnostics.compute_total_ms:.2f} ms  |  frame {state.frame_id}",
+        )
+
+    def _draw_demo_status(
+        self,
+        canvas: np.ndarray,
+        layout: DashboardLayout,
+        state: PresentationState,
+    ) -> None:
+        self._draw_card(canvas, layout.pipeline, "TRACKING")
+        x = layout.pipeline.x + THEME.card_padding
+        y = layout.pipeline.y + THEME.card_title_height + 22
+        width = layout.pipeline.width - 2 * THEME.card_padding
+        self._status_row(
+            canvas,
+            x,
+            y,
+            width,
+            "HAND",
+            state.tracking_status,
+            positive=state.tracking_status in {"VALID", "REACQUIRED"},
+        )
+        y += THEME.row_height + 7
+        self._put_text(
+            canvas,
+            "Move your index fingertip to rotate the cube.",
+            x,
+            y,
+            scale=THEME.font_body,
+            color=THEME.text_secondary,
+            max_width=width,
+        )
+
+    def _draw_demo_interaction(
+        self,
+        canvas: np.ndarray,
+        layout: DashboardLayout,
+        state: PresentationState,
+    ) -> None:
+        self._draw_card(canvas, layout.interaction, "TOUCHLESS INPUT")
+        interaction = state.interaction
+        x = layout.interaction.x + THEME.card_padding
+        y = layout.interaction.y + THEME.card_title_height + 4
+        width = layout.interaction.width - 2 * THEME.card_padding
+        pinch = (
+            "n/a"
+            if interaction.pinch_active is None
+            else "ON"
+            if interaction.pinch_active
+            else "OFF"
+        )
+        self._value_row(
+            canvas,
+            x,
+            y,
+            width,
+            "INTERACTION",
+            "READY" if interaction.valid else "NEUTRAL",
+        )
+        self._value_row(
+            canvas,
+            x,
+            y + THEME.row_height,
+            width,
+            "PINCH",
+            pinch,
+        )
+        y += THEME.line_height + 5
+        self._put_text(
+            canvas,
+            "Pinch and vary the distance to scale it.",
+            x,
+            y,
+            scale=THEME.font_body,
+            color=THEME.text_secondary,
+            max_width=width,
+        )
+
+    def _draw_landmarks(
+        self,
+        canvas: np.ndarray,
+        target: Rect,
+        *,
+        image_width: int,
+        image_height: int,
+        raw_landmarks: tuple[LandmarkPresentation, ...],
+        filtered_landmarks: tuple[LandmarkPresentation, ...],
+    ) -> None:
+        for landmark in raw_landmarks:
+            point = _frame_point_to_preview(
+                landmark,
+                target,
+                image_width=image_width,
+                image_height=image_height,
+            )
+            if point is not None:
+                cv2.circle(
+                    canvas,
+                    point,
+                    4,
+                    THEME.landmark_raw,
+                    1,
+                    cv2.LINE_AA,
+                )
+        for landmark in filtered_landmarks:
+            point = _frame_point_to_preview(
+                landmark,
+                target,
+                image_width=image_width,
+                image_height=image_height,
+            )
+            if point is not None:
+                cv2.circle(
+                    canvas,
+                    point,
+                    2,
+                    THEME.landmark_filtered,
+                    thickness=-1,
+                    lineType=cv2.LINE_AA,
+                )
+
+    def _draw_landmark_legend(
+        self,
+        canvas: np.ndarray,
+        target: Rect,
+        state: PresentationState,
+    ) -> None:
+        legend_height = 22
+        y1 = target.bottom - legend_height
+        cv2.rectangle(
+            canvas,
+            (target.x, y1),
+            (target.right - 1, target.bottom - 1),
+            THEME.preview_background,
+            thickness=-1,
+        )
+        self._put_text(
+            canvas,
+            f"RAW {len(state.raw_landmarks)}",
+            target.x + 18,
+            target.bottom - 7,
+            scale=THEME.font_micro,
+            color=THEME.text_secondary,
+        )
+        cv2.circle(
+            canvas,
+            (target.x + 10, target.bottom - 11),
+            3,
+            THEME.landmark_raw,
+            1,
+            cv2.LINE_AA,
+        )
+        self._put_text(
+            canvas,
+            f"FILTERED {len(state.filtered_landmarks)}",
+            target.x + 85,
+            target.bottom - 7,
+            scale=THEME.font_micro,
+            color=THEME.text_secondary,
+        )
+        cv2.circle(
+            canvas,
+            (target.x + 77, target.bottom - 11),
+            3,
+            THEME.landmark_filtered,
+            thickness=-1,
+            lineType=cv2.LINE_AA,
+        )
+        self._put_text(
+            canvas,
+            "POINTER",
+            target.x + 205,
+            target.bottom - 7,
+            scale=THEME.font_micro,
+            color=THEME.text_secondary,
+        )
+        self._put_text(
+            canvas,
+            "FRAME_NORMALIZED / UNMIRRORED",
+            target.right - 8,
+            target.bottom - 7,
+            scale=THEME.font_micro,
+            color=THEME.text_muted,
+            max_width=190,
+            align="right",
         )
 
     def _draw_interaction(
@@ -600,37 +872,105 @@ class LiveDashboard:
         self,
         canvas: np.ndarray,
         layout: DashboardLayout,
+        application: ApplicationState,
+        mode: DashboardMode,
     ) -> None:
         rect = layout.footer
         self._panel(canvas, rect, raised=True)
-        y = rect.y + 30
+        y = rect.y + 18
         self._put_text(
             canvas,
-            "R  RESET CUBE",
+            "A ANALYSIS  |  D DEMO  |  R RESET CUBE  |  Q/ESC STOP  |  3D ESC/CLOSE",
             rect.x + THEME.card_padding,
             y,
             scale=THEME.font_small,
             color=THEME.text_secondary,
         )
-        self._put_text(
-            canvas,
-            "Q / ESC  STOP",
-            rect.x + 175,
-            y,
-            scale=THEME.font_small,
-            color=THEME.text_secondary,
-        )
-        self._put_text(
-            canvas,
-            "3D window: ESC or close to stop",
-            rect.right - THEME.card_padding,
-            y,
-            scale=THEME.font_small,
-            color=THEME.text_muted,
-            max_width=290,
-            align="right",
-        )
+        if mode is DashboardMode.DEMO:
+            self._put_text(
+                canvas,
+                "CAMERA PREVIEW  +  COORDINATE CUBE",
+                rect.x + THEME.card_padding,
+                rect.y + 43,
+                scale=THEME.font_micro,
+                color=THEME.text_muted,
+            )
+            self._put_text(
+                canvas,
+                "Press A to inspect the DIP pipeline and run identity.",
+                rect.x + THEME.card_padding,
+                rect.y + 64,
+                scale=THEME.font_micro,
+                color=THEME.text_muted,
+            )
+            return
 
+        identity = application.runtime_identity
+        spec = _display_value(
+            None if identity is None else identity.spec_version
+        )
+        revision = _display_value(
+            None if identity is None else identity.code_revision
+        )
+        schema = _display_value(
+            None if identity is None else identity.log_schema_version
+        )
+        python = _display_value(
+            None if identity is None else identity.python_version
+        )
+        dependencies = (
+            "n/a"
+            if identity is None
+            else " ".join(
+                f"{name}={version or 'n/a'}"
+                for name, version in identity.dependency_versions
+            )
+        )
+        self._put_text(
+            canvas,
+            (
+                f"SPEC {spec}  |  GIT HEAD {revision}  |  SCHEMA {schema}  "
+                f"|  PY {python}  |  DEPS {dependencies}"
+            ),
+            rect.x + THEME.card_padding,
+            rect.y + 40,
+            scale=THEME.font_micro,
+            color=THEME.text_secondary,
+            max_width=rect.width - 2 * THEME.card_padding,
+        )
+        config_hash = _display_value(
+            None if identity is None else identity.config_sha256
+        )
+        model = (
+            "n/a"
+            if identity is None
+            else (
+                f"{identity.model_filename or 'n/a'} "
+                f"SHA256 {_display_value(identity.model_sha256)}"
+            )
+        )
+        provider = (
+            "n/a"
+            if identity is None
+            else _display_value(identity.provider_name)
+        )
+        camera = (
+            "n/a"
+            if identity is None
+            else (
+                f"{identity.camera_backend or 'n/a'} "
+                f"{identity.camera_requested or 'n/a'}"
+            )
+        )
+        self._put_text(
+            canvas,
+            f"CONFIG SHA256 {config_hash}  |  PROVIDER {provider}  |  MODEL {model}  |  CAMERA {camera}",
+            rect.x + THEME.card_padding,
+            rect.y + 62,
+            scale=THEME.font_micro,
+            color=THEME.text_muted,
+            max_width=rect.width - 2 * THEME.card_padding,
+        )
     @classmethod
     def _draw_card(
         cls,
@@ -792,7 +1132,11 @@ class LiveDashboard:
     ) -> None:
         if max_width is not None and max_width > 0:
             while text and cls._text_width(text, scale) > max_width:
-                text = text[:-2] + "…"
+                text = (
+                    text[:-2] + "…"
+                    if len(text) > 1
+                    else ""
+                )
         text_width = cls._text_width(text, scale)
         if align == "center":
             x -= text_width // 2
@@ -812,3 +1156,32 @@ class LiveDashboard:
     @staticmethod
     def _fmt(value: float | None) -> str:
         return "n/a" if value is None else f"{value:.3f}"
+
+
+def _frame_point_to_preview(
+    landmark: LandmarkPresentation,
+    target: Rect,
+    *,
+    image_width: int,
+    image_height: int,
+) -> tuple[int, int] | None:
+    """Project full-frame normalized x/y into the unmirrored preview."""
+
+    if landmark.coordinate_space != "FRAME_NORMALIZED":
+        return None
+    if not (
+        0.0 <= landmark.x <= 1.0
+        and 0.0 <= landmark.y <= 1.0
+    ):
+        return None
+    if image_width <= 0 or image_height <= 0:
+        return None
+
+    return (
+        target.x + round(landmark.x * max(target.width - 1, 0)),
+        target.y + round(landmark.y * max(target.height - 1, 0)),
+    )
+
+
+def _display_value(value: str | None) -> str:
+    return value if value else "n/a"

@@ -1200,17 +1200,21 @@ None. G7 provenance and all final experiment artifacts remain frozen.
 
 ## 5. Immediate next tasks
 
-G7 is closed. Continue with the post-G7 roadmap in
+G7 is closed. U1 and U2 are implemented on
+`feat/final-ui-extension`. U2 provides DEMO/ANALYSIS modes, live ROI and
+pointer overlays, distinct raw/filtered landmarks, DIP diagnostics, and
+run identity from recorded metadata. U2-focused tests pass (26), and the
+full automated suite passes (444). Continue with the post-G7 roadmap in
 `docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md`, in this order:
 
-1. **U1 — Application foundation:** add an application controller,
+1. **U1 — Application foundation — COMPLETE:** add an application controller,
    immutable presentation state, centralized design tokens, responsive
    layout calculations, and a dashboard shell. Keep the existing live
    demo working while extracting responsibilities incrementally.
-2. **U2 — DIP visibility:** present camera, ROI, landmarks, pointer,
+2. **U2 — DIP visibility — COMPLETE:** present camera, ROI, landmarks, pointer,
    tracking, illumination, CLAHE, filter, and runtime identity using the
    public read-only realtime presentation seam.
-3. **U3 — Scene architecture:** define the Extension-owned `STEMScene`
+3. **U3 — Scene architecture — NEXT:** define the Extension-owned `STEMScene`
    lifecycle and local registry, then migrate the existing coordinate
    cube without changing `InteractionState` semantics.
 4. **U4 — STEM scenes:** add the coordinate-geometry, molecule, and

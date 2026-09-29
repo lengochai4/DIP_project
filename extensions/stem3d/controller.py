@@ -14,6 +14,7 @@ from .ui.presentation_model import (
     ApplicationPhase,
     ApplicationState,
     PresentationState,
+    RuntimeIdentityPresentation,
     build_presentation_state,
 )
 
@@ -27,12 +28,14 @@ class Stem3DApplicationController:
         run_id: str,
         extension: Stem3DExtension,
         dashboard: LiveDashboard,
+        runtime_identity: RuntimeIdentityPresentation | None = None,
     ) -> None:
         self._extension = extension
         self._dashboard = dashboard
         self._state = ApplicationState(
             run_id=run_id,
             phase=ApplicationPhase.READY,
+            runtime_identity=runtime_identity,
         )
         self._extension_open = False
         self._closed = False
@@ -98,6 +101,7 @@ class Stem3DApplicationController:
             active_scene=self._state.active_scene,
             camera_available=True,
             error_message=self._state.error_message,
+            runtime_identity=self._state.runtime_identity,
         )
         self._dashboard.consume(
             packet.image,
@@ -133,6 +137,7 @@ class Stem3DApplicationController:
             active_scene=self._state.active_scene,
             camera_available=self._state.camera_available,
             error_message=str(error),
+            runtime_identity=self._state.runtime_identity,
         )
 
     def close(self) -> None:
@@ -159,4 +164,5 @@ class Stem3DApplicationController:
             active_scene=self._state.active_scene,
             camera_available=self._state.camera_available,
             error_message=self._state.error_message,
+            runtime_identity=self._state.runtime_identity,
         )

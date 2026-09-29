@@ -1,14 +1,18 @@
+from datetime import datetime
+
 import numpy as np
 import pytest
 
 from dip_touchless.core import (
     ColorSpace,
+    CoordinateSpace,
     FilterDiagnostics,
     FilterMode,
     FramePacket,
     IlluminationMetrics,
     IlluminationState,
     InteractionState,
+    Landmark,
     MeasurementQuality,
     ROI,
     ROIState,
@@ -18,15 +22,22 @@ from dip_touchless.core import (
 )
 from extensions.stem3d.live_demo import (
     LivePresentation,
+    _new_live_demo_run_id,
 )
 from extensions.stem3d.ui import (
     ApplicationPhase,
     ApplicationState,
+    DashboardMode,
     LiveDashboard,
     THEME,
     build_presentation_state,
+    build_runtime_identity,
     calculate_dashboard_layout,
     fit_aspect_rect,
+)
+from extensions.stem3d.ui.dashboard import (
+    _ANALYSIS_PIPELINE_LINES,
+    _frame_point_to_preview,
 )
 
 
@@ -50,8 +61,28 @@ def _tracking_frame() -> TrackingFrame:
         frame_id=7,
         timestamp_s=0.25,
         status=TrackingStatus.VALID,
-        raw_landmarks=(),
-        filtered_landmarks=(),
+        raw_landmarks=(
+            Landmark(
+                index=8,
+                x=0.25,
+                y=0.25,
+                z=-0.1,
+                coordinate_space=(
+                    CoordinateSpace.FRAME_NORMALIZED
+                ),
+            ),
+        ),
+        filtered_landmarks=(
+            Landmark(
+                index=8,
+                x=0.5,
+                y=0.5,
+                z=-0.1,
+                coordinate_space=(
+                    CoordinateSpace.FRAME_NORMALIZED
+                ),
+            ),
+        ),
         quality=(
             MeasurementQuality.unavailable()
         ),
@@ -105,6 +136,12 @@ def _interaction() -> InteractionState:
         rotation_delta=(0.01, -0.02),
         scale_delta=0.03,
     )
+
+
+def test_new_live_demo_run_id_uses_g8_prefix() -> None:
+    assert _new_live_demo_run_id(
+        datetime(2026, 9, 29, 21, 51, 52)
+    ) == "g8-demo-20260929-215152"
 
 
 def test_presentation_keyboard_controls() -> None:
@@ -193,6 +230,9 @@ def test_presentation_adapter_returns_immutable_display_values() -> None:
     assert state.illumination is not None
     assert state.illumination.state == "NORMAL"
     assert state.filter.mode == "RAW"
+    assert len(state.raw_landmarks) == 1
+    assert len(state.filtered_landmarks) == 1
+    assert state.raw_landmarks[0].coordinate_space == "FRAME_NORMALIZED"
     assert state.interaction.valid is True
     assert state.interaction.pointer_xy == (0.5, 0.5)
     with pytest.raises((AttributeError, TypeError)):
@@ -273,6 +313,123 @@ def test_dashboard_canvas_uses_requested_responsive_size() -> None:
     assert canvas.shape == (900, 1600, 3)
 
 
+def test_analysis_pipeline_labels_fit_minimum_dashboard_width() -> None:
+    layout = calculate_dashboard_layout(
+        THEME.minimum_window_width,
+        THEME.minimum_window_height,
+    )
+    available_width = (
+        layout.pipeline.width
+        - 2 * THEME.card_padding
+    )
+
+    assert all(
+        LiveDashboard._text_width(
+            line,
+            THEME.font_micro,
+        )
+        <= available_width
+        for line in _ANALYSIS_PIPELINE_LINES
+    )
+
+
+def test_analysis_mode_explains_dip_and_preserves_camera_copy() -> None:
+    packet = _packet()
+    state = build_presentation_state(
+        packet,
+        _tracking_frame(),
+        _interaction(),
+    )
+    identity = build_runtime_identity(
+        {
+            "spec_version": "canonical-v1.2",
+            "code_revision": "0123456789abcdef",
+            "log_schema_version": 1,
+            "config_hash": "a" * 64,
+            "python_version": "3.11.0",
+            "dependency_versions": {
+                "PyYAML": "6.0",
+                "numpy": "2.0",
+                "opencv-contrib-python": "4.14",
+                "mediapipe": "1.0.1",
+                "matplotlib": "3.9",
+            },
+            "provider": {
+                "name": "mediapipe_hand_landmarker",
+                "model_filename": "hand_landmarker.task",
+                "model_checksum": "b" * 64,
+            },
+            "camera": {
+                "backend": "default",
+                "requested": {
+                    "width": 640,
+                    "height": 480,
+                    "fps": 30.0,
+                },
+            },
+        }
+    )
+    application = ApplicationState(
+        run_id=state.run_id,
+        phase=ApplicationPhase.RUNNING,
+        runtime_identity=identity,
+    )
+    dashboard = LiveDashboard()
+
+    dashboard.handle_key(ord("a"))
+    analysis = dashboard.build_dashboard(
+        packet.image,
+        state,
+        application,
+    )
+    assert dashboard.mode is DashboardMode.ANALYSIS
+
+    dashboard.handle_key(ord("d"))
+    demo = dashboard.build_dashboard(
+        packet.image,
+        state,
+        application,
+    )
+    assert dashboard.mode is DashboardMode.DEMO
+    assert not np.array_equal(analysis, demo)
+    assert identity.code_revision == "0123456789abcdef"
+    assert identity.config_sha256 == "a" * 64
+    assert identity.model_sha256 == "b" * 64
+    assert identity.dependency_versions[0] == ("PyYAML", "6.0")
+    assert identity.camera_requested == "requested 640x480 @ 30 fps"
+    assert np.all(packet.image == 0)
+
+    layout = calculate_dashboard_layout(
+        THEME.default_window_width,
+        THEME.default_window_height,
+    )
+    preview = fit_aspect_rect(
+        packet.image.shape[1],
+        packet.image.shape[0],
+        layout.vision_image,
+    )
+    assert _frame_point_to_preview(
+        state.raw_landmarks[0],
+        preview,
+        image_width=packet.image.shape[1],
+        image_height=packet.image.shape[0],
+    ) == (
+        preview.x + round(0.25 * (preview.width - 1)),
+        preview.y + round(0.25 * (preview.height - 1)),
+    )
+    assert _frame_point_to_preview(
+        type(state.raw_landmarks[0])(
+            index=9,
+            x=0.5,
+            y=0.5,
+            coordinate_space="NDC",
+        ),
+        preview,
+        image_width=packet.image.shape[1],
+        image_height=packet.image.shape[0],
+    ) is None
+
+
 class _ControllerDashboard:
     def __init__(self) -> None:
         self.reset_action = None
@@ -337,6 +494,12 @@ def test_application_controller_owns_lifecycle_reset_and_public_callbacks() -> N
         run_id="g7-demo-test",
         extension=extension,
         dashboard=dashboard,  # type: ignore[arg-type]
+        runtime_identity=build_runtime_identity(
+            {
+                "spec_version": "canonical-v1.2",
+                "code_revision": "controller-test-revision",
+            }
+        ),
     )
 
     assert controller.wait_for_start() is True
@@ -358,6 +521,10 @@ def test_application_controller_owns_lifecycle_reset_and_public_callbacks() -> N
     assert controller.latest_presentation is not None
     assert dashboard.presentation[0] is packet.image
     assert dashboard.presentation[2].camera_available is True
+    assert (
+        dashboard.presentation[2].runtime_identity.code_revision
+        == "controller-test-revision"
+    )
 
     dashboard.stop = True
     assert controller.stop_requested() is True
