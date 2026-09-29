@@ -1097,6 +1097,32 @@ The false-positive behavior is retained as a practical tracking limitation
 of the final live demo. It is not hidden by post-hoc tracking-threshold or
 algorithm changes. It does not alter the frozen A1/A2/B replay results or
 their interpretation.
+### G7 post-commit final demo identity verification — 2026-09-29
+
+A second final-demo run was executed after committing the completed
+presentation shell so that runtime metadata identifies the exact immutable
+code revision used for submission.
+
+```text
+run_id: g7-demo-20260929-192030
+processed_frames: 1188
+shutdown: clean
+code_revision: 6a87dc50f9d3920ed9fd39a2669e266be00f9735
+spec_version: canonical-v1.2
+config_hash: ecfaeb11725d9a289b8b6e71a7650a9be5b90fbfb65e5775fe14e13ff5b83a08
+model_filename: hand_landmarker.task
+model_sha256: fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1
+
+The recorded code_revision exactly matched repository HEAD for this
+run. This run is therefore the primary reproducibility identity for the
+final submitted live demo.
+The earlier g7-demo-20260929-190838 run remains the physical behavior
+smoke in which rotation, pinch/scale, reset, reacquisition, presentation
+status, and clean shutdown were exercised. Its observed occasional
+face/background false-positive remains a documented practical limitation.
+No Core algorithm, experiment source, analysis window, or retained G7
+experiment result was changed between the final evidence collection and
+this demo-identity verification.
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:
