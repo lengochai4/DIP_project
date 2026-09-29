@@ -1,0 +1,45 @@
+{
+  "artifact_type": "DIP method visualization",
+  "condition": "P1",
+  "experiment_id": "G7-B-NORMAL",
+  "frame_id": 161,
+  "log_schema_version": "1",
+  "logged_illumination": {
+    "enhancement_active": false,
+    "mean_v": 106.89469808541973,
+    "p10_v": 54.0,
+    "p90_v": 161.0,
+    "robust_range_v": 107.0,
+    "state": "NORMAL",
+    "std_v": 39.869496934771746
+  },
+  "note": "CLAHE was forced with policy=always for visual illustration. The final adaptive P1 run for this frame logged illumination_state=NORMAL and enhancement_active=False.",
+  "primary_experiment_result": false,
+  "roi": {
+    "height": 126,
+    "state": "TRACKING",
+    "width": 97,
+    "x": 370,
+    "y": 354
+  },
+  "run_id": "20260928T151657375761Z-b7808791",
+  "source": {
+    "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_normal\\trial-003.avi",
+    "sha256": "823b3bfdba982d6c733c0e74d1e51e30c797a21c2cd8562b30fb848a0cd30f3d"
+  },
+  "source_config_hash": "08d87d86e38d61d67f96f38bffaa32bf1335f3eb24d61d2f6b26beaf3120cb2d",
+  "source_run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+  "spec_version": "canonical-v1.2",
+  "timestamp_s": 5.366666666666666,
+  "tracking_status": "VALID",
+  "trial_id": "trial-003",
+  "visualization_preprocessing": {
+    "clip_limit": 2.0,
+    "policy": "always",
+    "production_preprocessor": "dip_touchless.preprocessing.adaptive_preprocessor.AdaptivePreprocessor",
+    "tile_grid_size": [
+      8,
+      8
+    ]
+  }
+}

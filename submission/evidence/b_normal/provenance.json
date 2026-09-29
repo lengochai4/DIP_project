@@ -1,0 +1,145 @@
+{
+  "analysis": {
+    "code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+    "evaluable_trial_count": 3,
+    "recorded_trial_count": 3,
+    "unavailable_trials": []
+  },
+  "analysis_window": {
+    "end_s": 10.0,
+    "start_s": 2.0
+  },
+  "batch_id": "G7-B-NORMAL-20260928T151702564004Z",
+  "batch_index": {
+    "path": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\results\\batches\\G7-B-NORMAL-20260928T151702564004Z\\batch_index.json",
+    "sha256": "29fffde839494c11989d44a34520c0184ad37148853bc1245e55f9f1b5c07f4a"
+  },
+  "exclusion_rules": [
+    "Exclude complete trial only if recorded source is corrupted or unreadable.",
+    "Exclude complete trial if replay timestamps are invalid or non-monotonic.",
+    "Exclude complete trial if paired frame/timestamp invariants fail because of source/runtime failure.",
+    "Exclude complete trial for complete camera/source acquisition failure.",
+    "Do not exclude tracking loss or NO_HAND frames because they are part of the primary outcome.",
+    "Do not exclude unfavorable outcomes or select a post-hoc analysis segment."
+  ],
+  "experiment_id": "G7-B-NORMAL",
+  "manifest_path": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\experiments\\final\\g7_b_normal.yaml",
+  "planned_comparisons": [
+    [
+      "p0",
+      "p1"
+    ]
+  ],
+  "primary_metric": "valid_hand_observation_rate",
+  "runs": [
+    {
+      "config_hash": "b0fb66a9c226eab0832a5d39bdf6a66bc4ce62c1f77dd3a6d9487deaa09e2061",
+      "log_schema_version": "1",
+      "profile": "p0",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151624318521Z-012d13f6",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_normal\\trial-001.avi",
+        "sha256": "ce48673a650b58b8e61342a5b4299d84d0b893de25afa8e0f95685fb36acda2f"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-001"
+    },
+    {
+      "config_hash": "9edd7ecfcad0857619ea076713ef2df13feaee0548efe4d8d591da3b8c53c783",
+      "log_schema_version": "1",
+      "profile": "p1",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151632605281Z-ea346a5b",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_normal\\trial-001.avi",
+        "sha256": "ce48673a650b58b8e61342a5b4299d84d0b893de25afa8e0f95685fb36acda2f"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-001"
+    },
+    {
+      "config_hash": "35cb83c91037fdf7b69afa05de1a9ba07875dd974a0dcfef2d4a7105520d9630",
+      "log_schema_version": "1",
+      "profile": "p0",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151640497398Z-4e94ef36",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_normal\\trial-002.avi",
+        "sha256": "12e9ed7c96276e0fef5c3f61ac2c5937f5d7fb607cd55e22585f6f0993f890af"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-002"
+    },
+    {
+      "config_hash": "ee9efea555bd64b783fa8de490b829df242fb6d38733a552a30a5a84125ba523",
+      "log_schema_version": "1",
+      "profile": "p1",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151646261050Z-b8e3d264",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_normal\\trial-002.avi",
+        "sha256": "12e9ed7c96276e0fef5c3f61ac2c5937f5d7fb607cd55e22585f6f0993f890af"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-002"
+    },
+    {
+      "config_hash": "9c4ed0ba2fbc65d0a7af3c7c7cc01b45b3abf5f637c2a72ae2fc869add572baa",
+      "log_schema_version": "1",
+      "profile": "p0",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151652072369Z-65b093a3",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_normal\\trial-003.avi",
+        "sha256": "823b3bfdba982d6c733c0e74d1e51e30c797a21c2cd8562b30fb848a0cd30f3d"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-003"
+    },
+    {
+      "config_hash": "08d87d86e38d61d67f96f38bffaa32bf1335f3eb24d61d2f6b26beaf3120cb2d",
+      "log_schema_version": "1",
+      "profile": "p1",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151657375761Z-b7808791",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_normal\\trial-003.avi",
+        "sha256": "823b3bfdba982d6c733c0e74d1e51e30c797a21c2cd8562b30fb848a0cd30f3d"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-003"
+    }
+  ],
+  "schema_version": "1"
+}

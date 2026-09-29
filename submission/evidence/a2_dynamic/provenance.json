@@ -1,0 +1,215 @@
+{
+  "analysis": {
+    "code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+    "evaluable_trial_count": 0,
+    "recorded_trial_count": 3,
+    "unavailable_trials": [
+      {
+        "reason": "no_common_usable_frames",
+        "trial_id": "trial-001"
+      },
+      {
+        "reason": "no_common_usable_frames",
+        "trial_id": "trial-002"
+      },
+      {
+        "reason": "no_common_usable_frames",
+        "trial_id": "trial-003"
+      }
+    ]
+  },
+  "analysis_window": {
+    "end_s": 10.0,
+    "start_s": 2.0
+  },
+  "batch_id": "G7-A2-DYNAMIC-20260928T151157912799Z",
+  "batch_index": {
+    "path": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\results\\batches\\G7-A2-DYNAMIC-20260928T151157912799Z\\batch_index.json",
+    "sha256": "efd4e51670e923491cbd96dbb13292e377a5ae70111f8f3d656bfbfb6d8bc908"
+  },
+  "exclusion_rules": [
+    "Exclude complete trial only if recorded source is corrupted or unreadable.",
+    "Exclude complete trial if replay timestamps are invalid or non-monotonic.",
+    "Exclude complete trial if paired frame/timestamp invariants fail because of source/runtime failure.",
+    "Exclude complete trial for complete camera/source acquisition failure.",
+    "Do not exclude poor tracking, NO_HAND frames, high deviation, unfavorable outcomes, or post-hoc noisy segments."
+  ],
+  "experiment_id": "G7-A2-DYNAMIC",
+  "manifest_path": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\experiments\\final\\g7_a2_dynamic.yaml",
+  "planned_comparisons": [
+    [
+      "f0",
+      "f1"
+    ],
+    [
+      "f0",
+      "f2"
+    ]
+  ],
+  "primary_metric": "trajectory_deviation_rmse",
+  "runs": [
+    {
+      "config_hash": "a3ebb06be3041c881af1bb41eacdd334a959bd90bde816450d520942f5bf6a90",
+      "log_schema_version": "1",
+      "profile": "f0",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151100669855Z-963cbff9",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\dynamic_normal\\trial-001.avi",
+        "sha256": "c9efcc536125b4d57e075964c2f5ce61fed63343e6887e72f1f3db80e66aad21"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-001"
+    },
+    {
+      "config_hash": "3040a03462faeef09916a2ac169295fbe26593cd0c7aea19f5d9dba897b4d292",
+      "log_schema_version": "1",
+      "profile": "f1",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151108760845Z-a121dce4",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\dynamic_normal\\trial-001.avi",
+        "sha256": "c9efcc536125b4d57e075964c2f5ce61fed63343e6887e72f1f3db80e66aad21"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-001"
+    },
+    {
+      "config_hash": "b7c00efd8fd3213c4053d1a630756ab55f2b98d6160b14a43915090a8f9ef85c",
+      "log_schema_version": "1",
+      "profile": "f2",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151116599722Z-fa9e86b9",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\dynamic_normal\\trial-001.avi",
+        "sha256": "c9efcc536125b4d57e075964c2f5ce61fed63343e6887e72f1f3db80e66aad21"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-001"
+    },
+    {
+      "config_hash": "94182653d67d32261b496d47a0ff2aaba26d4cdbd8ef171a49eb19f52781bfcc",
+      "log_schema_version": "1",
+      "profile": "f0",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151124226823Z-a43abbff",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\dynamic_normal\\trial-002.avi",
+        "sha256": "35f8540688f8e62c2fc908cf5e479a682998b8f918032bc4c718557118f8887e"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-002"
+    },
+    {
+      "config_hash": "4ed6bb6e22aa2ad43a08dbc9505504623d2cb153dfcfd650ddd774fcc3ca2058",
+      "log_schema_version": "1",
+      "profile": "f1",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151129722296Z-c1b21192",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\dynamic_normal\\trial-002.avi",
+        "sha256": "35f8540688f8e62c2fc908cf5e479a682998b8f918032bc4c718557118f8887e"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-002"
+    },
+    {
+      "config_hash": "b57cb197f24e661feabbb43cfcf118d728dad494b1756611d352247c994ab58f",
+      "log_schema_version": "1",
+      "profile": "f2",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151135172311Z-f09d8433",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\dynamic_normal\\trial-002.avi",
+        "sha256": "35f8540688f8e62c2fc908cf5e479a682998b8f918032bc4c718557118f8887e"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-002"
+    },
+    {
+      "config_hash": "c6f28765e064c6b33d3d1f3954f7e777efafc3a5fc24883d551857267ce08b59",
+      "log_schema_version": "1",
+      "profile": "f0",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151140754433Z-026a4f45",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\dynamic_normal\\trial-003.avi",
+        "sha256": "d6795426a79e7d9ddc9044637b39380cd80063cca75b68a4256cee956e7bd0e0"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-003"
+    },
+    {
+      "config_hash": "e7a7d582190c33f8512f26dadb5f9fd05ea55f862dcd9729f60a041757a39891",
+      "log_schema_version": "1",
+      "profile": "f1",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151146475650Z-e18b2988",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\dynamic_normal\\trial-003.avi",
+        "sha256": "d6795426a79e7d9ddc9044637b39380cd80063cca75b68a4256cee956e7bd0e0"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-003"
+    },
+    {
+      "config_hash": "7102900078855104c8f8e07caed80121e32d753e8d10555dc7a1922fe20c3d90",
+      "log_schema_version": "1",
+      "profile": "f2",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T151152227967Z-7795fca6",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\dynamic_normal\\trial-003.avi",
+        "sha256": "d6795426a79e7d9ddc9044637b39380cd80063cca75b68a4256cee956e7bd0e0"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-003"
+    }
+  ],
+  "schema_version": "1"
+}
