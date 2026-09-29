@@ -1,0 +1,145 @@
+{
+  "analysis": {
+    "code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+    "evaluable_trial_count": 3,
+    "recorded_trial_count": 3,
+    "unavailable_trials": []
+  },
+  "analysis_window": {
+    "end_s": 10.0,
+    "start_s": 2.0
+  },
+  "batch_id": "G7-B-LOWLIGHT-20260928T152103579608Z",
+  "batch_index": {
+    "path": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\results\\batches\\G7-B-LOWLIGHT-20260928T152103579608Z\\batch_index.json",
+    "sha256": "9e68b09033ff59f13ec6ef2181788f60c7336b9fe66aaffde98fcb7a4b8f76e4"
+  },
+  "exclusion_rules": [
+    "Exclude complete trial only if recorded source is corrupted or unreadable.",
+    "Exclude complete trial if replay timestamps are invalid or non-monotonic.",
+    "Exclude complete trial if paired frame/timestamp invariants fail because of source/runtime failure.",
+    "Exclude complete trial for complete camera/source acquisition failure.",
+    "Do not exclude tracking loss or NO_HAND frames because they are part of the primary outcome.",
+    "Do not exclude unfavorable outcomes or select a post-hoc analysis segment."
+  ],
+  "experiment_id": "G7-B-LOWLIGHT",
+  "manifest_path": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\experiments\\final\\g7_b_lowlight.yaml",
+  "planned_comparisons": [
+    [
+      "p0",
+      "p1"
+    ]
+  ],
+  "primary_metric": "valid_hand_observation_rate",
+  "runs": [
+    {
+      "config_hash": "0e7c43161a77a85dca6f198106121fd0846c7df6cd52accfe2ecc8c1a535ddbe",
+      "log_schema_version": "1",
+      "profile": "p0",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T152025712161Z-56cf500b",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_lowlight\\trial-001.avi",
+        "sha256": "dae84a7e5d8ca9bbfc2d88371e24a5250ecebf7faccbe46b25d50d8af9f51b58"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-001"
+    },
+    {
+      "config_hash": "b310f5736118bbda843bfaa056ccde51db98be567ded00ab82ab6ecda5e174e4",
+      "log_schema_version": "1",
+      "profile": "p1",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T152032334229Z-825ee7a1",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_lowlight\\trial-001.avi",
+        "sha256": "dae84a7e5d8ca9bbfc2d88371e24a5250ecebf7faccbe46b25d50d8af9f51b58"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-001"
+    },
+    {
+      "config_hash": "3cc3f95ba80c483e7a62c50207834c7bfa92c27a2344282da4bf206587b0f947",
+      "log_schema_version": "1",
+      "profile": "p0",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T152039007770Z-2e7d9831",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_lowlight\\trial-002.avi",
+        "sha256": "0f8b20c36eb05f53a96c3cf2b298456cbb9afb250fae96458244c531399f0603"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-002"
+    },
+    {
+      "config_hash": "5463f02de04300536e528a91ac8dc080c936b72c72cec43d0ce61351441b87d8",
+      "log_schema_version": "1",
+      "profile": "p1",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T152045728456Z-1fac08a1",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_lowlight\\trial-002.avi",
+        "sha256": "0f8b20c36eb05f53a96c3cf2b298456cbb9afb250fae96458244c531399f0603"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-002"
+    },
+    {
+      "config_hash": "4898088a9bc26ca31b167cd36b02afc2ea185212963790d8b40c5643220ba9d9",
+      "log_schema_version": "1",
+      "profile": "p0",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T152052412277Z-14b7cc1b",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_lowlight\\trial-003.avi",
+        "sha256": "b937e7b1a0c001fc9ad4e2d5cf426b1cde8a6ec19e69a6eaabbb6b91723c1003"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-003"
+    },
+    {
+      "config_hash": "5d38ce3ed446b90a222dc136189661e1df68b0dc3b3faa63cc2e749438fe399a",
+      "log_schema_version": "1",
+      "profile": "p1",
+      "provider": {
+        "model_checksum": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+        "model_filename": "hand_landmarker.task",
+        "name": "mediapipe"
+      },
+      "run_code_revision": "abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f",
+      "run_id": "20260928T152058033927Z-cc023224",
+      "source_data": {
+        "identity": "D:\\HocTap\\7.Hoc_tren_lop\\Nam3\\DIP\\DIP_project\\runs\\final_sources\\static_lowlight\\trial-003.avi",
+        "sha256": "b937e7b1a0c001fc9ad4e2d5cf426b1cde8a6ec19e69a6eaabbb6b91723c1003"
+      },
+      "spec_version": "canonical-v1.2",
+      "trial_id": "trial-003"
+    }
+  ],
+  "schema_version": "1"
+}

@@ -157,9 +157,10 @@ edbd1a4 feat: regenerate experiment tables and plots
 ```
 
 G6 completion establishes experiment readiness only. No final A1, A2,
-or Experiment B outcome has yet been collected, and no superiority,
+or Experiment B metric outcome has been reported, and no superiority,
 jitter-reduction, robustness, accuracy, FPS, latency, or statistical
-claim is made from the G6 tooling tests.
+claim is made from the G6 tooling tests. Final claims depend on the G7
+controlled trials and their regenerated analysis.
 
 G5 gesture mapping and the minimal 3D STEM Extension are technically complete.
 
@@ -758,6 +759,370 @@ Existing results invalidated:
 
 No — no final A1/A2/B result set has been collected.
 
+### G7 experiment-protocol clarification — unavailable paired metric
+
+Change:
+
+Defined explicit handling for A1/A2 trials whose predefined paired
+analysis window contains zero common usable F0/F1/F2 landmark frames.
+
+Such a trial remains in the final experiment record, but its paired
+primary metric is marked unavailable with reason
+`no_common_usable_frames`. Analysis continues for other trials.
+
+Reason:
+
+The first final A1 batch exposed a previously unspecified edge case:
+one retained final trial contained no usable landmark observations in
+the predefined analysis window for any F0/F1/F2 condition. The frozen
+exclusion policy correctly prevents removing that trial for poor
+tracking/NO_HAND behavior, while the radial RMS metric cannot be
+numerically calculated without usable landmark samples.
+
+Canonical file/section changed:
+
+`03_ALGORITHM_AND_EXPERIMENTS.md`, paired A1/A2 metric availability.
+
+Code/modules affected:
+
+`analysis/regenerate.py`, analysis tests, and possibly metric-result
+serialization helpers. Core algorithms, acquisition, tracking provider,
+preprocessing, filtering, and recorded sources are unchanged.
+
+Algorithmic impact:
+
+None.
+
+Experimental impact:
+
+The planned and recorded trial remains part of the experiment. The
+primary paired metric is calculated only for trials having a non-empty
+common usable landmark-frame set. Generated outputs must explicitly
+retain unavailable trials and report the evaluable-trial count.
+
+Compatibility impact:
+
+The existing G7 A1 batch and all nine recorded final sources remain
+valid. No A1 primary metric output had been successfully generated
+before this clarification. No source is replaced and no analysis window
+is changed.
+
+Tests added/updated:
+
+Analysis regeneration tests will verify that an empty common paired set
+produces an explicit unavailable metric record rather than aborting the
+entire batch, while ordinary evaluable trials remain unchanged.
+
+Existing results invalidated:
+
+No. A1 regeneration previously failed before producing final metric
+outputs. The raw run artifacts and frozen source recordings remain
+valid.
+
+
+### G7 presentation-interface addition — read-only realtime callback
+
+Change:
+
+Added an optional `RealtimeRuntime` presentation callback that receives
+one presentation-safe camera-frame copy, the public `TrackingFrame`, and
+the current `InteractionState | None` once per processed realtime frame.
+
+Reason:
+
+The final presentation shell requires camera preview plus
+tracking/ROI/illumination/filter/interaction status. `RealtimeRuntime`
+previously exposed only the latest `InteractionState`, while the required
+tracking diagnostics existed only inside the runtime/logger path.
+Presentation code must not reach into mutable Core internals.
+
+Canonical file/section changed:
+
+`02_ARCHITECTURE_AND_CONTRACTS.md`, RealtimeRuntime presentation seam.
+
+Code/modules affected:
+
+`src/dip_touchless/runtime/realtime.py`;
+`tests/runtime/test_realtime_runtime.py`;
+future submission/demo presentation code.
+
+Algorithmic impact:
+
+None. ROI selection, illumination decisions, CLAHE behavior, landmark
+provider behavior, temporal filtering, gesture mapping, logging, and the
+3D scene-state algorithm are unchanged.
+
+Experimental impact:
+
+None. ReplayRuntime and all frozen G7 A1/A2/B experiment semantics and
+recorded result artifacts are unchanged. The callback is realtime-only
+presentation plumbing.
+
+Compatibility impact:
+
+Additive optional constructor argument only. Existing RealtimeRuntime
+callers remain valid. The existing `interaction_consumer` remains the
+InteractionState-only boundary used by the 3D Extension.
+
+Tests added/updated:
+
+RealtimeRuntime test coverage verifies one callback per processed frame,
+matching frame identity/status/interaction state, and a non-shared camera
+image copy that presentation code can mutate without modifying the source
+frame buffer.
+
+Existing results invalidated:
+
+No — the change does not alter ReplayRuntime, experiment configuration,
+analysis code, or any algorithm used to generate the retained final
+results.
+
+### G7 final evaluation evidence snapshot — A1/A2/B
+
+Status:
+
+Final paired replay collection and primary analysis have been executed for
+A1, A2, B-normal, and B-lowlight using the frozen G7 sources, predefined
+2.0--10.0 s analysis window, frozen manifests, and exclusion policy.
+
+No source recording, analysis window, primary metric, or comparison condition
+was replaced after inspecting outcomes.
+
+Analysis regeneration revision:
+
+`abdc32b2417fde28cbb9df4b96f1ce5e20e0be4f`
+
+#### A1 — static temporal stability
+
+Batch:
+
+`G7-A1-STATIC-20260928T144254479591Z`
+
+Primary metric:
+
+`radial_rms_jitter`
+
+Recorded trials:
+
+3
+
+Evaluable trials:
+
+2
+
+Observed results:
+
+- `trial-001`, common usable frames = 5:
+  - F0 = `0.006607584161915466`
+  - F1 = `0.001628449479902759`
+  - F2 = `0.001629070583985972`
+- `trial-002`:
+  - paired primary metric unavailable;
+  - reason = `no_common_usable_frames`;
+  - the trial remains in the final experiment record.
+- `trial-003`, common usable frames = 128:
+  - F0 = `0.030597141717346094`
+  - F1 = `0.026704461422596908`
+  - F2 = `0.026753300347156422`
+
+Evidence-bounded interpretation:
+
+- F1 and F2 both have lower radial RMS jitter than F0 in the two evaluable
+  trials.
+- F1 and F2 are very close to each other in both evaluable trials.
+- `trial-001` contains only five common usable frames, so its numeric value
+  is weak descriptive evidence.
+- The three-trial source-group size is small; no population-level or
+  inferential superiority claim is supported.
+
+#### A2 — dynamic responsiveness characterization
+
+Batch:
+
+`G7-A2-DYNAMIC-20260928T151157912799Z`
+
+Primary metric:
+
+`trajectory_deviation_rmse`
+
+Recorded trials:
+
+3
+
+Evaluable trials:
+
+0
+
+All three trials retain explicit unavailable primary-metric records with:
+
+`no_common_usable_frames`
+
+Diagnostic result:
+
+- `trial-001`: all 360 replay frames were `NO_HAND`;
+- `trial-002`: all 360 replay frames were `NO_HAND`;
+- `trial-003`: one `VALID` raw-landmark frame occurred at frame 33, outside
+  the predefined 2.0--10.0 s primary analysis window; the analysis window
+  contained no usable landmark frame;
+- within each trial, the raw usable-frame sets were identical across
+  F0/F1/F2, so the unavailable result is not evidence of a filter-specific
+  alignment difference.
+
+Evidence-bounded interpretation:
+
+The final A2 source set does not provide an evaluable quantitative
+trajectory-deviation result. Therefore the final RQ2 evidence can describe
+the observed A1 static-jitter behavior, but the predefined primary
+responsiveness characterization is unavailable and must remain an explicit
+limitation.
+
+No A2 source is replaced and the analysis window is not changed after seeing
+this outcome.
+
+#### Experiment B — illumination robustness
+
+Primary metric:
+
+`valid_hand_observation_rate`
+
+Temporal filtering was held at F0 / Raw.
+
+##### B-normal
+
+Batch:
+
+`G7-B-NORMAL-20260928T151702564004Z`
+
+Recorded/evaluable trials:
+
+3 / 3
+
+Each condition used 241 analyzed frames per trial.
+
+Observed P0 / P1 rates:
+
+- `trial-001`: `0.02074688796680498 / 0.02074688796680498`
+- `trial-002`: `0.0 / 0.0`
+- `trial-003`: `0.5311203319502075 / 0.5311203319502075`
+
+P0 and P1 therefore produced the same primary outcome in each tested
+normal-light trial.
+
+##### B-lowlight
+
+Batch:
+
+`G7-B-LOWLIGHT-20260928T152103579608Z`
+
+Recorded/evaluable trials:
+
+3 / 3
+
+Each condition used 241 analyzed frames per trial.
+
+Observed P0 / P1 rates:
+
+- `trial-001`: `0.0 / 0.0`
+- `trial-002`: `0.0 / 0.0`
+- `trial-003`: `0.0 / 0.0`
+
+The retained source sidecars label these three recordings
+`low-light-room`. Auto-exposure and auto-white-balance state were recorded
+as `unknown`, so no claim is made about whether camera auto controls
+compensated for the physical lighting change.
+
+Illumination-activation audit:
+
+- B-normal P1: stabilized state was `NORMAL` and
+  `enhancement_active=False` for all 723 analyzed frames;
+- B-lowlight P1: stabilized state was also `NORMAL` and
+  `enhancement_active=False` for all 723 analyzed frames.
+
+Therefore the final P0/P1 equality must not be described as evidence that
+CLAHE itself is ineffective. Under the tested sources and resolved
+configuration, the adaptive activation policy did not request/apply CLAHE,
+so P1 resolved to the unenhanced path throughout the analyzed frames.
+
+Evidence-bounded RQ1 interpretation:
+
+Under the tested final conditions, adaptive preprocessing did not increase
+valid hand-observation rate relative to bypass. The challenging-light source
+group also exposes an activation-policy limitation: despite being acquired
+and documented as `low-light-room`, the runtime illumination classifier
+remained `NORMAL`, so the final experiment does not provide a direct
+CLAHE-active-versus-bypass tracking comparison.
+
+This limitation must remain explicit in the Results and Discussion and must
+not be converted into a general claim about CLAHE effectiveness.
+
+#### Current RQ evidence boundary
+
+RQ1:
+
+The primary P0/P1 metric is available for all normal and low-light trials.
+No improvement was observed, but the low-light P1 path never activated
+CLAHE, limiting the conclusion to the tested adaptive policy and source
+conditions.
+
+RQ2:
+
+Static-jitter evidence is available for two of three A1 trials. The primary
+A2 responsiveness metric is unavailable for all three final dynamic trials
+because the predefined analysis windows contain no common usable landmarks.
+
+RQ3:
+
+The existing G5 physical interaction smoke test demonstrates practical
+interaction behavior but is not treated as an RQ1/RQ2 quantitative result.
+Final demo/presentation evidence remains to be packaged separately.
+
+### G7 final demo physical smoke — 2026-09-29
+
+Final presentation-shell smoke run:
+
+```text
+run_id: g7-demo-20260929-190838
+processed_frames: 4947
+shutdown: clean
+Observed behavior:
+- final camera/status presentation and 3D interaction ran successfully;
+- the frozen gesture mapping remained unchanged: index-fingertip motion
+  controls rotation and thumb-index pinch controls scale;
+- the application remained operational through the live run and closed
+  cleanly;
+- an occasional false-positive hand-like detection was observed around
+  the user's face/background, producing a small unintended cube rotation.
+Interpretation:
+The false-positive behavior is retained as a practical tracking limitation
+of the final live demo. It is not hidden by post-hoc tracking-threshold or
+algorithm changes. It does not alter the frozen A1/A2/B replay results or
+their interpretation.
+### G7 post-commit final demo identity verification — 2026-09-29
+
+A second final-demo run was executed after committing the completed
+presentation shell so that runtime metadata identifies the exact immutable
+code revision used for submission.
+
+```text
+run_id: g7-demo-20260929-192030
+processed_frames: 1188
+shutdown: clean
+code_revision: 6a87dc50f9d3920ed9fd39a2669e266be00f9735
+spec_version: canonical-v1.2
+config_hash: ecfaeb11725d9a289b8b6e71a7650a9be5b90fbfb65e5775fe14e13ff5b83a08
+model_filename: hand_landmarker.task
+model_sha256: fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1
+
+The recorded code_revision exactly matched repository HEAD for this
+run. This run is therefore the primary reproducibility identity for the
+final submitted live demo.
+The earlier g7-demo-20260929-190838 run remains the physical behavior
+smoke in which rotation, pinch/scale, reset, reacquisition, presentation
+status, and clean shutdown were exercised. Its observed occasional
+face/background false-positive remains a documented practical limitation.
+No Core algorithm, experiment source, analysis window, or retained G7
+experiment result was changed between the final evidence collection and
+this demo-identity verification.
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:

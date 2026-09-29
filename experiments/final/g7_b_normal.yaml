@@ -1,0 +1,38 @@
+schema_version: "1"
+
+experiment_id: "G7-B-NORMAL"
+
+profiles:
+  - p0
+  - p1
+
+model: "../../models/hand_landmarker.task"
+
+warmup_s: 2.0
+
+analysis_window:
+  start_s: 2.0
+  end_s: 10.0
+
+primary_metric: "valid_hand_observation_rate"
+
+planned_comparisons:
+  - [p0, p1]
+
+exclusion_rules:
+  - "Exclude complete trial only if recorded source is corrupted or unreadable."
+  - "Exclude complete trial if replay timestamps are invalid or non-monotonic."
+  - "Exclude complete trial if paired frame/timestamp invariants fail because of source/runtime failure."
+  - "Exclude complete trial for complete camera/source acquisition failure."
+  - "Do not exclude tracking loss or NO_HAND frames because they are part of the primary outcome."
+  - "Do not exclude unfavorable outcomes or select a post-hoc analysis segment."
+
+trials:
+  - trial_id: "trial-001"
+    source: "../../runs/final_sources/static_normal/trial-001.avi"
+
+  - trial_id: "trial-002"
+    source: "../../runs/final_sources/static_normal/trial-002.avi"
+
+  - trial_id: "trial-003"
+    source: "../../runs/final_sources/static_normal/trial-003.avi"

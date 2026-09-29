@@ -1367,6 +1367,40 @@ Additional responsiveness metrics are OPTIONAL.
 
 Interpretation MUST discuss the observed jitter-vs-responsiveness trade-off. The specification does not define a required latency value, required percentage improvement, or universal winner.
 
+### Paired-metric availability when no common usable frames exist
+
+For A1 and A2, a paired primary metric is defined only when the
+predefined analysis window contains at least one common usable landmark
+frame across all compared F0/F1/F2 conditions for that trial.
+
+If the common usable landmark-frame set is empty:
+
+- the trial MUST remain part of the final experiment record;
+- the trial MUST NOT be excluded merely because tracking failed or no
+  usable landmark was produced;
+- the paired primary metric for that trial is unavailable / undefined;
+- unavailable MUST NOT be serialized as numeric zero, NaN presented as a
+  measured result, or another fabricated numeric value;
+- analysis regeneration MUST continue for other trials rather than abort
+  the entire batch;
+- generated outputs MUST preserve the unavailable trial explicitly,
+  including the reason `no_common_usable_frames`;
+- the final report MUST state both the planned/recorded trial count and
+  the number of trials for which the paired primary metric was
+  evaluable;
+- tracking failure / NO_HAND behavior remains valid descriptive evidence
+  and MUST NOT be silently discarded.
+
+For a paired F0/F1/F2 primary analysis, all three conditions for the
+affected trial share the same metric-availability status. A condition
+MUST NOT be evaluated on a different frame subset merely to obtain a
+numeric value.
+
+This rule does not change Experiment B. Its primary valid
+hand-observation rate remains defined when no usable hand observation is
+present; in that case the observed valid-hand rate may legitimately be
+zero when N_analyzed > 0.
+
 ## 17. Experiment B — Illumination robustness — required
 
 Required conditions:

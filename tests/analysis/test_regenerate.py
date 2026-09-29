@@ -30,7 +30,11 @@ def _make_run(
     *,
     run_id: str,
     condition: str,
-    points: tuple[tuple[float, float], ...],
+    points: tuple[
+        tuple[float, float] | None,
+        ...,
+    ],
+    trial_id: str = "trial-001",
 ) -> None:
     source = tmp_path / "source.mp4"
     source.touch(exist_ok=True)
@@ -54,7 +58,7 @@ def _make_run(
             "experiment": {
                 "experiment_id": "A1",
                 "condition": condition,
-                "trial_id": "trial-001",
+                "trial_id": trial_id,
                 "warmup_s": 0.0,
             },
         },
@@ -70,23 +74,34 @@ def _make_run(
         resolved.to_dict(),
     )
 
-    for frame_id, (x, y) in enumerate(points):
-        landmark = Landmark(
-            index=8,
-            x=x,
-            y=y,
-            z=-0.1,
-            coordinate_space=CoordinateSpace.FRAME_NORMALIZED,
-        )
+    for frame_id, point in enumerate(points):
+        if point is None:
+            status = TrackingStatus.NO_HAND
+            raw_landmarks = ()
+            filtered_landmarks = ()
+        else:
+            x, y = point
+            landmark = Landmark(
+                index=8,
+                x=x,
+                y=y,
+                z=-0.1,
+                coordinate_space=(
+                    CoordinateSpace.FRAME_NORMALIZED
+                ),
+            )
+            status = TrackingStatus.VALID
+            raw_landmarks = (landmark,)
+            filtered_landmarks = (landmark,)
 
         logger.log_tracking_frame(
             TrackingFrame(
                 run_id=run_id,
                 frame_id=frame_id,
                 timestamp_s=frame_id * 0.1,
-                status=TrackingStatus.VALID,
-                raw_landmarks=(landmark,),
-                filtered_landmarks=(landmark,),
+                status=status,
+                raw_landmarks=raw_landmarks,
+                filtered_landmarks=filtered_landmarks,
                 quality=MeasurementQuality.unavailable(),
                 roi=None,
                 illumination=None,
@@ -212,6 +227,12 @@ def test_regenerate_batch_creates_primary_assets(
         row["metric_name"] == "radial_rms_jitter"
         for row in rows
     )
+    assert all(
+        row["available"] == "true"
+        and row["unavailable_reason"] == ""
+        and float(row["value"]) >= 0.0
+        for row in rows
+    )
     assert (output_dir / "primary_metric.png").stat().st_size > 0
     assert (output_dir / "trajectories.csv").is_file()
     assert (output_dir / "trajectory_xy.png").stat().st_size > 0
@@ -226,6 +247,9 @@ def test_regenerate_batch_creates_primary_assets(
     assert provenance["analysis"]["code_revision"] == (
         "test-analysis-revision"
     )
+    assert provenance["analysis"]["recorded_trial_count"] == 1
+    assert provenance["analysis"]["evaluable_trial_count"] == 1
+    assert provenance["analysis"]["unavailable_trials"] == []
     assert provenance["exclusion_rules"] == [
         "startup warmup"
     ]
@@ -258,3 +282,132 @@ def test_regenerate_batch_creates_primary_assets(
         row["source_data"]["sha256"]
         for row in provenance["runs"]
     )
+
+
+def test_regenerate_marks_no_common_frames_unavailable(
+    tmp_path: Path,
+) -> None:
+    runs = [
+        (
+            "trial-001",
+            "F0",
+            "run-trial-001-f0",
+            ((0.0, 0.0), (2.0, 0.0)),
+        ),
+        (
+            "trial-001",
+            "F1",
+            "run-trial-001-f1",
+            ((0.5, 0.0), (1.5, 0.0)),
+        ),
+        (
+            "trial-001",
+            "F2",
+            "run-trial-001-f2",
+            ((0.75, 0.0), (1.25, 0.0)),
+        ),
+        ("trial-002", "F0", "run-trial-002-f0", (None, None)),
+        ("trial-002", "F1", "run-trial-002-f1", (None, None)),
+        ("trial-002", "F2", "run-trial-002-f2", (None, None)),
+    ]
+
+    for trial_id, condition, run_id, points in runs:
+        _make_run(
+            tmp_path,
+            run_id=run_id,
+            condition=condition,
+            trial_id=trial_id,
+            points=points,
+        )
+
+    source = (tmp_path / "source.mp4").resolve()
+    batch_index = tmp_path / "batch_index.json"
+    batch_index.write_text(
+        json.dumps(
+            {
+                "schema_version": "1",
+                "batch_id": "batch-unavailable",
+                "experiment_id": "A1",
+                "analysis_window": {
+                    "start_s": 0.0,
+                    "end_s": 0.1,
+                },
+                "primary_metric": "radial_rms_jitter",
+                "planned_comparisons": [
+                    ["f0", "f1"],
+                    ["f0", "f2"],
+                ],
+                "exclusion_rules": ["startup warmup"],
+                "runs": [
+                    {
+                        "experiment_id": "A1",
+                        "trial_id": trial_id,
+                        "profile": condition.lower(),
+                        "source": str(source),
+                        "run_id": run_id,
+                        "processed_frames": 2,
+                    }
+                    for trial_id, condition, run_id, _ in runs
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    output_dir = regenerate_batch(
+        batch_index=batch_index,
+        runs_root=tmp_path / "runs",
+        output_root=tmp_path / "results",
+        analysis_code_revision="test-analysis-revision",
+    )
+
+    with (output_dir / "metrics.csv").open(
+        newline="",
+        encoding="utf-8",
+    ) as file:
+        rows = list(csv.DictReader(file))
+
+    assert len(rows) == 6
+    evaluable_rows = [
+        row
+        for row in rows
+        if row["trial_id"] == "trial-001"
+    ]
+    unavailable_rows = [
+        row
+        for row in rows
+        if row["trial_id"] == "trial-002"
+    ]
+
+    assert len(evaluable_rows) == 3
+    assert all(
+        row["available"] == "true"
+        and row["unavailable_reason"] == ""
+        and row["value"] != ""
+        for row in evaluable_rows
+    )
+    assert len(unavailable_rows) == 3
+    assert all(
+        row["available"] == "false"
+        and row["unavailable_reason"]
+        == "no_common_usable_frames"
+        and row["value"] == ""
+        and row["sample_count"] == "0"
+        for row in unavailable_rows
+    )
+    assert (output_dir / "primary_metric.png").stat().st_size > 0
+
+    provenance = json.loads(
+        (output_dir / "provenance.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert provenance["analysis"]["recorded_trial_count"] == 2
+    assert provenance["analysis"]["evaluable_trial_count"] == 1
+    assert provenance["analysis"]["unavailable_trials"] == [
+        {
+            "trial_id": "trial-002",
+            "reason": "no_common_usable_frames",
+        }
+    ]

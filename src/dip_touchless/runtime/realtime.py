@@ -46,6 +46,17 @@ class RealtimeRuntime:
             Callable[[InteractionState], object]
             | None
         ) = None,
+        presentation_consumer: (
+            Callable[
+                [
+                    FramePacket,
+                    TrackingFrame,
+                    InteractionState | None,
+                ],
+                object,
+            ]
+            | None
+        ) = None,
         stop_requested: (
             Callable[[], bool]
             | None
@@ -85,6 +96,9 @@ class RealtimeRuntime:
         self._gesture_engine = gesture_engine
         self._interaction_consumer = (
             interaction_consumer
+        )
+        self._presentation_consumer = (
+            presentation_consumer
         )
         self._stop_requested = stop_requested
         self._latest_interaction_state: (
@@ -313,6 +327,22 @@ class RealtimeRuntime:
                         self._interaction_consumer(
                             interaction_state
                         )
+
+                if (
+                    self._presentation_consumer
+                    is not None
+                ):
+                    # Keep presentation mutations away from the image
+                    # buffer already consumed by the Core pipeline.
+                    presentation_packet = replace(
+                        packet,
+                        image=packet.image.copy(),
+                    )
+                    self._presentation_consumer(
+                        presentation_packet,
+                        tracking_frame,
+                        interaction_state,
+                    )
 
                 processed_frames += 1
 

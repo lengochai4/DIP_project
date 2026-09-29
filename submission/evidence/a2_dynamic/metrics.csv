@@ -1,0 +1,10 @@
+batch_id,experiment_id,trial_id,profile,run_id,metric_name,value,sample_count,available,unavailable_reason
+G7-A2-DYNAMIC-20260928T151157912799Z,G7-A2-DYNAMIC,trial-001,F0,20260928T151100669855Z-963cbff9,trajectory_deviation_rmse,,0,false,no_common_usable_frames
+G7-A2-DYNAMIC-20260928T151157912799Z,G7-A2-DYNAMIC,trial-001,F1,20260928T151108760845Z-a121dce4,trajectory_deviation_rmse,,0,false,no_common_usable_frames
+G7-A2-DYNAMIC-20260928T151157912799Z,G7-A2-DYNAMIC,trial-001,F2,20260928T151116599722Z-fa9e86b9,trajectory_deviation_rmse,,0,false,no_common_usable_frames
+G7-A2-DYNAMIC-20260928T151157912799Z,G7-A2-DYNAMIC,trial-002,F0,20260928T151124226823Z-a43abbff,trajectory_deviation_rmse,,0,false,no_common_usable_frames
+G7-A2-DYNAMIC-20260928T151157912799Z,G7-A2-DYNAMIC,trial-002,F1,20260928T151129722296Z-c1b21192,trajectory_deviation_rmse,,0,false,no_common_usable_frames
+G7-A2-DYNAMIC-20260928T151157912799Z,G7-A2-DYNAMIC,trial-002,F2,20260928T151135172311Z-f09d8433,trajectory_deviation_rmse,,0,false,no_common_usable_frames
+G7-A2-DYNAMIC-20260928T151157912799Z,G7-A2-DYNAMIC,trial-003,F0,20260928T151140754433Z-026a4f45,trajectory_deviation_rmse,,0,false,no_common_usable_frames
+G7-A2-DYNAMIC-20260928T151157912799Z,G7-A2-DYNAMIC,trial-003,F1,20260928T151146475650Z-e18b2988,trajectory_deviation_rmse,,0,false,no_common_usable_frames
+G7-A2-DYNAMIC-20260928T151157912799Z,G7-A2-DYNAMIC,trial-003,F2,20260928T151152227967Z-7795fca6,trajectory_deviation_rmse,,0,false,no_common_usable_frames
