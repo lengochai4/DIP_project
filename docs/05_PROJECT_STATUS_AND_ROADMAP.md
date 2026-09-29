@@ -1076,6 +1076,27 @@ The existing G5 physical interaction smoke test demonstrates practical
 interaction behavior but is not treated as an RQ1/RQ2 quantitative result.
 Final demo/presentation evidence remains to be packaged separately.
 
+### G7 final demo physical smoke — 2026-09-29
+
+Final presentation-shell smoke run:
+
+```text
+run_id: g7-demo-20260929-190838
+processed_frames: 4947
+shutdown: clean
+Observed behavior:
+- final camera/status presentation and 3D interaction ran successfully;
+- the frozen gesture mapping remained unchanged: index-fingertip motion
+  controls rotation and thumb-index pinch controls scale;
+- the application remained operational through the live run and closed
+  cleanly;
+- an occasional false-positive hand-like detection was observed around
+  the user's face/background, producing a small unintended cube rotation.
+Interpretation:
+The false-positive behavior is retained as a practical tracking limitation
+of the final live demo. It is not hidden by post-hoc tracking-threshold or
+algorithm changes. It does not alter the frozen A1/A2/B replay results or
+their interpretation.
 ## 5. Immediate next tasks
 
 Proceed in this order unless a documented blocker requires rearrangement:
