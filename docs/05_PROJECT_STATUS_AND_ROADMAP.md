@@ -820,6 +820,63 @@ outputs. The raw run artifacts and frozen source recordings remain
 valid.
 
 
+### G7 presentation-interface addition — read-only realtime callback
+
+Change:
+
+Added an optional `RealtimeRuntime` presentation callback that receives
+one presentation-safe camera-frame copy, the public `TrackingFrame`, and
+the current `InteractionState | None` once per processed realtime frame.
+
+Reason:
+
+The final presentation shell requires camera preview plus
+tracking/ROI/illumination/filter/interaction status. `RealtimeRuntime`
+previously exposed only the latest `InteractionState`, while the required
+tracking diagnostics existed only inside the runtime/logger path.
+Presentation code must not reach into mutable Core internals.
+
+Canonical file/section changed:
+
+`02_ARCHITECTURE_AND_CONTRACTS.md`, RealtimeRuntime presentation seam.
+
+Code/modules affected:
+
+`src/dip_touchless/runtime/realtime.py`;
+`tests/runtime/test_realtime_runtime.py`;
+future submission/demo presentation code.
+
+Algorithmic impact:
+
+None. ROI selection, illumination decisions, CLAHE behavior, landmark
+provider behavior, temporal filtering, gesture mapping, logging, and the
+3D scene-state algorithm are unchanged.
+
+Experimental impact:
+
+None. ReplayRuntime and all frozen G7 A1/A2/B experiment semantics and
+recorded result artifacts are unchanged. The callback is realtime-only
+presentation plumbing.
+
+Compatibility impact:
+
+Additive optional constructor argument only. Existing RealtimeRuntime
+callers remain valid. The existing `interaction_consumer` remains the
+InteractionState-only boundary used by the 3D Extension.
+
+Tests added/updated:
+
+RealtimeRuntime test coverage verifies one callback per processed frame,
+matching frame identity/status/interaction state, and a non-shared camera
+image copy that presentation code can mutate without modifying the source
+frame buffer.
+
+Existing results invalidated:
+
+No — the change does not alter ReplayRuntime, experiment configuration,
+analysis code, or any algorithm used to generate the retained final
+results.
+
 ### G7 final evaluation evidence snapshot — A1/A2/B
 
 Status:

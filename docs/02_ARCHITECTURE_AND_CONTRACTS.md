@@ -69,6 +69,25 @@ It MUST:
 - remain safe when no hand is present or tracking is lost;
 - collect diagnostics without redefining algorithm semantics.
 
+For presentation-only realtime UI, `RealtimeRuntime` MAY expose an
+optional callback invoked once per processed frame with the public
+runtime outputs:
+
+```text
+FramePacket presentation copy
+TrackingFrame
+InteractionState | None
+```
+
+The presentation `FramePacket.image` MUST be a copy of the acquired
+camera image so drawing or annotation in presentation code cannot mutate
+the image buffer used by Core processing. The callback is read-only with
+respect to Core behavior: it MUST NOT replace preprocessing, tracking,
+filtering, gesture, logging, or experiment semantics.
+
+This presentation seam does not change the 3D Extension boundary. The
+3D STEM Extension continues to consume `InteractionState` only.
+
 The course baseline SHOULD use synchronous processing for clarity. Async/latest-frame execution is FUTURE unless separately specified and tested.
 
 ### 3.2 ReplayRuntime
