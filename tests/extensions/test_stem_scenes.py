@@ -15,7 +15,12 @@ from extensions.stem3d import (
     Stem3DSceneState,
     build_tier1_scene_registry,
 )
-from extensions.stem3d.ui import ApplicationPhase, LiveDashboard
+from extensions.stem3d.ui import (
+    ApplicationPhase,
+    DashboardMode,
+    LiveDashboard,
+    build_spatial_panel_layout,
+)
 
 
 def _scene_state() -> Stem3DSceneState:
@@ -331,6 +336,10 @@ class _SelectionDashboard:
         self.reset_action = None
         self.scene_select_action = None
         self.molecule_preset_action = None
+        self.mode_action = None
+        self.control_panel_toggle_action = None
+        self.panel_state = None
+        self.mode = DashboardMode.DEMO
 
     def set_reset_action(self, action) -> None:
         self.reset_action = action
@@ -340,6 +349,31 @@ class _SelectionDashboard:
 
     def set_molecule_preset_action(self, action) -> None:
         self.molecule_preset_action = action
+
+    def set_mode_action(self, action) -> None:
+        self.mode_action = action
+
+    def set_control_panel_toggle_action(self, action) -> None:
+        self.control_panel_toggle_action = action
+
+    def set_spatial_panel_state(self, state) -> None:
+        self.panel_state = state
+
+    def set_mode_from_application(self, mode) -> None:
+        self.mode = mode
+
+    def spatial_panel_layout(self):
+        active_scene_id = (
+            None
+            if self.panel_state is None
+            else self.panel_state.active_scene_id
+        )
+        return build_spatial_panel_layout(
+            1280,
+            720,
+            active_scene_id=active_scene_id,
+            mode=self.mode,
+        )
 
     def wait_for_start(self, _state) -> bool:
         return True

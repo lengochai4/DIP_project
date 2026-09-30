@@ -28,12 +28,15 @@ from extensions.stem3d.ui import (
     ApplicationPhase,
     ApplicationState,
     DashboardMode,
+    InteractionFocus,
     LiveDashboard,
+    SpatialPanelViewState,
     THEME,
     build_presentation_state,
     build_runtime_identity,
     calculate_dashboard_layout,
     fit_aspect_rect,
+    build_spatial_panel_layout,
 )
 from extensions.stem3d.ui.dashboard import (
     _ANALYSIS_PIPELINE_LINES,
@@ -313,6 +316,53 @@ def test_dashboard_canvas_uses_requested_responsive_size() -> None:
     assert canvas.shape == (900, 1600, 3)
 
 
+def test_dashboard_renders_screen_space_control_panel_at_responsive_sizes() -> None:
+    packet = _packet()
+    state = build_presentation_state(
+        packet,
+        _tracking_frame(),
+        _interaction(),
+    )
+    dashboard = LiveDashboard()
+    dashboard.set_spatial_panel_state(
+        SpatialPanelViewState(
+            open=True,
+            focus=InteractionFocus.UI_FOCUS,
+            cursor_xy=None,
+            hovered_button="scene:molecule",
+            pressed_button="scene:molecule",
+            active_scene_id="molecule",
+            mode=DashboardMode.DEMO,
+        )
+    )
+    application = ApplicationState(
+        run_id=state.run_id,
+        phase=ApplicationPhase.RUNNING,
+        active_scene="Molecule",
+    )
+
+    for width, height in ((1024, 640), (1600, 900)):
+        canvas = dashboard.build_dashboard(
+            packet.image,
+            state,
+            application,
+            width=width,
+            height=height,
+        )
+        panel = build_spatial_panel_layout(
+            width,
+            height,
+            active_scene_id="molecule",
+            mode=DashboardMode.DEMO,
+        )
+        assert canvas.shape == (height, width, 3)
+        assert tuple(
+            canvas[panel.viewport.y + 4, panel.viewport.x + 4]
+        ) == (
+            THEME.surface_raised
+        )
+
+
 def test_analysis_pipeline_labels_fit_minimum_dashboard_width() -> None:
     layout = calculate_dashboard_layout(
         THEME.minimum_window_width,
@@ -435,10 +485,14 @@ class _ControllerDashboard:
         self.reset_action = None
         self.scene_select_action = None
         self.molecule_preset_action = None
+        self.mode_action = None
+        self.control_panel_toggle_action = None
+        self.panel_state = None
         self.started = True
         self.stop = False
         self.closed = False
         self.presentation = None
+        self.mode = DashboardMode.DEMO
 
     def set_reset_action(self, action) -> None:
         self.reset_action = action
@@ -448,6 +502,31 @@ class _ControllerDashboard:
 
     def set_molecule_preset_action(self, action) -> None:
         self.molecule_preset_action = action
+
+    def set_mode_action(self, action) -> None:
+        self.mode_action = action
+
+    def set_control_panel_toggle_action(self, action) -> None:
+        self.control_panel_toggle_action = action
+
+    def set_spatial_panel_state(self, state) -> None:
+        self.panel_state = state
+
+    def set_mode_from_application(self, mode) -> None:
+        self.mode = mode
+
+    def spatial_panel_layout(self):
+        active_scene_id = (
+            None
+            if self.panel_state is None
+            else self.panel_state.active_scene_id
+        )
+        return build_spatial_panel_layout(
+            THEME.default_window_width,
+            THEME.default_window_height,
+            active_scene_id=active_scene_id,
+            mode=self.mode,
+        )
 
     def wait_for_start(self, state) -> bool:
         return self.started

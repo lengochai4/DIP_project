@@ -13,9 +13,13 @@ from .ui.dashboard import LiveDashboard
 from .ui.presentation_model import (
     ApplicationPhase,
     ApplicationState,
+    DashboardMode,
     PresentationState,
     RuntimeIdentityPresentation,
     build_presentation_state,
+)
+from .ui.spatial_panel import (
+    InteractionRouter,
 )
 
 
@@ -40,11 +44,17 @@ class Stem3DApplicationController:
         self._extension_open = False
         self._closed = False
         self._latest_presentation: PresentationState | None = None
+        self._interaction_router = InteractionRouter()
         self._dashboard.set_reset_action(self.reset)
         self._dashboard.set_scene_select_action(self.select_scene)
         self._dashboard.set_molecule_preset_action(
             self.select_molecule_preset
         )
+        self._dashboard.set_mode_action(self.select_mode)
+        self._dashboard.set_control_panel_toggle_action(
+            self.toggle_control_panel
+        )
+        self._sync_spatial_panel_state()
 
     @property
     def state(self) -> ApplicationState:
@@ -80,13 +90,27 @@ class Stem3DApplicationController:
         if scene is not None:
             self._set_active_scene(scene.title)
         self._set_phase(ApplicationPhase.RUNNING)
+        self._sync_spatial_panel_state()
 
     def consume_interaction(
         self,
         state: InteractionState,
     ) -> None:
         if self._state.phase is ApplicationPhase.RUNNING:
-            self._extension.consume(state)
+            panel_layout = (
+                self._dashboard.spatial_panel_layout()
+                if self._interaction_router.is_open
+                else None
+            )
+            route = self._interaction_router.route(
+                state,
+                panel_layout,
+            )
+            if route.action is not None:
+                self._dispatch_panel_action(route.action)
+            if route.forward_to_scene:
+                self._extension.consume(state)
+            self._sync_spatial_panel_state()
 
     def consume_presentation(
         self,
@@ -122,12 +146,35 @@ class Stem3DApplicationController:
             scene = self._extension.active_scene
             if scene is not None:
                 self._set_active_scene(scene.title)
+            if self._interaction_router.is_open:
+                self._interaction_router.reset_after_action()
+                self._sync_spatial_panel_state()
 
     def select_scene(self, scene_id: str) -> None:
         if self._state.phase is not ApplicationPhase.RUNNING:
             return
         scene = self._extension.activate_scene(scene_id)
         self._set_active_scene(scene.title)
+        if self._interaction_router.is_open:
+            self._interaction_router.reset_after_action()
+            self._sync_spatial_panel_state()
+
+    def select_mode(
+        self,
+        mode: DashboardMode,
+    ) -> None:
+        if self._state.phase is not ApplicationPhase.RUNNING:
+            return
+        self._dashboard.set_mode_from_application(mode)
+        if self._interaction_router.is_open:
+            self._interaction_router.reset_after_action()
+        self._sync_spatial_panel_state()
+
+    def toggle_control_panel(self) -> None:
+        if self._state.phase is not ApplicationPhase.RUNNING:
+            return
+        self._interaction_router.toggle()
+        self._sync_spatial_panel_state()
 
     def select_molecule_preset(self, preset_key: str) -> None:
         if self._state.phase is not ApplicationPhase.RUNNING:
@@ -139,6 +186,9 @@ class Stem3DApplicationController:
         select_preset(preset_key)
         scene = self._extension.refresh_active_scene()
         self._set_active_scene(scene.title)
+        if self._interaction_router.is_open:
+            self._interaction_router.reset_after_action()
+            self._sync_spatial_panel_state()
 
     def stop_requested(self) -> bool:
         if self._dashboard.stop_requested():
@@ -171,6 +221,9 @@ class Stem3DApplicationController:
         if self._closed:
             return
         self._closed = True
+        if self._interaction_router.is_open:
+            self._interaction_router.close_panel()
+            self._sync_spatial_panel_state()
         failed = self._state.phase is ApplicationPhase.ERROR
         if not failed:
             self._set_phase(ApplicationPhase.STOPPING)
@@ -202,4 +255,35 @@ class Stem3DApplicationController:
             camera_available=self._state.camera_available,
             error_message=self._state.error_message,
             runtime_identity=self._state.runtime_identity,
+        )
+
+    def _dispatch_panel_action(
+        self,
+        action: str,
+    ) -> None:
+        if action.startswith("scene:"):
+            self.select_scene(action.removeprefix("scene:"))
+        elif action.startswith("mode:"):
+            self.select_mode(
+                DashboardMode(action.removeprefix("mode:"))
+            )
+        elif action == "reset":
+            self.reset()
+        elif action == "close":
+            self._interaction_router.close_panel()
+            self._sync_spatial_panel_state()
+        else:
+            raise ValueError(f"unknown spatial-panel action: {action}")
+
+        if self._interaction_router.is_open and action != "close":
+            self._interaction_router.reset_after_action()
+            self._sync_spatial_panel_state()
+
+    def _sync_spatial_panel_state(self) -> None:
+        scene_id = self._extension.active_scene_id
+        self._dashboard.set_spatial_panel_state(
+            self._interaction_router.view_state(
+                active_scene_id=scene_id,
+                mode=self._dashboard.mode,
+            )
         )

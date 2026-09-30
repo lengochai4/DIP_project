@@ -12,6 +12,7 @@ from .layout import (
     Rect,
     calculate_dashboard_layout,
     fit_aspect_rect,
+    map_normalized_point_to_rect,
 )
 from .presentation_model import (
     ApplicationPhase,
@@ -19,6 +20,13 @@ from .presentation_model import (
     DashboardMode,
     LandmarkPresentation,
     PresentationState,
+)
+from .spatial_panel import (
+    InteractionFocus,
+    PanelButton,
+    SpatialPanelLayout,
+    SpatialPanelViewState,
+    build_spatial_panel_layout,
 )
 from .theme import THEME
 
@@ -42,6 +50,13 @@ class LiveDashboard:
         self._reset_action = reset_action
         self._scene_select_action: Callable[[str], None] | None = None
         self._molecule_preset_action: Callable[[str], None] | None = None
+        self._mode_action: Callable[[DashboardMode], None] | None = None
+        self._control_panel_toggle_action: Callable[[], None] | None = None
+        self._spatial_panel_state = SpatialPanelViewState(
+            open=False,
+            focus=InteractionFocus.SCENE_FOCUS,
+        )
+        self._control_panel_button = Rect(0, 0, 0, 0)
         self._stop = False
         self._window_open = False
         self._mode = DashboardMode.DEMO
@@ -68,9 +83,48 @@ class LiveDashboard:
     ) -> None:
         self._molecule_preset_action = action
 
+    def set_mode_action(
+        self,
+        action: Callable[[DashboardMode], None],
+    ) -> None:
+        self._mode_action = action
+
+    def set_control_panel_toggle_action(
+        self,
+        action: Callable[[], None],
+    ) -> None:
+        self._control_panel_toggle_action = action
+
+    def set_spatial_panel_state(
+        self,
+        state: SpatialPanelViewState,
+    ) -> None:
+        self._spatial_panel_state = state
+
+    def set_mode_from_application(
+        self,
+        mode: DashboardMode,
+    ) -> None:
+        """Reflect a mode selected through the application controller."""
+
+        self._mode = mode
+
+    def spatial_panel_layout(self) -> SpatialPanelLayout:
+        width, height = self._window_size()
+        return build_spatial_panel_layout(
+            width,
+            height,
+            active_scene_id=self._spatial_panel_state.active_scene_id,
+            mode=self._mode,
+        )
+
     @property
     def mode(self) -> DashboardMode:
         return self._mode
+
+    @property
+    def spatial_panel_state(self) -> SpatialPanelViewState:
+        return self._spatial_panel_state
 
     def open(self) -> None:
         if self._window_open:
@@ -83,6 +137,10 @@ class LiveDashboard:
         cv2.resizeWindow(
             self.WINDOW_NAME,
             *self._last_size,
+        )
+        cv2.setMouseCallback(
+            self.WINDOW_NAME,
+            self._on_mouse,
         )
         self._window_open = True
 
@@ -320,6 +378,19 @@ class LiveDashboard:
             application,
             selected_mode,
         )
+        if self._spatial_panel_state.open:
+            self._draw_spatial_panel(
+                canvas,
+                build_spatial_panel_layout(
+                    layout.width,
+                    layout.height,
+                    active_scene_id=(
+                        self._spatial_panel_state.active_scene_id
+                    ),
+                    mode=selected_mode,
+                ),
+                self._spatial_panel_state,
+            )
 
         return canvas
 
@@ -330,9 +401,12 @@ class LiveDashboard:
             if self._reset_action is not None:
                 self._reset_action()
         elif key in {ord("a"), ord("A")}:
-            self._mode = DashboardMode.ANALYSIS
+            self.set_mode(DashboardMode.ANALYSIS)
         elif key in {ord("d"), ord("D")}:
-            self._mode = DashboardMode.DEMO
+            self.set_mode(DashboardMode.DEMO)
+        elif key in {ord("p"), ord("P")}:
+            if self._control_panel_toggle_action is not None:
+                self._control_panel_toggle_action()
         elif key in {ord("1"), ord("2"), ord("3")}:
             scene_id = {
                 ord("1"): "coordinate-geometry",
@@ -345,6 +419,41 @@ class LiveDashboard:
             preset = "H2O" if key in {ord("h"), ord("H")} else "CH4"
             if self._molecule_preset_action is not None:
                 self._molecule_preset_action(preset)
+
+    def set_mode(self, mode: DashboardMode) -> None:
+        """Apply a keyboard-selected mode through the shared app callback."""
+
+        self._mode = mode
+        if self._mode_action is not None:
+            self._mode_action(mode)
+
+    def handle_mouse_event(
+        self,
+        x: int,
+        y: int,
+        event: int,
+    ) -> None:
+        """Handle the visible CONTROL SPACE button in this dashboard window."""
+
+        if (
+            event != cv2.EVENT_LBUTTONUP
+            or self._control_panel_toggle_action is None
+        ):
+            return
+        rect = self._control_panel_button
+        if rect.x <= x < rect.right and rect.y <= y < rect.bottom:
+            self._control_panel_toggle_action()
+
+    def _on_mouse(
+        self,
+        event: int,
+        x: int,
+        y: int,
+        flags: int,
+        parameter: object,
+    ) -> None:
+        del flags, parameter
+        self.handle_mouse_event(x, y, event)
 
     def stop_requested(self) -> bool:
         return self._stop
@@ -521,17 +630,22 @@ class LiveDashboard:
             )
 
         pointer = state.interaction.pointer_xy
-        if pointer is not None:
-            px = x1 + round(pointer[0] * max(target.width - 1, 0))
-            py = y1 + round(pointer[1] * max(target.height - 1, 0))
-            px = max(x1, min(px, x2 - 1))
-            py = max(y1, min(py, y2 - 1))
-            color = (
-                THEME.tracking_valid
-                if state.interaction.valid
-                else THEME.tracking_neutral
+        if state.interaction.valid and pointer is not None:
+            mapped_pointer = map_normalized_point_to_rect(
+                pointer,
+                target,
+                mirror_x=False,
+                mirror_y=False,
             )
-            cv2.circle(canvas, (px, py), 8, color, 2, cv2.LINE_AA)
+            if mapped_pointer is not None:
+                cv2.circle(
+                    canvas,
+                    mapped_pointer,
+                    8,
+                    THEME.tracking_valid,
+                    2,
+                    cv2.LINE_AA,
+                )
 
         cv2.rectangle(
             canvas,
@@ -921,14 +1035,31 @@ class LiveDashboard:
     ) -> None:
         rect = layout.footer
         self._panel(canvas, rect, raised=True)
+        toggle_width = 180
+        toggle_height = 30
+        self._control_panel_button = Rect(
+            rect.right - THEME.card_padding - toggle_width,
+            rect.y + 10,
+            toggle_width,
+            toggle_height,
+        )
+        self._draw_control_panel_toggle(
+            canvas,
+            self._control_panel_button,
+        )
         y = rect.y + 18
         self._put_text(
             canvas,
-            "A ANALYSIS  |  D DEMO  |  R RESET CUBE  |  Q/ESC STOP  |  3D ESC/CLOSE",
+            "A ANALYSIS  |  D DEMO  |  R RESET  |  Q/ESC STOP  |  P PANEL",
             rect.x + THEME.card_padding,
             y,
             scale=THEME.font_small,
             color=THEME.text_secondary,
+            max_width=(
+                self._control_panel_button.x
+                - rect.x
+                - 2 * THEME.card_padding
+            ),
         )
         if mode is DashboardMode.DEMO:
             self._put_text(
@@ -1013,7 +1144,171 @@ class LiveDashboard:
             rect.y + 62,
             scale=THEME.font_micro,
             color=THEME.text_muted,
+            max_width=(
+                self._control_panel_button.x
+                - rect.x
+                - 2 * THEME.card_padding
+            ),
+        )
+
+    def _draw_control_panel_toggle(
+        self,
+        canvas: np.ndarray,
+        rect: Rect,
+    ) -> None:
+        cv2.rectangle(
+            canvas,
+            (rect.x, rect.y),
+            (rect.right - 1, rect.bottom - 1),
+            THEME.surface,
+            thickness=-1,
+        )
+        cv2.rectangle(
+            canvas,
+            (rect.x, rect.y),
+            (rect.right - 1, rect.bottom - 1),
+            THEME.accent,
+            thickness=1,
+            lineType=cv2.LINE_AA,
+        )
+        label = (
+            "CLOSE PANEL  [P]"
+            if self._spatial_panel_state.open
+            else "CONTROL SPACE  [P]"
+        )
+        self._put_text(
+            canvas,
+            label,
+            rect.x + rect.width // 2,
+            rect.y + 20,
+            scale=THEME.font_small,
+            color=THEME.text_primary,
+            max_width=rect.width - 12,
+            align="center",
+        )
+
+    def _draw_spatial_panel(
+        self,
+        canvas: np.ndarray,
+        panel: SpatialPanelLayout,
+        state: SpatialPanelViewState,
+    ) -> None:
+        rect = panel.viewport
+        self._panel(canvas, rect, raised=True)
+        self._put_text(
+            canvas,
+            "CONTROL SPACE",
+            rect.x + THEME.card_padding,
+            rect.y + 29,
+            scale=THEME.font_section,
+            color=THEME.text_primary,
+        )
+        self._put_text(
+            canvas,
+            "Move pointer; pinch once to select",
+            rect.x + THEME.card_padding,
+            rect.y + 52,
+            scale=THEME.font_micro,
+            color=THEME.text_secondary,
             max_width=rect.width - 2 * THEME.card_padding,
+        )
+        self._put_text(
+            canvas,
+            "SCENES",
+            rect.x + THEME.card_padding,
+            rect.y + 69,
+            scale=THEME.font_micro,
+            color=THEME.text_muted,
+        )
+        self._put_text(
+            canvas,
+            "MODE",
+            rect.x + THEME.card_padding,
+            rect.y + 242,
+            scale=THEME.font_micro,
+            color=THEME.text_muted,
+        )
+        for button in panel.buttons:
+            self._draw_spatial_button(
+                canvas,
+                button,
+                hovered=state.hovered_button == button.button_id,
+                pressed=(
+                    state.pressed_button == button.button_id
+                    or state.activated_button == button.button_id
+                ),
+            )
+        if state.cursor_xy is not None:
+            cv2.circle(
+                canvas,
+                state.cursor_xy,
+                9,
+                THEME.accent,
+                2,
+                cv2.LINE_AA,
+            )
+            cv2.circle(
+                canvas,
+                state.cursor_xy,
+                2,
+                THEME.text_primary,
+                -1,
+                cv2.LINE_AA,
+            )
+
+    def _draw_spatial_button(
+        self,
+        canvas: np.ndarray,
+        button: PanelButton,
+        *,
+        hovered: bool,
+        pressed: bool,
+    ) -> None:
+        rect = button.rect
+        fill = (
+            THEME.surface
+            if button.enabled
+            else THEME.background
+        )
+        border = THEME.border
+        text = (
+            THEME.text_secondary
+            if button.enabled
+            else THEME.text_muted
+        )
+        if button.selected and button.enabled:
+            border = THEME.success
+        if hovered and button.enabled:
+            fill = THEME.surface_raised
+            border = THEME.accent
+        if pressed and button.enabled:
+            fill = THEME.accent
+            border = THEME.accent
+            text = THEME.background
+        cv2.rectangle(
+            canvas,
+            (rect.x, rect.y),
+            (rect.right - 1, rect.bottom - 1),
+            fill,
+            thickness=-1,
+        )
+        cv2.rectangle(
+            canvas,
+            (rect.x, rect.y),
+            (rect.right - 1, rect.bottom - 1),
+            border,
+            thickness=2 if hovered or pressed else 1,
+            lineType=cv2.LINE_AA,
+        )
+        self._put_text(
+            canvas,
+            button.label,
+            rect.x + rect.width // 2,
+            rect.y + rect.height // 2 + 5,
+            scale=THEME.font_small,
+            color=text,
+            max_width=rect.width - 12,
+            align="center",
         )
     @classmethod
     def _draw_card(
@@ -1220,10 +1515,11 @@ def _frame_point_to_preview(
         return None
     if image_width <= 0 or image_height <= 0:
         return None
-
-    return (
-        target.x + round(landmark.x * max(target.width - 1, 0)),
-        target.y + round(landmark.y * max(target.height - 1, 0)),
+    return map_normalized_point_to_rect(
+        (landmark.x, landmark.y),
+        target,
+        mirror_x=False,
+        mirror_y=False,
     )
 
 

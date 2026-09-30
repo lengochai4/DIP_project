@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 
 from .theme import THEME
 
@@ -204,6 +205,51 @@ def fit_aspect_rect(
         y=bounds.y + (bounds.height - fitted_height) // 2,
         width=fitted_width,
         height=fitted_height,
+    )
+
+
+def map_normalized_point_to_rect(
+    point_xy: tuple[float, float] | None,
+    target: Rect,
+    *,
+    mirror_x: bool = False,
+    mirror_y: bool = False,
+) -> tuple[int, int] | None:
+    """Map a full-frame normalized point into a screen-space rectangle.
+
+    The live camera preview is currently unmirrored, so Extension controls
+    should use the default orientation. Explicit mirror flags keep the
+    transform testable if the displayed preview orientation ever changes.
+    Values on the normalized right/bottom edge map to the last pixel inside
+    the target; values outside ``[0, 1]`` and non-finite values are rejected.
+    """
+
+    if point_xy is None or len(point_xy) != 2:
+        return None
+    if target.width <= 0 or target.height <= 0:
+        return None
+
+    x, y = point_xy
+    if (
+        isinstance(x, bool)
+        or isinstance(y, bool)
+        or not isinstance(x, (int, float))
+        or not isinstance(y, (int, float))
+        or not (0.0 <= x <= 1.0)
+        or not (0.0 <= y <= 1.0)
+        or not math.isfinite(x)
+        or not math.isfinite(y)
+    ):
+        return None
+
+    if mirror_x:
+        x = 1.0 - x
+    if mirror_y:
+        y = 1.0 - y
+
+    return (
+        target.x + round(x * max(target.width - 1, 0)),
+        target.y + round(y * max(target.height - 1, 0)),
     )
 
 
