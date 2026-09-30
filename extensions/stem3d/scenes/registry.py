@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from .base import STEMScene
+from .metadata import SceneMetadata
 
 
 class SceneRegistry:
@@ -68,6 +69,23 @@ class SceneRegistry:
                 raise ValueError(
                     f"STEM scene {scene_id!r} requires a non-empty {field}"
                 )
+        metadata = getattr(scene, "metadata", None)
+        if not isinstance(metadata, SceneMetadata):
+            raise ValueError(
+                f"STEM scene {scene_id!r} requires valid SceneMetadata"
+            )
+        if metadata.scene_id != scene_id:
+            raise ValueError(
+                f"STEM scene {scene_id!r} metadata id must match its id"
+            )
+        if metadata.title != getattr(scene, "title", None):
+            raise ValueError(
+                f"STEM scene {scene_id!r} metadata title must match its title"
+            )
+        if metadata.category != getattr(scene, "category", None):
+            raise ValueError(
+                f"STEM scene {scene_id!r} metadata category must match its category"
+            )
         for method in (
             "activate",
             "deactivate",

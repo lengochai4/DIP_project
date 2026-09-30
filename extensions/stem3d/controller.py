@@ -41,6 +41,10 @@ class Stem3DApplicationController:
         self._closed = False
         self._latest_presentation: PresentationState | None = None
         self._dashboard.set_reset_action(self.reset)
+        self._dashboard.set_scene_select_action(self.select_scene)
+        self._dashboard.set_molecule_preset_action(
+            self.select_molecule_preset
+        )
 
     @property
     def state(self) -> ApplicationState:
@@ -72,6 +76,9 @@ class Stem3DApplicationController:
         except Exception as exc:
             self.fail(exc)
             raise
+        scene = self._extension.active_scene
+        if scene is not None:
+            self._set_active_scene(scene.title)
         self._set_phase(ApplicationPhase.RUNNING)
 
     def consume_interaction(
@@ -112,6 +119,26 @@ class Stem3DApplicationController:
     def reset(self) -> None:
         if self._state.phase is ApplicationPhase.RUNNING:
             self._extension.reset()
+            scene = self._extension.active_scene
+            if scene is not None:
+                self._set_active_scene(scene.title)
+
+    def select_scene(self, scene_id: str) -> None:
+        if self._state.phase is not ApplicationPhase.RUNNING:
+            return
+        scene = self._extension.activate_scene(scene_id)
+        self._set_active_scene(scene.title)
+
+    def select_molecule_preset(self, preset_key: str) -> None:
+        if self._state.phase is not ApplicationPhase.RUNNING:
+            return
+        scene = self._extension.active_scene
+        select_preset = getattr(scene, "select_preset", None)
+        if not callable(select_preset):
+            return
+        select_preset(preset_key)
+        scene = self._extension.refresh_active_scene()
+        self._set_active_scene(scene.title)
 
     def stop_requested(self) -> bool:
         if self._dashboard.stop_requested():
@@ -162,6 +189,16 @@ class Stem3DApplicationController:
             run_id=self._state.run_id,
             phase=phase,
             active_scene=self._state.active_scene,
+            camera_available=self._state.camera_available,
+            error_message=self._state.error_message,
+            runtime_identity=self._state.runtime_identity,
+        )
+
+    def _set_active_scene(self, title: str) -> None:
+        self._state = ApplicationState(
+            run_id=self._state.run_id,
+            phase=self._state.phase,
+            active_scene=title,
             camera_available=self._state.camera_available,
             error_message=self._state.error_message,
             runtime_identity=self._state.runtime_identity,

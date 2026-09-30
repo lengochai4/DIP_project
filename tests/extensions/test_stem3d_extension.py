@@ -20,19 +20,17 @@ class FakeRenderer:
     def __init__(self) -> None:
         self.opened = False
         self.closed = False
-        self.rendered: list[
-            SceneTransform
-        ] = []
+        self.rendered = []
 
     def open(self) -> None:
         self.opened = True
 
     def render(
         self,
-        transform: SceneTransform,
+        frame,
     ) -> None:
         self.rendered.append(
-            transform
+            frame
         )
 
     def close_requested(
@@ -111,7 +109,7 @@ def test_extension_consumes_interaction_state() -> None:
         1.25
     )
 
-    assert renderer.rendered[-1] == result
+    assert renderer.rendered[-1].transform == result
 
     extension.close()
 
@@ -153,7 +151,7 @@ def test_invalid_interaction_renders_unchanged_scene() -> None:
         pitch_rad=0.0,
         scale=1.0,
     )
-    assert renderer.rendered[-1] == scene.transform
+    assert renderer.rendered[-1].transform == scene.transform
     extension.close()
 
 

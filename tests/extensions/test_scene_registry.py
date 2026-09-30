@@ -3,6 +3,7 @@ import pytest
 from dip_touchless.core import InteractionState
 from extensions.stem3d import (
     SceneRegistry,
+    SceneMetadata,
     Stem3DExtension,
 )
 
@@ -12,6 +13,14 @@ class RecordingScene:
         self.id = scene_id
         self.title = f"Scene {scene_id}"
         self.category = "test"
+        self.metadata = SceneMetadata(
+            scene_id=scene_id,
+            title=self.title,
+            category=self.category,
+            description="Test scene",
+            educational_topic="Lifecycle testing",
+            interaction_hint="Use test commands",
+        )
         self.calls: list[tuple[str, object | None]] = []
 
     def activate(self) -> None:
@@ -181,6 +190,14 @@ def test_registry_rejects_scene_missing_lifecycle_methods() -> None:
         id = "incomplete"
         title = "Incomplete"
         category = "test"
+        metadata = SceneMetadata(
+            scene_id="incomplete",
+            title="Incomplete",
+            category="test",
+            description="Incomplete test scene",
+            educational_topic="Lifecycle testing",
+            interaction_hint="No controls",
+        )
 
     with pytest.raises(ValueError, match=r"missing activate\(\)"):
         SceneRegistry(

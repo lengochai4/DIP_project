@@ -40,6 +40,8 @@ class LiveDashboard:
         reset_action: Callable[[], None] | None = None,
     ) -> None:
         self._reset_action = reset_action
+        self._scene_select_action: Callable[[str], None] | None = None
+        self._molecule_preset_action: Callable[[str], None] | None = None
         self._stop = False
         self._window_open = False
         self._mode = DashboardMode.DEMO
@@ -53,6 +55,18 @@ class LiveDashboard:
         reset_action: Callable[[], None],
     ) -> None:
         self._reset_action = reset_action
+
+    def set_scene_select_action(
+        self,
+        action: Callable[[str], None],
+    ) -> None:
+        self._scene_select_action = action
+
+    def set_molecule_preset_action(
+        self,
+        action: Callable[[str], None],
+    ) -> None:
+        self._molecule_preset_action = action
 
     @property
     def mode(self) -> DashboardMode:
@@ -141,7 +155,7 @@ class LiveDashboard:
             )
             self._put_text(
                 canvas,
-                "COORDINATE CUBE",
+                "COORDINATE GEOMETRY",
                 layout.scene.x + THEME.card_padding,
                 layout.scene.y + 55,
                 color=THEME.text_primary,
@@ -153,7 +167,7 @@ class LiveDashboard:
             )
             self._put_text(
                 canvas,
-                "R  Reset cube transform",
+                "R  Reset active scene",
                 layout.pipeline.x + THEME.card_padding,
                 layout.pipeline.y + 56,
                 color=THEME.text_secondary,
@@ -164,6 +178,15 @@ class LiveDashboard:
                 layout.pipeline.x + THEME.card_padding,
                 layout.pipeline.y + 82,
                 color=THEME.text_secondary,
+            )
+            self._put_text(
+                canvas,
+                "After start: 1/2/3 scenes  |  H water  |  C methane",
+                layout.pipeline.x + THEME.card_padding,
+                layout.pipeline.y + 108,
+                scale=THEME.font_small,
+                color=THEME.text_secondary,
+                max_width=layout.pipeline.width - 2 * THEME.card_padding,
             )
             self._draw_card(
                 canvas,
@@ -310,6 +333,18 @@ class LiveDashboard:
             self._mode = DashboardMode.ANALYSIS
         elif key in {ord("d"), ord("D")}:
             self._mode = DashboardMode.DEMO
+        elif key in {ord("1"), ord("2"), ord("3")}:
+            scene_id = {
+                ord("1"): "coordinate-geometry",
+                ord("2"): "molecule",
+                ord("3"): "orbital-system",
+            }[key]
+            if self._scene_select_action is not None:
+                self._scene_select_action(scene_id)
+        elif key in {ord("h"), ord("H"), ord("c"), ord("C")}:
+            preset = "H2O" if key in {ord("h"), ord("H")} else "CH4"
+            if self._molecule_preset_action is not None:
+                self._molecule_preset_action(preset)
 
     def stop_requested(self) -> bool:
         return self._stop
@@ -536,6 +571,15 @@ class LiveDashboard:
             layout.scene.y + 76,
             scale=THEME.font_small,
             color=THEME.text_secondary,
+            max_width=layout.scene.width - 2 * THEME.card_padding,
+        )
+        self._put_text(
+            canvas,
+            "1 Geometry  |  2 Molecule  |  3 Orbit  |  H/C molecule",
+            layout.scene.x + THEME.card_padding,
+            layout.scene.y + 98,
+            scale=THEME.font_micro,
+            color=THEME.text_muted,
             max_width=layout.scene.width - 2 * THEME.card_padding,
         )
 

@@ -2,17 +2,33 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Protocol
 
 from dip_touchless.core import InteractionState
+
+from .metadata import SceneMetadata
+from .visuals import SceneFrame
+
+
+class SceneViewport(Protocol):
+    """Renderer seam that accepts immutable scene geometry."""
+
+    def render(self, frame: SceneFrame) -> None: ...
 
 
 class STEMScene(Protocol):
     """One Extension-owned educational scene."""
 
-    id: str
-    title: str
-    category: str
+    metadata: SceneMetadata
+
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def title(self) -> str: ...
+
+    @property
+    def category(self) -> str: ...
 
     def activate(self) -> None: ...
 
@@ -27,4 +43,4 @@ class STEMScene(Protocol):
         state: InteractionState,
     ) -> None: ...
 
-    def render(self, viewport: Any) -> None: ...
+    def render(self, viewport: SceneViewport) -> None: ...

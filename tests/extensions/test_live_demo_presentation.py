@@ -433,6 +433,8 @@ def test_analysis_mode_explains_dip_and_preserves_camera_copy() -> None:
 class _ControllerDashboard:
     def __init__(self) -> None:
         self.reset_action = None
+        self.scene_select_action = None
+        self.molecule_preset_action = None
         self.started = True
         self.stop = False
         self.closed = False
@@ -440,6 +442,12 @@ class _ControllerDashboard:
 
     def set_reset_action(self, action) -> None:
         self.reset_action = action
+
+    def set_scene_select_action(self, action) -> None:
+        self.scene_select_action = action
+
+    def set_molecule_preset_action(self, action) -> None:
+        self.molecule_preset_action = action
 
     def wait_for_start(self, state) -> bool:
         return self.started
@@ -463,8 +471,8 @@ class _ControllerRenderer:
     def open(self) -> None:
         self.opened = True
 
-    def render(self, transform) -> None:
-        self.rendered.append(transform)
+    def render(self, frame) -> None:
+        self.rendered.append(frame)
 
     def close_requested(self) -> bool:
         return False
@@ -514,11 +522,11 @@ def test_application_controller_owns_lifecycle_reset_and_public_callbacks() -> N
     controller.start()
     controller.consume_interaction(_interaction())
     assert controller.state.phase is ApplicationPhase.RUNNING
-    assert renderer.rendered[-1].yaw_rad == pytest.approx(0.01)
+    assert renderer.rendered[-1].transform.yaw_rad == pytest.approx(0.01)
 
     dashboard.reset_action()
-    assert renderer.rendered[-1].yaw_rad == 0.0
-    assert renderer.rendered[-1].scale == 1.0
+    assert renderer.rendered[-1].transform.yaw_rad == 0.0
+    assert renderer.rendered[-1].transform.scale == 1.0
 
     packet = _packet()
     controller.consume_presentation(

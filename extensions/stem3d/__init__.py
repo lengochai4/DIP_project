@@ -11,9 +11,21 @@ from .renderer import (
     OpenGLStemRenderer,
 )
 from .scenes import (
+    AtomDefinition,
+    BondDefinition,
     CoordinateCubeScene,
+    CoordinateGeometryScene,
+    MOLECULE_PRESETS,
+    MoleculePreset,
+    MolecularGeometryScene,
+    OrbitalSystemScene,
     SceneRegistry,
+    SceneFrame,
+    SceneLine,
+    SceneMetadata,
+    SceneSphere,
     STEMScene,
+    build_tier1_scene_registry,
 )
 from .scene_state import (
     SceneTransform,
@@ -21,13 +33,25 @@ from .scene_state import (
 )
 
 __all__ = [
+    "AtomDefinition",
+    "BondDefinition",
     "OpenGLStemRenderer",
     "CoordinateCubeScene",
+    "CoordinateGeometryScene",
+    "MOLECULE_PRESETS",
+    "MoleculePreset",
+    "MolecularGeometryScene",
+    "OrbitalSystemScene",
     "SceneRegistry",
+    "SceneFrame",
+    "SceneLine",
+    "SceneMetadata",
+    "SceneSphere",
     "SceneTransform",
     "STEMScene",
     "Stem3DApplicationController",
     "Stem3DExtension",
     "Stem3DSceneState",
     "StemRenderer",
+    "build_tier1_scene_registry",
 ]

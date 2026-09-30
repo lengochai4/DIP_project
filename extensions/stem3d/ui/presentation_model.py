@@ -50,7 +50,7 @@ class RuntimeIdentityPresentation:
 class ApplicationState:
     run_id: str
     phase: ApplicationPhase
-    active_scene: str = "Coordinate Cube"
+    active_scene: str = "Coordinate Geometry"
     camera_available: bool | None = None
     error_message: str | None = None
     runtime_identity: RuntimeIdentityPresentation | None = None

@@ -35,11 +35,7 @@ from dip_touchless.tracking import (
 from .application import Stem3DExtension
 from .controller import Stem3DApplicationController
 from .renderer import OpenGLStemRenderer
-from .scenes import (
-    CoordinateCubeScene,
-    SceneRegistry,
-)
-from .scene_state import Stem3DSceneState
+from .scenes import build_tier1_scene_registry
 from .ui import (
     ApplicationPhase,
     ApplicationState,
@@ -248,14 +244,10 @@ def main() -> None:
         run_id=run_id,
     )
 
-    scene_state = Stem3DSceneState(
+    scene_registry = build_tier1_scene_registry(
         initial_scale=renderer_cfg["initial_scale"],
         min_scale=renderer_cfg["min_scale"],
         max_scale=renderer_cfg["max_scale"],
-    )
-    scene_registry = SceneRegistry(
-        [CoordinateCubeScene(scene_state)],
-        initial_scene_id=CoordinateCubeScene.id,
     )
 
     extension = Stem3DExtension(
@@ -277,9 +269,10 @@ def main() -> None:
     print("DIP Touchless STEM live demo.")
     print("Move index fingertip to rotate; pinch to scale.")
     print(
-        "Press S/ENTER/SPACE to start; A=analysis, D=demo, "
-        "R=reset, Q/ESC=stop."
+        "Press S/ENTER/SPACE to start; 1/2/3 selects scenes; "
+        "H/C selects water/methane."
     )
+    print("A=analysis, D=demo, R=reset, Q/ESC=stop.")
     print(f"Run ID: {run_id}")
 
     try:

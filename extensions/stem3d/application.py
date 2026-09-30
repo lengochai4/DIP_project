@@ -12,8 +12,8 @@ from dip_touchless.core import (
 from .scenes import (
     STEMScene,
     SceneRegistry,
+    SceneFrame,
 )
-from .scene_state import SceneTransform
 
 
 class StemRenderer(Protocol):
@@ -21,7 +21,7 @@ class StemRenderer(Protocol):
 
     def render(
         self,
-        transform: SceneTransform,
+        frame: SceneFrame,
     ) -> None: ...
 
     def close_requested(
@@ -105,6 +105,15 @@ class Stem3DExtension:
             raise RuntimeError("STEM extension is not open")
         scene = self._scene_registry.activate(scene_id)
         self._previous_timestamp_s = None
+        scene.render(self._renderer)
+        return scene
+
+    def refresh_active_scene(self) -> STEMScene:
+        """Render the current scene after a presentation-only option change."""
+
+        if not self._renderer_open:
+            raise RuntimeError("STEM extension is not open")
+        scene = self._require_active_scene()
         scene.render(self._renderer)
         return scene
 

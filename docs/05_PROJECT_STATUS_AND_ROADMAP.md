@@ -130,14 +130,13 @@ change the scope or interpretation of the frozen G7 experiment release.
 
 ## 4. Current task
 
-**Task G8-U1 — Establish the application foundation described in `docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md`.**
+**Task G8-U5 — Implement the Spatial Control Panel described in `docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md`.**
 
 The G7 controlled evaluation and submission package are complete and
 frozen at `g7-final`. The active G8 direction is a separately scoped
-post-G7 application/Extension continuation. Start with the application
-controller, immutable presentation state, design tokens, responsive
-layout calculations, and a dashboard shell while preserving the existing
-live demo behavior and the G7/Core boundary.
+post-G7 application/Extension continuation. U1 through U4 are implemented;
+the next roadmap unit is the Extension-owned spatial control panel. Preserve
+the existing G7/Core boundary while continuing that presentation work.
 
 G8 is not a new research experiment and does not claim commercial
 readiness. Any change to Core semantics, public contracts, experiment
@@ -1200,13 +1199,19 @@ None. G7 provenance and all final experiment artifacts remain frozen.
 
 ## 5. Immediate next tasks
 
-G7 is closed. U1–U3 are implemented on `feat/final-ui-extension`. U2
+G7 is closed. U1–U4 are implemented on `feat/final-ui-extension`. U2
 provides DEMO/ANALYSIS modes, live ROI and pointer overlays, distinct
 raw/filtered landmarks, DIP diagnostics, and run identity from recorded
 metadata. U3 defines the `STEMScene` contract and local `SceneRegistry`,
-routes the coordinate cube through scene lifecycle, and leaves Core
-unchanged. U3-focused tests pass (45), and the full automated suite
-passes (451). Continue with the post-G7 roadmap in
+routes scenes through an Extension-owned lifecycle, and leaves Core
+unchanged. U4 registers Coordinate Geometry, Molecular Geometry (H2O and
+CH4), and Orbital System through the same scene contract. U4-focused tests
+pass (56), the full automated suite passes (462), and Extension compile
+validation succeeds. An OpenGL renderer smoke opened a visible window,
+rendered all three scenes, exercised rotation/scale/reset, switched the
+molecule preset, advanced the orbital scene, repeated scene switches, and
+closed cleanly using synthetic public `InteractionState` values. It did
+not use a webcam or physical hand input. Continue with the post-G7 roadmap in
 `docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md`, in this order:
 
 1. **U1 — Application foundation — COMPLETE:** add an application controller,
@@ -1219,9 +1224,9 @@ passes (451). Continue with the post-G7 roadmap in
 3. **U3 — Scene architecture — COMPLETE:** define the Extension-owned `STEMScene`
    lifecycle and local registry, then migrate the existing coordinate
    cube without changing `InteractionState` semantics.
-4. **U4 — STEM scenes — NEXT:** add the coordinate-geometry, molecule, and
-   orbital-mechanics experiences through the scene interface.
-5. **U5 — Spatial Control Panel:** add screen-space touchless navigation
+4. **U4 — STEM scenes — COMPLETE:** provide coordinate geometry, H2O/CH4
+   molecular geometry, and a deterministic educational orbital system.
+5. **U5 — Spatial Control Panel — NEXT:** add screen-space touchless navigation
    using normalized `pointer_xy`, valid pinch rising edges, and explicit
    UI/scene focus routing. Keep all click and focus behavior in the
    Extension.
