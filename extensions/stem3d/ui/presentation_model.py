@@ -53,6 +53,10 @@ class ApplicationState:
     phase: ApplicationPhase
     active_scene: str = "Coordinate Geometry"
     camera_available: bool | None = None
+    provider_available: bool | None = None
+    renderer_available: bool | None = None
+    status_message: str | None = None
+    failure_component: str | None = None
     error_message: str | None = None
     runtime_identity: RuntimeIdentityPresentation | None = None
 
@@ -266,27 +270,43 @@ def build_presentation_state(
         ),
     )
 
-    interaction_presentation = (
-        InteractionPresentation(
-            available=False,
-            valid=False,
-            pointer_xy=None,
-            pinch_active=None,
-            pinch_ratio=None,
-            rotation_delta=None,
-            scale_delta=None,
-        )
-        if interaction_state is None
-        else InteractionPresentation(
-            available=True,
-            valid=interaction_state.interaction_valid,
-            pointer_xy=interaction_state.pointer_xy,
-            pinch_active=interaction_state.pinch_active,
-            pinch_ratio=interaction_state.pinch_ratio,
-            rotation_delta=interaction_state.rotation_delta,
-            scale_delta=interaction_state.scale_delta,
-        )
+    tracking_status = tracking_frame.status.value
+    current_interaction = (
+        interaction_state is not None
+        and tracking_status == "VALID"
+        and interaction_state.interaction_valid
     )
+    interaction_presentation = InteractionPresentation(
+        available=interaction_state is not None,
+        valid=current_interaction,
+        pointer_xy=(
+            interaction_state.pointer_xy
+            if current_interaction and interaction_state is not None
+            else None
+        ),
+        pinch_active=(
+            interaction_state.pinch_active
+            if current_interaction and interaction_state is not None
+            else None
+        ),
+        pinch_ratio=(
+            interaction_state.pinch_ratio
+            if current_interaction and interaction_state is not None
+            else None
+        ),
+        rotation_delta=(
+            interaction_state.rotation_delta
+            if current_interaction and interaction_state is not None
+            else None
+        ),
+        scale_delta=(
+            interaction_state.scale_delta
+            if current_interaction and interaction_state is not None
+            else None
+        ),
+    )
+
+    current_landmarks = tracking_status in {"VALID", "REACQUIRED"}
 
     def landmark_values(
         landmarks: tuple[Landmark, ...],
@@ -307,12 +327,16 @@ def build_presentation_state(
         run_id=packet.run_id,
         frame_id=packet.frame_id,
         timestamp_s=packet.timestamp_s,
-        tracking_status=tracking_frame.status.value,
-        raw_landmarks=landmark_values(
-            tracking_frame.raw_landmarks
+        tracking_status=tracking_status,
+        raw_landmarks=(
+            landmark_values(tracking_frame.raw_landmarks)
+            if current_landmarks
+            else ()
         ),
-        filtered_landmarks=landmark_values(
-            tracking_frame.filtered_landmarks
+        filtered_landmarks=(
+            landmark_values(tracking_frame.filtered_landmarks)
+            if current_landmarks
+            else ()
         ),
         roi=roi_presentation,
         illumination=illumination_presentation,

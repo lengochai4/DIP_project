@@ -51,6 +51,57 @@ DEFAULT_CONFIG = PROJECT_ROOT / "config" / "default.yaml"
 MODEL_PATH = PROJECT_ROOT / "models" / "hand_landmarker.task"
 
 
+class LiveComponentFailure(RuntimeError):
+    """Identify a live-demo failure without changing Core diagnostics."""
+
+    def __init__(self, component: str, message: str) -> None:
+        super().__init__(message)
+        self.component = component
+
+
+class _GuardedCameraSource:
+    def __init__(self, source: OpenCVCameraSource) -> None:
+        self._source = source
+
+    def open(self) -> None:
+        try:
+            self._source.open()
+        except Exception as exc:
+            raise LiveComponentFailure(
+                "camera",
+                f"Camera unavailable: {exc}",
+            ) from exc
+
+    def read(self):
+        try:
+            return self._source.read()
+        except Exception as exc:
+            raise LiveComponentFailure(
+                "camera",
+                f"Camera became unavailable: {exc}",
+            ) from exc
+
+    def close(self) -> None:
+        self._source.close()
+
+
+class _GuardedHandProvider:
+    def __init__(self, provider: MediaPipeHandLandmarkerProvider) -> None:
+        self._provider = provider
+
+    def process(self, frame: FramePacket):
+        try:
+            return self._provider.process(frame)
+        except Exception as exc:
+            raise LiveComponentFailure(
+                "model/provider",
+                f"Hand model/provider failed while tracking: {exc}",
+            ) from exc
+
+    def close(self) -> None:
+        self._provider.close()
+
+
 def _new_live_demo_run_id(
     now: datetime | None = None,
 ) -> str:
@@ -163,68 +214,93 @@ def _build_runtime(
     gesture = cfg["gesture"]
     logging_cfg = cfg["logging"]
 
-    provider = MediaPipeHandLandmarkerProvider(
-        model_path=tracking["model_path"],
-        num_hands=tracking["num_hands"],
-        min_hand_detection_confidence=(
-            tracking["min_hand_detection_confidence"]
-        ),
-        min_hand_presence_confidence=(
-            tracking["min_hand_presence_confidence"]
-        ),
-        min_tracking_confidence=tracking["min_tracking_confidence"],
-    )
+    try:
+        provider = _GuardedHandProvider(
+            MediaPipeHandLandmarkerProvider(
+                model_path=tracking["model_path"],
+                num_hands=tracking["num_hands"],
+                min_hand_detection_confidence=(
+                    tracking["min_hand_detection_confidence"]
+                ),
+                min_hand_presence_confidence=(
+                    tracking["min_hand_presence_confidence"]
+                ),
+                min_tracking_confidence=(
+                    tracking["min_tracking_confidence"]
+                ),
+            )
+        )
+    except Exception as exc:
+        raise LiveComponentFailure(
+            "model/provider",
+            f"Hand model/provider could not initialize: {exc}",
+        ) from exc
 
-    return RealtimeRuntime(
-        source=OpenCVCameraSource(
-            run_id=run_id,
-            camera_index=camera["index"],
-            width=int(camera["width"]),
-            height=int(camera["height"]),
-            requested_fps=float(camera["requested_fps"]),
-            backend=camera["backend"],
-        ),
-        provider=provider,
-        validator=MeasurementValidator(),
-        landmark_filter=RawLandmarkFilter(),
-        logger=FileRunLogger(
+    source: _GuardedCameraSource | None = None
+    logger: FileRunLogger | None = None
+    try:
+        source = _GuardedCameraSource(
+            OpenCVCameraSource(
+                run_id=run_id,
+                camera_index=camera["index"],
+                width=int(camera["width"]),
+                height=int(camera["height"]),
+                requested_fps=float(camera["requested_fps"]),
+                backend=camera["backend"],
+            )
+        )
+        logger = FileRunLogger(
             PROJECT_ROOT / logging_cfg["output_dir"]
-        ),
-        roi_manager=ROIManager(
-            padding_ratio=roi["padding_ratio"],
-            coast_expand_ratio=roi["coast_expand_ratio"],
-            coast_frames=roi["coast_frames"],
-            min_width=roi["min_width"],
-            min_height=roi["min_height"],
-        ),
-        illumination_analyzer=IlluminationAnalyzer(),
-        illumination_decision=IlluminationDecisionStabilizer(
-            ema_alpha=illumination["ema_alpha"],
-            low_light_enter_v=illumination["low_light_enter_v"],
-            low_light_exit_v=illumination["low_light_exit_v"],
-            low_contrast_enter_range_v=(
-                illumination["low_contrast_enter_range_v"]
+        )
+        return RealtimeRuntime(
+            source=source,
+            provider=provider,
+            validator=MeasurementValidator(),
+            landmark_filter=RawLandmarkFilter(),
+            logger=logger,
+            roi_manager=ROIManager(
+                padding_ratio=roi["padding_ratio"],
+                coast_expand_ratio=roi["coast_expand_ratio"],
+                coast_frames=roi["coast_frames"],
+                min_width=roi["min_width"],
+                min_height=roi["min_height"],
             ),
-            low_contrast_exit_range_v=(
-                illumination["low_contrast_exit_range_v"]
+            illumination_analyzer=IlluminationAnalyzer(),
+            illumination_decision=IlluminationDecisionStabilizer(
+                ema_alpha=illumination["ema_alpha"],
+                low_light_enter_v=illumination["low_light_enter_v"],
+                low_light_exit_v=illumination["low_light_exit_v"],
+                low_contrast_enter_range_v=(
+                    illumination["low_contrast_enter_range_v"]
+                ),
+                low_contrast_exit_range_v=(
+                    illumination["low_contrast_exit_range_v"]
+                ),
             ),
-        ),
-        adaptive_preprocessor=AdaptivePreprocessor(
-            policy=clahe["policy"],
-            clip_limit=clahe["clip_limit"],
-            tile_grid_size=tuple(clahe["tile_grid_size"]),
-        ),
-        gesture_engine=_build_gesture_engine(gesture),
-        interaction_consumer=controller.consume_interaction,
-        presentation_consumer=controller.consume_presentation,
-        stop_requested=controller.stop_requested,
-    )
+            adaptive_preprocessor=AdaptivePreprocessor(
+                policy=clahe["policy"],
+                clip_limit=clahe["clip_limit"],
+                tile_grid_size=tuple(clahe["tile_grid_size"]),
+            ),
+            gesture_engine=_build_gesture_engine(gesture),
+            interaction_consumer=controller.consume_interaction,
+            presentation_consumer=controller.consume_presentation,
+            stop_requested=controller.stop_requested,
+        )
+    except Exception as exc:
+        for resource in (source, provider, logger):
+            if resource is None:
+                continue
+            try:
+                resource.close()
+            except Exception as cleanup_error:
+                exc.add_note(
+                    f"partial runtime cleanup also failed: {cleanup_error}"
+                )
+        raise
 
 
 def main() -> None:
-    if not MODEL_PATH.is_file():
-        raise FileNotFoundError(f"MediaPipe model missing: {MODEL_PATH}")
-
     resolved = resolve_config(
         DEFAULT_CONFIG,
         overrides={
@@ -267,27 +343,33 @@ def main() -> None:
     )
 
     print("DIP Touchless STEM live demo.")
-    print("Move index fingertip to rotate; pinch to scale.")
+    print("Move index fingertip to rotate the active scene; pinch to scale.")
     print(
-        "Press S/ENTER/SPACE to start; 1/2/3 selects scenes; "
-        "H/C selects water/methane."
+        "S/ENTER/SPACE starts; A/D/E selects modes; 1/2/3 selects scenes."
     )
     print(
-        "A=analysis, D=demo, E=evidence, [ ]=evidence pages, "
-        "R=reset, Q/ESC=stop."
+        "P opens Control Space; H/C selects molecule presets only in Molecule; "
+        "[ ] navigates Evidence; R resets; Q/ESC stops."
     )
     print(f"Run ID: {run_id}")
 
+    failure: Exception | None = None
     try:
         if not controller.wait_for_start():
             print("Live demo cancelled before processing started.")
             return
 
         controller.start()
+        controller.report_startup_status(
+            "Initializing hand model and provider"
+        )
         runtime = _build_runtime(
             cfg=cfg,
             run_id=run_id,
             controller=controller,
+        )
+        controller.report_startup_status(
+            "Opening camera and waiting for the first frame"
         )
         processed = runtime.run(
             metadata=metadata,
@@ -295,12 +377,36 @@ def main() -> None:
         )
         print(f"Processed frames: {processed}")
     except Exception as exc:
-        controller.fail(exc)
-        raise
+        failure = exc
+        component = getattr(exc, "component", None)
+        if component is None and controller.state.phase is ApplicationPhase.ERROR:
+            component = controller.state.failure_component
+        controller.fail(
+            exc,
+            component=(
+                component
+                or (
+                    "dashboard"
+                    if controller.state.phase is ApplicationPhase.READY
+                    else "runtime"
+                )
+            ),
+        )
+        print(
+            f"{controller.state.status_message}: {exc}"
+        )
+        controller.wait_for_failure_dismiss()
     finally:
-        controller.close()
+        try:
+            controller.close()
+        except Exception as close_error:
+            failure = failure or close_error
+            print(f"Shutdown cleanup error: {close_error}")
 
-    print("Live demo closed cleanly.")
+    if failure is None:
+        print("Live demo closed cleanly.")
+    else:
+        print("Live demo closed after the reported failure.")
 
 
 if __name__ == "__main__":

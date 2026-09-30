@@ -340,6 +340,8 @@ class _SelectionDashboard:
         self.control_panel_toggle_action = None
         self.panel_state = None
         self.mode = DashboardMode.DEMO
+        self.states = []
+        self.closed = False
 
     def set_reset_action(self, action) -> None:
         self.reset_action = action
@@ -384,8 +386,12 @@ class _SelectionDashboard:
     def consume(self, _image, _presentation, _application) -> None:
         pass
 
+    def show_application_state(self, state):
+        self.states.append(state)
+        return True
+
     def close(self) -> None:
-        pass
+        self.closed = True
 
 
 def test_controller_keyboard_seams_switch_scenes_and_molecule_variant() -> None:
@@ -410,6 +416,13 @@ def test_controller_keyboard_seams_switch_scenes_and_molecule_variant() -> None:
     controller.start()
     assert controller.state.active_scene == "Coordinate Geometry"
 
+    # Scene controls stay disabled until the first runtime callback confirms
+    # that startup has reached a usable tracking state.
+    dashboard.scene_select_action("molecule")
+    assert extension.active_scene_id == "coordinate-geometry"
+    controller.consume_interaction(_interaction(0.0))
+    assert controller.state.phase is ApplicationPhase.RUNNING
+
     dashboard.scene_select_action("molecule")
     assert extension.active_scene_id == "molecule"
     dashboard.molecule_preset_action("CH4")
@@ -424,6 +437,8 @@ def test_controller_keyboard_seams_switch_scenes_and_molecule_variant() -> None:
     controller.close()
     assert controller.state.phase is ApplicationPhase.STOPPED
     assert renderer.closed is True
+    assert dashboard.states[-1].phase is ApplicationPhase.STOPPED
+    assert dashboard.closed is True
 
 
 def test_dashboard_maps_u4_keyboard_selection_without_gui() -> None:

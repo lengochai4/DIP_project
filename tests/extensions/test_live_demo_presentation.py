@@ -1,4 +1,5 @@
 from datetime import datetime
+from dataclasses import replace
 
 import numpy as np
 import pytest
@@ -261,6 +262,44 @@ def test_presentation_adapter_rejects_mismatched_interaction() -> None:
             _tracking_frame(),
             interaction,
         )
+
+
+@pytest.mark.parametrize(
+    ("status", "expect_landmarks"),
+    [
+        (TrackingStatus.NO_HAND, False),
+        (TrackingStatus.TEMPORARY_LOSS, False),
+        (TrackingStatus.INVALID, False),
+        (TrackingStatus.REACQUIRED, True),
+    ],
+)
+def test_invalid_tracking_clears_stale_presentation_values(
+    status: TrackingStatus,
+    expect_landmarks: bool,
+) -> None:
+    tracking = replace(
+        _tracking_frame(),
+        status=status,
+    )
+    stale_interaction = replace(
+        _interaction(),
+        interaction_valid=False,
+    )
+
+    state = build_presentation_state(
+        _packet(),
+        tracking,
+        stale_interaction,
+    )
+
+    assert bool(state.raw_landmarks) is expect_landmarks
+    assert bool(state.filtered_landmarks) is expect_landmarks
+    assert state.interaction.valid is False
+    assert state.interaction.pointer_xy is None
+    assert state.interaction.pinch_active is None
+    assert state.interaction.pinch_ratio is None
+    assert state.interaction.rotation_delta is None
+    assert state.interaction.scale_delta is None
 
 
 @pytest.mark.parametrize(

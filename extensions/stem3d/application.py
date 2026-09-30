@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from typing import Protocol
 
 from dip_touchless.core import (
@@ -31,6 +32,12 @@ class StemRenderer(Protocol):
     def close(self) -> None: ...
 
 
+class RendererFailure(RuntimeError):
+    """Presentation-layer error raised when the STEM viewport fails."""
+
+    component = "renderer"
+
+
 class Stem3DExtension:
     """Route public interaction commands through the active STEM scene."""
 
@@ -53,15 +60,40 @@ class Stem3DExtension:
     def active_scene_id(self) -> str | None:
         return self._scene_registry.active_scene_id
 
+    def set_keyboard_action(
+        self,
+        action: Callable[[str], None],
+    ) -> None:
+        """Route renderer-window character keys through the app controls."""
+
+        set_key_consumer = getattr(
+            self._renderer,
+            "set_key_consumer",
+            None,
+        )
+        if callable(set_key_consumer):
+            set_key_consumer(action)
+
     def open(self) -> None:
         if self._renderer_open:
             return
 
-        self._renderer.open()
+        try:
+            self._renderer.open()
+        except Exception as exc:
+            try:
+                self._renderer.close()
+            except Exception as cleanup_error:
+                exc.add_note(
+                    f"renderer cleanup also failed: {cleanup_error}"
+                )
+            raise RendererFailure(
+                f"3D renderer initialization failed: {exc}"
+            ) from exc
         self._renderer_open = True
         try:
             scene = self._scene_registry.activate_initial()
-            scene.render(self._renderer)
+            self._render_scene(scene)
         except Exception:
             try:
                 self._scene_registry.deactivate()
@@ -96,7 +128,7 @@ class Stem3DExtension:
         scene.apply_interaction(state)
         scene.update(dt_s)
         self._previous_timestamp_s = float(timestamp_s)
-        scene.render(self._renderer)
+        self._render_scene(scene)
 
     def activate_scene(self, scene_id: str) -> STEMScene:
         """Activate a registered scene and display its initial state."""
@@ -105,7 +137,7 @@ class Stem3DExtension:
             raise RuntimeError("STEM extension is not open")
         scene = self._scene_registry.activate(scene_id)
         self._previous_timestamp_s = None
-        scene.render(self._renderer)
+        self._render_scene(scene)
         return scene
 
     def refresh_active_scene(self) -> STEMScene:
@@ -114,7 +146,7 @@ class Stem3DExtension:
         if not self._renderer_open:
             raise RuntimeError("STEM extension is not open")
         scene = self._require_active_scene()
-        scene.render(self._renderer)
+        self._render_scene(scene)
         return scene
 
     def reset(self) -> None:
@@ -124,7 +156,7 @@ class Stem3DExtension:
         self._previous_timestamp_s = None
         if self._renderer_open:
             scene = self._require_active_scene()
-            scene.render(self._renderer)
+            self._render_scene(scene)
 
     def close_requested(
         self,
@@ -140,7 +172,12 @@ class Stem3DExtension:
         finally:
             try:
                 if self._renderer_open:
-                    self._renderer.close()
+                    try:
+                        self._renderer.close()
+                    except Exception as exc:
+                        raise RendererFailure(
+                            f"3D renderer shutdown failed: {exc}"
+                        ) from exc
             finally:
                 self._renderer_open = False
                 self._previous_timestamp_s = None
@@ -152,3 +189,13 @@ class Stem3DExtension:
         if scene is None:
             raise RuntimeError("no STEM scene is active")
         return scene
+
+    def _render_scene(self, scene: STEMScene) -> None:
+        try:
+            scene.render(self._renderer)
+        except RendererFailure:
+            raise
+        except Exception as exc:
+            raise RendererFailure(
+                f"3D renderer failed while drawing {scene.title}: {exc}"
+            ) from exc

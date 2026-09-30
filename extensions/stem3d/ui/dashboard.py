@@ -64,6 +64,7 @@ class LiveDashboard:
         self._control_panel_button = Rect(0, 0, 0, 0)
         self._stop = False
         self._window_open = False
+        self._last_application_state: ApplicationState | None = None
         self._mode = DashboardMode.DEMO
         self._evidence_catalog = (
             load_evidence_catalog()
@@ -129,6 +130,9 @@ class LiveDashboard:
             height,
             active_scene_id=self._spatial_panel_state.active_scene_id,
             mode=self._mode,
+            interaction_available=(
+                self._spatial_panel_state.interaction_available
+            ),
         )
 
     @property
@@ -147,19 +151,30 @@ class LiveDashboard:
         if self._window_open:
             return
 
-        cv2.namedWindow(
-            self.WINDOW_NAME,
-            cv2.WINDOW_NORMAL,
-        )
-        cv2.resizeWindow(
-            self.WINDOW_NAME,
-            *self._last_size,
-        )
-        cv2.setMouseCallback(
-            self.WINDOW_NAME,
-            self._on_mouse,
-        )
-        self._window_open = True
+        created = False
+        try:
+            cv2.namedWindow(
+                self.WINDOW_NAME,
+                cv2.WINDOW_NORMAL,
+            )
+            created = True
+            self._window_open = True
+            cv2.resizeWindow(
+                self.WINDOW_NAME,
+                *self._last_size,
+            )
+            cv2.setMouseCallback(
+                self.WINDOW_NAME,
+                self._on_mouse,
+            )
+        except Exception:
+            if created:
+                try:
+                    cv2.destroyWindow(self.WINDOW_NAME)
+                except cv2.error:
+                    pass
+            self._window_open = False
+            raise
 
     def wait_for_start(
         self,
@@ -168,6 +183,7 @@ class LiveDashboard:
         """Show a start screen and wait for start or cancellation."""
 
         self.open()
+        self._last_application_state = state
 
         while not self._stop:
             width, height = self._window_size()
@@ -207,7 +223,7 @@ class LiveDashboard:
             )
             self._put_text(
                 canvas,
-                "The camera/status dashboard and 3D cube open in separate windows.",
+                "Camera dashboard and the selected 3D STEM scene open in separate windows.",
                 center_x,
                 layout.vision.y + 190,
                 color=THEME.text_secondary,
@@ -242,7 +258,7 @@ class LiveDashboard:
             )
             self._put_text(
                 canvas,
-                "R  Reset active scene",
+                "R  Reset active scene after start",
                 layout.pipeline.x + THEME.card_padding,
                 layout.pipeline.y + 56,
                 color=THEME.text_secondary,
@@ -256,9 +272,18 @@ class LiveDashboard:
             )
             self._put_text(
                 canvas,
-                "After start: 1/2/3 scenes  |  H water  |  C methane",
+                "After start: A/D/E modes  |  1/2/3 scenes  |  P panel",
                 layout.pipeline.x + THEME.card_padding,
                 layout.pipeline.y + 108,
+                scale=THEME.font_small,
+                color=THEME.text_secondary,
+                max_width=layout.pipeline.width - 2 * THEME.card_padding,
+            )
+            self._put_text(
+                canvas,
+                "In Molecule: H = water  |  C = methane",
+                layout.pipeline.x + THEME.card_padding,
+                layout.pipeline.y + 132,
                 scale=THEME.font_small,
                 color=THEME.text_secondary,
                 max_width=layout.pipeline.width - 2 * THEME.card_padding,
@@ -270,7 +295,7 @@ class LiveDashboard:
             )
             self._put_text(
                 canvas,
-                "Move index fingertip to rotate",
+                "Move index fingertip to rotate the active scene",
                 layout.interaction.x + THEME.card_padding,
                 layout.interaction.y + 55,
                 scale=THEME.font_small,
@@ -309,6 +334,10 @@ class LiveDashboard:
     ) -> None:
         """Draw one runtime callback without mutating its image buffer."""
 
+        self._last_application_state = application
+        if application.phase is not ApplicationPhase.RUNNING:
+            self.show_application_state(application)
+            return
         if not self._window_open:
             self.open()
         self._window_size()
@@ -368,6 +397,18 @@ class LiveDashboard:
             dtype=np.uint8,
         )
         selected_mode = self._mode if mode is None else mode
+        self._last_application_state = application
+        if application.phase in {
+            ApplicationPhase.STARTING,
+            ApplicationPhase.ERROR,
+            ApplicationPhase.STOPPING,
+            ApplicationPhase.STOPPED,
+        }:
+            return self.build_application_state_screen(
+                application,
+                width=requested_width,
+                height=requested_height,
+            )
 
         self._draw_header(
             canvas,
@@ -408,32 +449,202 @@ class LiveDashboard:
                         self._spatial_panel_state.active_scene_id
                     ),
                     mode=selected_mode,
+                    interaction_available=(
+                        self._spatial_panel_state.interaction_available
+                    ),
                 ),
                 self._spatial_panel_state,
             )
 
         return canvas
 
+    def build_application_state_screen(
+        self,
+        application: ApplicationState,
+        *,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> np.ndarray:
+        """Build a camera-free startup, failure, or shutdown screen."""
+
+        layout = calculate_dashboard_layout(
+            self._last_size[0] if width is None else width,
+            self._last_size[1] if height is None else height,
+        )
+        canvas = np.full(
+            (layout.height, layout.width, 3),
+            THEME.background,
+            dtype=np.uint8,
+        )
+        self._draw_header(
+            canvas,
+            layout,
+            application,
+            self._mode,
+            subtitle="APPLICATION STATUS",
+        )
+        content = Rect(
+            x=layout.vision.x,
+            y=layout.vision.y,
+            width=layout.vision.width + THEME.gap + layout.scene.width,
+            height=layout.vision.height,
+        )
+        self._panel(canvas, content, raised=True)
+        component_titles = {
+            "camera": "CAMERA UNAVAILABLE",
+            "model/provider": "HAND MODEL / PROVIDER UNAVAILABLE",
+            "renderer": "3D RENDERER INITIALIZATION FAILED",
+            "dashboard": "DASHBOARD UNAVAILABLE",
+        }
+        if application.phase is ApplicationPhase.ERROR:
+            title = component_titles.get(
+                application.failure_component or "",
+                "APPLICATION ERROR",
+            )
+            color = THEME.error
+        elif application.phase is ApplicationPhase.STARTING:
+            title = "INITIALIZING"
+            color = THEME.warning
+        elif application.phase is ApplicationPhase.STOPPED:
+            title = "APPLICATION STOPPED CLEANLY"
+            color = THEME.success
+        else:
+            title = "STOPPING APPLICATION"
+            color = THEME.warning
+        center_x = content.x + content.width // 2
+        self._pill(
+            canvas,
+            Rect(center_x - 185, content.y + 70, 370, 34),
+            title,
+            color,
+        )
+        self._put_text(
+            canvas,
+            application.status_message or application.phase.value,
+            center_x,
+            content.y + 150,
+            scale=THEME.font_title,
+            color=THEME.text_primary,
+            align="center",
+            max_width=content.width - 2 * THEME.card_padding,
+        )
+        availability = (
+            "CAMERA "
+            + _availability_label(application.camera_available)
+            + "   |   HAND MODEL "
+            + _availability_label(application.provider_available)
+            + "   |   3D VIEWPORT "
+            + _availability_label(application.renderer_available)
+        )
+        self._put_text(
+            canvas,
+            availability,
+            center_x,
+            content.y + 198,
+            scale=THEME.font_body,
+            color=THEME.text_secondary,
+            align="center",
+            max_width=content.width - 2 * THEME.card_padding,
+        )
+        if application.error_message:
+            error_lines = self._wrap_text_lines(
+                application.error_message,
+                max_width=content.width - 2 * THEME.card_padding,
+                scale=THEME.font_small,
+                max_lines=4,
+            )
+            for index, line in enumerate(error_lines):
+                self._put_text(
+                    canvas,
+                    line,
+                    center_x,
+                    content.y + 250 + index * THEME.line_height,
+                    scale=THEME.font_small,
+                    color=THEME.text_secondary,
+                    align="center",
+                )
+        self._put_text(
+            canvas,
+            "Q / ESC  Quit application",
+            center_x,
+            content.bottom - 44,
+            scale=THEME.font_small,
+            color=THEME.text_muted,
+            align="center",
+            max_width=content.width - 2 * THEME.card_padding,
+        )
+        return canvas
+
+    def show_application_state(
+        self,
+        application: ApplicationState,
+    ) -> bool:
+        """Present startup/failure state without reusing a stale camera frame."""
+
+        self._last_application_state = application
+        if application.phase is ApplicationPhase.RUNNING:
+            return True
+        try:
+            if not self._window_open:
+                self.open()
+            canvas = self.build_application_state_screen(application)
+            cv2.imshow(self.WINDOW_NAME, canvas)
+            self.handle_key(cv2.waitKey(1) & 0xFF)
+        except Exception:
+            return False
+        return True
+
+    def wait_for_failure_dismiss(
+        self,
+        application: ApplicationState,
+    ) -> None:
+        """Keep a recoverable error visible until quit or window close."""
+
+        if not self.show_application_state(application):
+            return
+        while not self._stop:
+            canvas = self.build_application_state_screen(application)
+            try:
+                cv2.imshow(self.WINDOW_NAME, canvas)
+                key = cv2.waitKey(30) & 0xFF
+            except Exception:
+                self._stop = True
+                break
+            self.handle_key(key)
+            if self._window_closed():
+                self._stop = True
+
     def handle_key(self, key: int) -> None:
         if key in {ord("q"), ord("Q"), 27}:
             self._stop = True
-        elif key in {ord("r"), ord("R")}:
+        elif key in {ord("r"), ord("R")} and self._controls_active():
             if self._reset_action is not None:
                 self._reset_action()
-        elif key in {ord("a"), ord("A")}:
+        elif key in {ord("a"), ord("A")} and self._mode_switch_active():
             self.set_mode(DashboardMode.ANALYSIS)
-        elif key in {ord("d"), ord("D")}:
+        elif key in {ord("d"), ord("D")} and self._mode_switch_active():
             self.set_mode(DashboardMode.DEMO)
-        elif key in {ord("e"), ord("E")}:
+        elif key in {ord("e"), ord("E")} and self._mode_switch_active():
             self.set_mode(DashboardMode.EVIDENCE)
-        elif self._mode is DashboardMode.EVIDENCE and key == ord("["):
+        elif (
+            self._mode is DashboardMode.EVIDENCE
+            and key == ord("[")
+            and self._controls_active()
+        ):
             self._change_evidence_page(-1)
-        elif self._mode is DashboardMode.EVIDENCE and key == ord("]"):
+        elif (
+            self._mode is DashboardMode.EVIDENCE
+            and key == ord("]")
+            and self._controls_active()
+        ):
             self._change_evidence_page(1)
-        elif key in {ord("p"), ord("P")}:
+        elif key in {ord("p"), ord("P")} and self._controls_active():
             if self._control_panel_toggle_action is not None:
                 self._control_panel_toggle_action()
-        elif key in {ord("1"), ord("2"), ord("3")}:
+        elif (
+            key in {ord("1"), ord("2"), ord("3")}
+            and self._controls_active()
+        ):
             scene_id = {
                 ord("1"): "coordinate-geometry",
                 ord("2"): "molecule",
@@ -441,7 +652,11 @@ class LiveDashboard:
             }[key]
             if self._scene_select_action is not None:
                 self._scene_select_action(scene_id)
-        elif key in {ord("h"), ord("H"), ord("c"), ord("C")}:
+        elif (
+            key in {ord("h"), ord("H"), ord("c"), ord("C")}
+            and self._controls_active()
+            and self._molecule_scene_active()
+        ):
             preset = "H2O" if key in {ord("h"), ord("H")} else "CH4"
             if self._molecule_preset_action is not None:
                 self._molecule_preset_action(preset)
@@ -472,6 +687,8 @@ class LiveDashboard:
         if event != cv2.EVENT_LBUTTONUP:
             return
         if self._mode is DashboardMode.EVIDENCE:
+            if not self._controls_active():
+                return
             if self._rect_contains(
                 self._evidence_previous_button,
                 x,
@@ -486,7 +703,10 @@ class LiveDashboard:
             ):
                 self._change_evidence_page(1)
                 return
-        if self._control_panel_toggle_action is None:
+        if (
+            self._control_panel_toggle_action is None
+            or not self._controls_active()
+        ):
             return
         rect = self._control_panel_button
         if self._rect_contains(rect, x, y):
@@ -513,7 +733,8 @@ class LiveDashboard:
             cv2.destroyWindow(self.WINDOW_NAME)
         except cv2.error:
             pass
-        self._window_open = False
+        finally:
+            self._window_open = False
 
     def _window_size(self) -> tuple[int, int]:
         if not self._window_open:
@@ -550,6 +771,59 @@ class LiveDashboard:
             ),
             len(self._evidence_catalog.pages) - 1,
         )
+
+    def _controls_active(self) -> bool:
+        state = self._last_application_state
+        # A dashboard used as a headless presentation/test fixture has no
+        # lifecycle state, so preserve its direct keyboard action seam.
+        return state is None or state.phase is ApplicationPhase.RUNNING
+
+    def _mode_switch_active(self) -> bool:
+        state = self._last_application_state
+        return (
+            state is None
+            or state.phase not in {
+                ApplicationPhase.ERROR,
+                ApplicationPhase.STOPPING,
+                ApplicationPhase.STOPPED,
+            }
+        )
+
+    def _molecule_scene_active(self) -> bool:
+        state = self._last_application_state
+        return (
+            state is None
+            or state.active_scene.casefold() in {"molecule", "molecular geometry"}
+        )
+
+    def _wrap_text_lines(
+        self,
+        text: str,
+        *,
+        max_width: int,
+        scale: float,
+        max_lines: int,
+    ) -> tuple[str, ...]:
+        words = text.split()
+        lines: list[str] = []
+        current = ""
+        for word in words:
+            candidate = word if not current else f"{current} {word}"
+            if self._text_width(candidate, scale) <= max_width:
+                current = candidate
+                continue
+            if current:
+                lines.append(current)
+            current = word
+            if len(lines) >= max_lines:
+                break
+        if current and len(lines) < max_lines:
+            lines.append(current)
+        if len(lines) == max_lines and len(words) > 0:
+            joined = " ".join(lines)
+            if len(joined) < len(text):
+                lines[-1] = lines[-1].rstrip(" .") + "..."
+        return tuple(lines)
 
     @staticmethod
     def _rect_contains(
@@ -1555,7 +1829,10 @@ class LiveDashboard:
                 cv2.LINE_AA,
             )
 
-        if mode is DashboardMode.ANALYSIS:
+        if (
+            mode is DashboardMode.ANALYSIS
+            and state.tracking_status in {"VALID", "REACQUIRED"}
+        ):
             self._draw_landmarks(
                 canvas,
                 target,
@@ -1566,7 +1843,11 @@ class LiveDashboard:
             )
 
         pointer = state.interaction.pointer_xy
-        if state.interaction.valid and pointer is not None:
+        if (
+            state.tracking_status == "VALID"
+            and state.interaction.valid
+            and pointer is not None
+        ):
             mapped_pointer = map_normalized_point_to_rect(
                 pointer,
                 target,
@@ -1609,25 +1890,35 @@ class LiveDashboard:
             canvas,
             application.active_scene.upper(),
             layout.scene.x + THEME.card_padding,
-            layout.scene.y + 54,
+            layout.scene.y + 50,
             scale=THEME.font_section,
             color=THEME.text_primary,
             max_width=layout.scene.width - 2 * THEME.card_padding,
         )
         self._put_text(
             canvas,
-            "Index fingertip rotates  |  Pinch scales",
+            (
+                "H Water  |  C Methane presets"
+                if application.active_scene.casefold()
+                in {"molecule", "molecular geometry"}
+                else "Index motion rotates  |  Pinch scales"
+            ),
             layout.scene.x + THEME.card_padding,
-            layout.scene.y + 76,
+            layout.scene.y + 68,
             scale=THEME.font_small,
             color=THEME.text_secondary,
             max_width=layout.scene.width - 2 * THEME.card_padding,
         )
         self._put_text(
             canvas,
-            "1 Geometry  |  2 Molecule  |  3 Orbit  |  H/C molecule",
+            (
+                "H Water  |  C Methane"
+                if application.active_scene.casefold()
+                in {"molecule", "molecular geometry"}
+                else "1/2/3 Switch scenes"
+            ),
             layout.scene.x + THEME.card_padding,
-            layout.scene.y + 98,
+            layout.scene.y + 84,
             scale=THEME.font_micro,
             color=THEME.text_muted,
             max_width=layout.scene.width - 2 * THEME.card_padding,
@@ -1668,8 +1959,10 @@ class LiveDashboard:
             y,
             width,
             "TRACKING",
-            state.tracking_status,
-            positive=state.tracking_status in {"VALID", "REACQUIRED"},
+            _tracking_label(state.tracking_status),
+            positive=state.tracking_status == "VALID",
+            error=state.tracking_status == "INVALID",
+            tracking_status=state.tracking_status,
         )
         y += THEME.row_height
         roi_text = (
@@ -1735,13 +2028,15 @@ class LiveDashboard:
             y,
             width,
             "HAND",
-            state.tracking_status,
-            positive=state.tracking_status in {"VALID", "REACQUIRED"},
+            _tracking_label(state.tracking_status),
+            positive=state.tracking_status == "VALID",
+            error=state.tracking_status == "INVALID",
+            tracking_status=state.tracking_status,
         )
         y += THEME.row_height + 7
         self._put_text(
             canvas,
-            "Move your index fingertip to rotate the cube.",
+            "Move your index fingertip to rotate the active scene.",
             x,
             y,
             scale=THEME.font_body,
@@ -1773,7 +2068,13 @@ class LiveDashboard:
             y,
             width,
             "INTERACTION",
-            "READY" if interaction.valid else "NEUTRAL",
+            (
+                "VALID"
+                if interaction.valid
+                else "UNAVAILABLE"
+                if not interaction.available
+                else "INVALID"
+            ),
         )
         self._value_row(
             canvas,
@@ -1920,7 +2221,13 @@ class LiveDashboard:
             y,
             width,
             "STATE",
-            "VALID" if interaction.valid else "NEUTRAL",
+            (
+                "VALID"
+                if interaction.valid
+                else "UNAVAILABLE"
+                if not interaction.available
+                else "INVALID"
+            ),
             positive=interaction.valid,
         )
         y += THEME.row_height
@@ -1979,9 +2286,13 @@ class LiveDashboard:
             toggle_width,
             toggle_height,
         )
+        controls_active = (
+            application.phase is ApplicationPhase.RUNNING
+        )
         self._draw_control_panel_toggle(
             canvas,
             self._control_panel_button,
+            enabled=controls_active,
         )
         y = rect.y + 18
         if mode is DashboardMode.EVIDENCE:
@@ -2016,14 +2327,18 @@ class LiveDashboard:
                 canvas,
                 self._evidence_previous_button,
                 "< PREVIOUS",
-                enabled=self._evidence_page_index > 0,
+                enabled=(
+                    controls_active
+                    and self._evidence_page_index > 0
+                ),
             )
             self._draw_evidence_nav_button(
                 canvas,
                 self._evidence_next_button,
                 "NEXT >",
                 enabled=(
-                    self._evidence_page_index
+                    controls_active
+                    and self._evidence_page_index
                     < len(self._evidence_catalog.pages) - 1
                 ),
             )
@@ -2047,7 +2362,7 @@ class LiveDashboard:
 
         self._put_text(
             canvas,
-            "A ANALYSIS  |  D DEMO  |  R RESET  |  Q/ESC STOP  |  P PANEL",
+            "A ANALYSIS  |  D DEMO  |  E EVIDENCE  |  1/2/3 SCENES  |  R RESET  |  Q/ESC STOP  |  P PANEL",
             rect.x + THEME.card_padding,
             y,
             scale=THEME.font_small,
@@ -2061,7 +2376,7 @@ class LiveDashboard:
         if mode is DashboardMode.DEMO:
             self._put_text(
                 canvas,
-                "CAMERA PREVIEW  +  COORDINATE CUBE",
+                "CAMERA PREVIEW  +  ACTIVE STEM SCENE",
                 rect.x + THEME.card_padding,
                 rect.y + 43,
                 scale=THEME.font_micro,
@@ -2069,7 +2384,7 @@ class LiveDashboard:
             )
             self._put_text(
                 canvas,
-                "Press A to inspect the DIP pipeline and run identity.",
+                "1/2/3 switch scenes; H/C presets only while Molecule is active.",
                 rect.x + THEME.card_padding,
                 rect.y + 64,
                 scale=THEME.font_micro,
@@ -2152,19 +2467,28 @@ class LiveDashboard:
         self,
         canvas: np.ndarray,
         rect: Rect,
+        *,
+        enabled: bool = True,
     ) -> None:
+        fill = THEME.surface if enabled else THEME.surface_raised
+        border = THEME.accent if enabled else THEME.border
+        text_color = (
+            THEME.text_primary
+            if enabled
+            else THEME.text_muted
+        )
         cv2.rectangle(
             canvas,
             (rect.x, rect.y),
             (rect.right - 1, rect.bottom - 1),
-            THEME.surface,
+            fill,
             thickness=-1,
         )
         cv2.rectangle(
             canvas,
             (rect.x, rect.y),
             (rect.right - 1, rect.bottom - 1),
-            THEME.accent,
+            border,
             thickness=1,
             lineType=cv2.LINE_AA,
         )
@@ -2179,7 +2503,7 @@ class LiveDashboard:
             rect.x + rect.width // 2,
             rect.y + 20,
             scale=THEME.font_small,
-            color=THEME.text_primary,
+            color=text_color,
             max_width=rect.width - 12,
             align="center",
         )
@@ -2202,11 +2526,19 @@ class LiveDashboard:
         )
         self._put_text(
             canvas,
-            "Move pointer; pinch once to select",
+            (
+                "Move pointer; pinch once to select"
+                if state.interaction_available
+                else "Tracking unavailable; use keyboard controls"
+            ),
             rect.x + THEME.card_padding,
             rect.y + 52,
             scale=THEME.font_micro,
-            color=THEME.text_secondary,
+            color=(
+                THEME.text_secondary
+                if state.interaction_available
+                else THEME.text_muted
+            ),
             max_width=rect.width - 2 * THEME.card_padding,
         )
         self._put_text(
@@ -2235,7 +2567,10 @@ class LiveDashboard:
                     or state.activated_button == button.button_id
                 ),
             )
-        if state.cursor_xy is not None:
+        if (
+            state.interaction_available
+            and state.cursor_xy is not None
+        ):
             cv2.circle(
                 canvas,
                 state.cursor_xy,
@@ -2396,6 +2731,8 @@ class LiveDashboard:
         value: str,
         *,
         positive: bool,
+        error: bool = False,
+        tracking_status: str | None = None,
     ) -> None:
         cls._put_text(
             canvas,
@@ -2406,7 +2743,15 @@ class LiveDashboard:
             color=THEME.text_muted,
             max_width=86,
         )
-        color = THEME.success if positive else THEME.warning
+        color = (
+            _tracking_badge_color(tracking_status)
+            if tracking_status is not None
+            else THEME.error
+            if error
+            else THEME.success
+            if positive
+            else THEME.warning
+        )
         cls._pill(
             canvas,
             Rect(x + 86, y - 15, min(width - 86, 105), 19),
@@ -2522,6 +2867,32 @@ def _frame_point_to_preview(
 
 def _display_value(value: str | None) -> str:
     return value if value else "n/a"
+
+
+def _availability_label(value: bool | None) -> str:
+    if value is True:
+        return "READY"
+    if value is False:
+        return "UNAVAILABLE"
+    return "NOT INITIALIZED"
+
+
+def _tracking_label(status: str) -> str:
+    return {
+        "VALID": "VALID",
+        "NO_HAND": "NO HAND",
+        "TEMPORARY_LOSS": "TRACKING LOST",
+        "REACQUIRED": "REACQUIRING",
+        "INVALID": "INVALID",
+    }.get(status, status)
+
+
+def _tracking_badge_color(status: str) -> tuple[int, int, int]:
+    if status == "VALID":
+        return THEME.success
+    if status == "INVALID":
+        return THEME.error
+    return THEME.warning
 
 
 def _trial_counts(batch: EvidenceBatch) -> str:

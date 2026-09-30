@@ -130,15 +130,16 @@ change the scope or interpretation of the frozen G7 experiment release.
 
 ## 4. Current task
 
-**Task G8-U6 — Implement the read-only Evidence Mode described in `docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md` — COMPLETE.**
+**Task G8-U7 — Harden presentation loading, error, empty, disabled, and cleanup states — COMPLETE.**
 
 The G7 controlled evaluation and submission package are complete and
 frozen at `g7-final`. The active G8 direction is a separately scoped
-post-G7 application/Extension continuation. U1 through U5 are implemented.
-U6 presents selected frozen G7 artifacts in the application without
-modifying evidence or research conclusions. The next roadmap unit is U7.
-Preserve the existing G7/Core boundary while continuing that presentation
-work.
+post-G7 application/Extension continuation. U1 through U7 are implemented.
+U6 presents selected frozen G7 artifacts without modifying evidence or
+research conclusions. U7 adds explicit lifecycle feedback, failure
+handling, disabled controls, keyboard fallback, and cleanup hardening. The
+next roadmap unit is U8. Preserve the existing G7/Core boundary while
+continuing that presentation work.
 
 G8 is not a new research experiment and does not claim commercial
 readiness. Any change to Core semantics, public contracts, experiment
@@ -158,6 +159,29 @@ Focused Extension tests passed (40), the full project suite passed (478),
 `compileall extensions/stem3d` succeeded, and six synthetic dashboard pages
 rendered for presentation inspection. No physical webcam smoke was run for
 U6. The frozen G7 evidence files and `g7-final` tag remain unchanged.
+
+### G8-U7 Commercial UX Hardening completion — 2026-09-30
+
+The dashboard and application controller now expose explicit startup,
+component-failure, tracking, and shutdown states. Camera, hand model/provider,
+renderer, and dashboard failures remain distinct from ordinary no-hand or
+tracking-loss states. Invalid interaction clears stale landmarks, pointer,
+panel hover/press, and interaction values; touchless controls are visibly
+disabled until interaction is available. Keyboard guidance and contextual
+molecule shortcuts match the current DEMO/ANALYSIS/EVIDENCE and three-scene
+surface. Evidence asset errors remain separate from frozen experiment-level
+unavailability.
+
+Partial renderer/dashboard initialization is cleaned up, shutdown is
+idempotent, and cleanup failures are not reported as a clean stop. Focused
+Extension tests passed (93), the full project suite passed (499),
+`compileall extensions/stem3d` succeeded, and `git diff --check` was clean.
+Five synthetic startup, camera/model/renderer failure, and clean-shutdown
+screens rendered at the supported minimum dashboard size. No physical
+webcam/hand smoke was run for U7.
+
+Core algorithms, research contracts, G7 results/evidence, and the `g7-final`
+tag are unchanged. The next roadmap unit is U8 — Automated Validation.
 
 ### G6 experiment-readiness completion record (historical)
 
@@ -1215,7 +1239,7 @@ None. G7 provenance and all final experiment artifacts remain frozen.
 
 ## 5. Immediate next tasks
 
-G7 is closed. U1–U6 are implemented on `feat/final-ui-extension`. U2
+G7 is closed. U1–U7 are implemented on `feat/final-ui-extension`. U2
 provides DEMO/ANALYSIS modes, live ROI and pointer overlays, distinct
 raw/filtered landmarks, DIP diagnostics, and run identity from recorded
 metadata. U3 defines the `STEMScene` contract and local `SceneRegistry`,
@@ -1249,10 +1273,13 @@ not use a webcam or physical hand input. Continue with the post-G7 roadmap in
 6. **U6 — Evidence mode — COMPLETE:** display selected frozen G7 assets and retain
    unavailable findings and known limitations without editing or
    regenerating the source evidence.
-7. **U7/U8 — UX hardening and validation — NEXT:** implement clear loading,
-   error, empty, and disabled states; keyboard fallback; focused tests;
-   and full regression.
-8. **U9/U10 — Physical validation and release:** exercise the complete
+7. **U7 — Commercial UX hardening — COMPLETE:** make startup and component
+   failures explicit; clear stale tracking/interaction presentation;
+   disable unusable touchless controls; preserve keyboard fallback; and
+   make partial initialization and shutdown cleanup safe.
+8. **U8 — Automated validation — NEXT:** run targeted Extension tests and
+   full `pytest` regression for the post-G7 UI/Extension surface.
+9. **U9/U10 — Physical validation and release:** exercise the complete
    application with the webcam, document screenshots/demo instructions,
    record limitations, and create a new post-G7 release identity without
    moving `g7-final`.

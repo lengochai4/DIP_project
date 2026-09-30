@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 import math
+from collections.abc import Callable
 from typing import Any
 
 from .scenes.visuals import SceneFrame, SceneLine, SceneSphere
@@ -36,6 +37,7 @@ class OpenGLStemRenderer:
         self._clock: Any | None = None
         self._quadric: Any | None = None
         self._opened = False
+        self._key_consumer: Callable[[str], None] | None = None
 
     @property
     def opened(self) -> bool:
@@ -60,9 +62,9 @@ class OpenGLStemRenderer:
         self._pygame = pygame
         self._gl = GL
         self._glu = GLU
-        pygame.init()
 
         try:
+            pygame.init()
             pygame.display.set_mode(
                 (self._width, self._height),
                 pygame.DOUBLEBUF | pygame.OPENGL,
@@ -100,9 +102,22 @@ class OpenGLStemRenderer:
             GLU.gluQuadricNormals(self._quadric, GLU.GLU_SMOOTH)
             self._clock = pygame.time.Clock()
             self._opened = True
-        except Exception:
-            self._release_resources()
+        except Exception as exc:
+            try:
+                self._release_resources()
+            except Exception as cleanup_error:
+                exc.add_note(
+                    f"renderer cleanup also failed: {cleanup_error}"
+                )
             raise
+
+    def set_key_consumer(
+        self,
+        consumer: Callable[[str], None],
+    ) -> None:
+        """Receive printable keyboard shortcuts from the OpenGL window."""
+
+        self._key_consumer = consumer
 
     def close_requested(self) -> bool:
         """Return whether the user requested renderer shutdown."""
@@ -114,11 +129,23 @@ class OpenGLStemRenderer:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
-            if (
-                event.type == pygame.KEYDOWN
-                and event.key == pygame.K_ESCAPE
-            ):
-                return True
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return True
+                character = getattr(event, "unicode", "")
+                if (
+                    not isinstance(character, str)
+                    or len(character) != 1
+                ):
+                    key = getattr(event, "key", None)
+                    character = (
+                        chr(key)
+                        if isinstance(key, int)
+                        and 32 <= key < 127
+                        else ""
+                    )
+                if character and self._key_consumer is not None:
+                    self._key_consumer(character)
         return False
 
     def render(self, frame: SceneFrame) -> None:
@@ -204,12 +231,19 @@ class OpenGLStemRenderer:
         glu = self._glu
         pygame = self._pygame
         quadric = self._quadric
+        cleanup_error: Exception | None = None
         try:
             if glu is not None and quadric is not None:
                 glu.gluDeleteQuadric(quadric)
-        finally:
+        except Exception as exc:
+            cleanup_error = exc
+        try:
             if pygame is not None:
                 pygame.quit()
+        except Exception as exc:
+            if cleanup_error is None:
+                cleanup_error = exc
+        finally:
             self._pygame = None
             self._gl = None
             self._glu = None
@@ -217,6 +251,8 @@ class OpenGLStemRenderer:
             self._quadric = None
             self._opened = False
             self._last_caption = None
+        if cleanup_error is not None:
+            raise cleanup_error
 
     def _require_open(self) -> None:
         if not self._opened:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 from dip_touchless.core import InteractionState
@@ -71,6 +71,7 @@ class SpatialPanelLayout:
 class SpatialPanelViewState:
     open: bool
     focus: InteractionFocus
+    interaction_available: bool = False
     cursor_xy: tuple[int, int] | None = None
     hovered_button: str | None = None
     pressed_button: str | None = None
@@ -92,6 +93,7 @@ def build_spatial_panel_layout(
     *,
     active_scene_id: str | None = None,
     mode: DashboardMode = DashboardMode.DEMO,
+    interaction_available: bool = True,
 ) -> SpatialPanelLayout:
     """Build the responsive panel over the dashboard's right workspace."""
 
@@ -218,7 +220,10 @@ def build_spatial_panel_layout(
 
     return SpatialPanelLayout(
         viewport=viewport,
-        buttons=tuple(buttons),
+        buttons=tuple(
+            replace(button, enabled=interaction_available)
+            for button in buttons
+        ),
     )
 
 
@@ -322,7 +327,9 @@ class InteractionRouter:
         self._cursor_xy = cursor
         button = panel_layout.button_at(cursor)
         self._hovered_button = (
-            None if button is None else button.button_id
+            None
+            if button is None or not button.enabled
+            else button.button_id
         )
 
         if not state.pinch_active:
@@ -335,7 +342,9 @@ class InteractionRouter:
             )
 
         self._pressed_button = (
-            None if button is None else button.button_id
+            None
+            if button is None or not button.enabled
+            else button.button_id
         )
         rising_edge = not self._previous_pinch
         self._previous_pinch = True
@@ -371,10 +380,12 @@ class InteractionRouter:
         *,
         active_scene_id: str | None,
         mode: DashboardMode,
+        interaction_available: bool = False,
     ) -> SpatialPanelViewState:
         return SpatialPanelViewState(
             open=self._open,
             focus=self._focus,
+            interaction_available=interaction_available,
             cursor_xy=self._cursor_xy,
             hovered_button=self._hovered_button,
             pressed_button=self._pressed_button,
