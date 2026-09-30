@@ -29,6 +29,7 @@ class ApplicationPhase(str, Enum):
 class DashboardMode(str, Enum):
     DEMO = "DEMO"
     ANALYSIS = "ANALYSIS"
+    EVIDENCE = "EVIDENCE"
 
 
 @dataclass(frozen=True, slots=True)

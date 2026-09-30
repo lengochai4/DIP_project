@@ -272,7 +272,10 @@ def main() -> None:
         "Press S/ENTER/SPACE to start; 1/2/3 selects scenes; "
         "H/C selects water/methane."
     )
-    print("A=analysis, D=demo, R=reset, Q/ESC=stop.")
+    print(
+        "A=analysis, D=demo, E=evidence, [ ]=evidence pages, "
+        "R=reset, Q/ESC=stop."
+    )
     print(f"Run ID: {run_id}")
 
     try:

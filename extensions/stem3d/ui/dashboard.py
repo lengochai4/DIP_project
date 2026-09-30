@@ -14,6 +14,11 @@ from .layout import (
     fit_aspect_rect,
     map_normalized_point_to_rect,
 )
+from ..evidence import (
+    EvidenceBatch,
+    EvidenceCatalog,
+    load_evidence_catalog,
+)
 from .presentation_model import (
     ApplicationPhase,
     ApplicationState,
@@ -36,7 +41,6 @@ _ANALYSIS_PIPELINE_LINES = (
     "LANDMARKS > TEMPORAL FILTER > GESTURE > INTERACTION STATE > 3D",
 )
 
-
 class LiveDashboard:
     """Render immutable presentation values and a copied BGR camera frame."""
 
@@ -46,6 +50,7 @@ class LiveDashboard:
         self,
         *,
         reset_action: Callable[[], None] | None = None,
+        evidence_catalog: EvidenceCatalog | None = None,
     ) -> None:
         self._reset_action = reset_action
         self._scene_select_action: Callable[[str], None] | None = None
@@ -60,6 +65,14 @@ class LiveDashboard:
         self._stop = False
         self._window_open = False
         self._mode = DashboardMode.DEMO
+        self._evidence_catalog = (
+            load_evidence_catalog()
+            if evidence_catalog is None
+            else evidence_catalog
+        )
+        self._evidence_page_index = 0
+        self._evidence_previous_button = Rect(0, 0, 0, 0)
+        self._evidence_next_button = Rect(0, 0, 0, 0)
         self._last_size = (
             THEME.default_window_width,
             THEME.default_window_height,
@@ -107,7 +120,7 @@ class LiveDashboard:
     ) -> None:
         """Reflect a mode selected through the application controller."""
 
-        self._mode = mode
+        self._set_mode_state(mode)
 
     def spatial_panel_layout(self) -> SpatialPanelLayout:
         width, height = self._window_size()
@@ -121,6 +134,10 @@ class LiveDashboard:
     @property
     def mode(self) -> DashboardMode:
         return self._mode
+
+    @property
+    def evidence_page_index(self) -> int:
+        return self._evidence_page_index
 
     @property
     def spatial_panel_state(self) -> SpatialPanelViewState:
@@ -358,20 +375,23 @@ class LiveDashboard:
             application,
             selected_mode,
         )
-        self._draw_camera(
-            canvas,
-            layout,
-            image_bgr,
-            presentation,
-            selected_mode,
-        )
-        self._draw_scene(canvas, layout, application)
-        if selected_mode is DashboardMode.ANALYSIS:
-            self._draw_pipeline(canvas, layout, presentation)
-            self._draw_interaction(canvas, layout, presentation)
+        if selected_mode is DashboardMode.EVIDENCE:
+            self._draw_evidence_mode(canvas, layout)
         else:
-            self._draw_demo_status(canvas, layout, presentation)
-            self._draw_demo_interaction(canvas, layout, presentation)
+            self._draw_camera(
+                canvas,
+                layout,
+                image_bgr,
+                presentation,
+                selected_mode,
+            )
+            self._draw_scene(canvas, layout, application)
+            if selected_mode is DashboardMode.ANALYSIS:
+                self._draw_pipeline(canvas, layout, presentation)
+                self._draw_interaction(canvas, layout, presentation)
+            else:
+                self._draw_demo_status(canvas, layout, presentation)
+                self._draw_demo_interaction(canvas, layout, presentation)
         self._draw_footer(
             canvas,
             layout,
@@ -404,6 +424,12 @@ class LiveDashboard:
             self.set_mode(DashboardMode.ANALYSIS)
         elif key in {ord("d"), ord("D")}:
             self.set_mode(DashboardMode.DEMO)
+        elif key in {ord("e"), ord("E")}:
+            self.set_mode(DashboardMode.EVIDENCE)
+        elif self._mode is DashboardMode.EVIDENCE and key == ord("["):
+            self._change_evidence_page(-1)
+        elif self._mode is DashboardMode.EVIDENCE and key == ord("]"):
+            self._change_evidence_page(1)
         elif key in {ord("p"), ord("P")}:
             if self._control_panel_toggle_action is not None:
                 self._control_panel_toggle_action()
@@ -423,9 +449,17 @@ class LiveDashboard:
     def set_mode(self, mode: DashboardMode) -> None:
         """Apply a keyboard-selected mode through the shared app callback."""
 
-        self._mode = mode
+        self._set_mode_state(mode)
         if self._mode_action is not None:
             self._mode_action(mode)
+
+    def _set_mode_state(self, mode: DashboardMode) -> None:
+        if (
+            mode is DashboardMode.EVIDENCE
+            and self._mode is not DashboardMode.EVIDENCE
+        ):
+            self._evidence_page_index = 0
+        self._mode = mode
 
     def handle_mouse_event(
         self,
@@ -435,13 +469,27 @@ class LiveDashboard:
     ) -> None:
         """Handle the visible CONTROL SPACE button in this dashboard window."""
 
-        if (
-            event != cv2.EVENT_LBUTTONUP
-            or self._control_panel_toggle_action is None
-        ):
+        if event != cv2.EVENT_LBUTTONUP:
+            return
+        if self._mode is DashboardMode.EVIDENCE:
+            if self._rect_contains(
+                self._evidence_previous_button,
+                x,
+                y,
+            ):
+                self._change_evidence_page(-1)
+                return
+            if self._rect_contains(
+                self._evidence_next_button,
+                x,
+                y,
+            ):
+                self._change_evidence_page(1)
+                return
+        if self._control_panel_toggle_action is None:
             return
         rect = self._control_panel_button
-        if rect.x <= x < rect.right and rect.y <= y < rect.bottom:
+        if self._rect_contains(rect, x, y):
             self._control_panel_toggle_action()
 
     def _on_mouse(
@@ -494,6 +542,864 @@ class LiveDashboard:
         except cv2.error:
             return True
 
+    def _change_evidence_page(self, delta: int) -> None:
+        self._evidence_page_index = min(
+            max(
+                self._evidence_page_index + delta,
+                0,
+            ),
+            len(self._evidence_catalog.pages) - 1,
+        )
+
+    @staticmethod
+    def _rect_contains(
+        rect: Rect,
+        x: int,
+        y: int,
+    ) -> bool:
+        return (
+            rect.x <= x < rect.right
+            and rect.y <= y < rect.bottom
+        )
+
+    def _draw_evidence_mode(
+        self,
+        canvas: np.ndarray,
+        layout: DashboardLayout,
+    ) -> None:
+        content = Rect(
+            THEME.margin,
+            layout.header.bottom + THEME.gap,
+            layout.width - 2 * THEME.margin,
+            layout.footer.y
+            - THEME.gap
+            - (layout.header.bottom + THEME.gap),
+        )
+        page_spec = self._evidence_catalog.pages[
+            self._evidence_page_index
+        ]
+        self._put_text(
+            canvas,
+            page_spec.title,
+            content.x + 4,
+            content.y + 23,
+            scale=THEME.font_section,
+            color=THEME.text_primary,
+        )
+        self._put_text(
+            canvas,
+            page_spec.subtitle,
+            content.x + 4,
+            content.y + 46,
+            scale=THEME.font_micro,
+            color=THEME.text_muted,
+            max_width=content.width - 8,
+        )
+        body = Rect(
+            content.x,
+            content.y + 56,
+            content.width,
+            content.height - 56,
+        )
+        if page_spec.key == "OVERVIEW":
+            self._draw_evidence_overview(canvas, body)
+        elif page_spec.key in {"B NORMAL", "B LOW-LIGHT"}:
+            self._draw_evidence_rq1(
+                canvas,
+                body,
+                low_light=page_spec.key == "B LOW-LIGHT",
+            )
+        elif page_spec.key == "A1 STATIC":
+            self._draw_evidence_a1(canvas, body)
+        elif page_spec.key == "A2 DYNAMIC":
+            self._draw_evidence_a2(canvas, body)
+        else:
+            self._draw_evidence_rq3(canvas, body)
+
+    def _draw_evidence_overview(
+        self,
+        canvas: np.ndarray,
+        body: Rect,
+    ) -> None:
+        content = self._evidence_catalog.content
+        gap = THEME.gap
+        card_width = (body.width - 2 * gap) // 3
+        card_height = max(230, body.height - 124)
+        cards = tuple(
+            Rect(
+                body.x + index * (card_width + gap),
+                body.y,
+                card_width,
+                card_height,
+            )
+            for index in range(3)
+        )
+
+        self._draw_card(canvas, cards[0], "RQ1  /  EXPERIMENT B")
+        text_x = cards[0].x + THEME.card_padding
+        text_width = cards[0].width - 2 * THEME.card_padding
+        self._draw_evidence_paragraph(
+            canvas,
+            content.overview_rq1_setup,
+            text_x,
+            cards[0].y + 55,
+            text_width,
+            color=THEME.text_secondary,
+            max_lines=3,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.overview_rq1_result,
+            text_x,
+            cards[0].y + 115,
+            text_width,
+            color=THEME.text_secondary,
+            max_lines=2,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.overview_rq1_limitation,
+            text_x,
+            cards[0].y + 165,
+            text_width,
+            color=THEME.warning,
+            max_lines=3,
+        )
+
+        self._draw_card(canvas, cards[1], "RQ2  /  FILTERING")
+        a1 = self._evidence_catalog.batch("a1_static")
+        counts = _trial_counts(a1)
+        self._put_text(
+            canvas,
+            f"A1 static jitter: {counts}",
+            cards[1].x + THEME.card_padding,
+            cards[1].y + 55,
+            scale=THEME.font_small,
+            color=THEME.text_primary,
+            max_width=cards[1].width - 2 * THEME.card_padding,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.overview_a1_result,
+            cards[1].x + THEME.card_padding,
+            cards[1].y + 91,
+            cards[1].width - 2 * THEME.card_padding,
+            color=THEME.text_secondary,
+            max_lines=3,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.overview_a1_caution,
+            cards[1].x + THEME.card_padding,
+            cards[1].y + 145,
+            cards[1].width - 2 * THEME.card_padding,
+            color=THEME.warning,
+            max_lines=2,
+        )
+        unavailable_y = cards[1].y + 205
+        self._pill(
+            canvas,
+            Rect(
+                cards[1].x + THEME.card_padding,
+                unavailable_y - 18,
+                min(cards[1].width - 2 * THEME.card_padding, 185),
+                25,
+            ),
+            content.overview_a2_status,
+            THEME.error,
+        )
+        self._put_text(
+            canvas,
+            content.overview_a2_summary.format(
+                reason=content.overview_a2_reason
+            ),
+            cards[1].x + THEME.card_padding,
+            unavailable_y + 32,
+            scale=THEME.font_micro,
+            color=THEME.text_secondary,
+            max_width=cards[1].width - 2 * THEME.card_padding,
+        )
+
+        self._draw_card(canvas, cards[2], "RQ3  /  PRACTICAL DEMO")
+        self._draw_evidence_paragraph(
+            canvas,
+            content.overview_rq3_interaction,
+            cards[2].x + THEME.card_padding,
+            cards[2].y + 55,
+            cards[2].width - 2 * THEME.card_padding,
+            color=THEME.text_secondary,
+            max_lines=2,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.overview_rq3_resets,
+            cards[2].x + THEME.card_padding,
+            cards[2].y + 98,
+            cards[2].width - 2 * THEME.card_padding,
+            color=THEME.text_secondary,
+            max_lines=2,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.overview_rq3_false_positive,
+            cards[2].x + THEME.card_padding,
+            cards[2].y + 142,
+            cards[2].width - 2 * THEME.card_padding,
+            color=THEME.warning,
+            max_lines=3,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.overview_rq3_claim_boundary,
+            cards[2].x + THEME.card_padding,
+            cards[2].y + 198,
+            cards[2].width - 2 * THEME.card_padding,
+            color=THEME.text_secondary,
+            max_lines=2,
+        )
+
+        provenance = Rect(
+            body.x,
+            cards[0].bottom + gap,
+            body.width,
+            body.bottom - cards[0].bottom - gap,
+        )
+        self._draw_card(canvas, provenance, content.provenance_panel_title)
+        self._put_text(
+            canvas,
+            (
+                f"Release: {self._evidence_catalog.release_tag}  |  "
+                f"commit {self._evidence_catalog.release_commit}"
+            ),
+            provenance.x + THEME.card_padding,
+            provenance.y + 51,
+            scale=THEME.font_micro,
+            color=THEME.text_secondary,
+            max_width=provenance.width - 2 * THEME.card_padding,
+        )
+        self._put_text(
+            canvas,
+            (
+                f"Recorded final live demo: "
+                f"{self._evidence_catalog.live_demo_run_id}  |  "
+                f"{self._evidence_catalog.live_demo_frames} processed frames"
+            ),
+            provenance.x + THEME.card_padding,
+            provenance.y + 74,
+            scale=THEME.font_micro,
+            color=THEME.text_secondary,
+            max_width=provenance.width - 2 * THEME.card_padding,
+        )
+        self._put_text(
+            canvas,
+            (
+                "Execution revision "
+                f"{self._evidence_catalog.live_demo_revision}  |  "
+                "the current G8 presentation session is not G7 evidence"
+            ),
+            provenance.x + THEME.card_padding,
+            provenance.y + 97,
+            scale=THEME.font_micro,
+            color=THEME.text_muted,
+            max_width=provenance.width - 2 * THEME.card_padding,
+        )
+
+    def _draw_evidence_paragraph(
+        self,
+        canvas: np.ndarray,
+        text: str,
+        x: int,
+        y: int,
+        width: int,
+        *,
+        color: tuple[int, int, int],
+        max_lines: int,
+        scale: float = THEME.font_micro,
+        line_height: int = 20,
+    ) -> None:
+        words = text.split()
+        lines: list[str] = []
+        current = ""
+        for word in words:
+            candidate = word if not current else f"{current} {word}"
+            if current and self._text_width(candidate, scale) > width:
+                lines.append(current)
+                current = word
+            else:
+                current = candidate
+        if current:
+            lines.append(current)
+        if len(lines) > max_lines:
+            lines = lines[:max_lines]
+            last = lines[-1]
+            while last and self._text_width(f"{last}...", scale) > width:
+                last = last[:-1].rstrip()
+            lines[-1] = f"{last}..."
+        for line_index, line in enumerate(lines):
+            self._put_text(
+                canvas,
+                line,
+                x,
+                y + line_index * line_height,
+                scale=scale,
+                color=color,
+                max_width=width,
+            )
+
+    def _draw_evidence_rq1(
+        self,
+        canvas: np.ndarray,
+        body: Rect,
+        *,
+        low_light: bool,
+    ) -> None:
+        content = self._evidence_catalog.content
+        gap = THEME.gap
+        left_width = int(round((body.width - gap) * 0.64))
+        plot_card = Rect(
+            body.x,
+            body.y,
+            left_width,
+            body.height,
+        )
+        data_card = Rect(
+            plot_card.right + gap,
+            body.y,
+            body.width - left_width - gap,
+            body.height,
+        )
+        batch_key = "b_lowlight" if low_light else "b_normal"
+        asset_id = "b_lowlight" if low_light else "b_normal"
+        light_label = "LOW-LIGHT" if low_light else "NORMAL-LIGHT"
+        self._draw_card(
+            canvas,
+            plot_card,
+            f"EXPERIMENT B  /  {light_label} VALID-HAND-OBSERVATION RATE",
+        )
+        self._draw_evidence_image(
+            canvas,
+            asset_id,
+            Rect(
+                plot_card.x + THEME.card_padding,
+                plot_card.y + 36,
+                plot_card.width - 2 * THEME.card_padding,
+                plot_card.height - 50,
+            ),
+        )
+        self._draw_card(canvas, data_card, "P0 / P1 TRIAL DATA AND LIMITATION")
+        batch = self._evidence_catalog.batch(batch_key)
+        outcome = (
+            content.b_lowlight_result
+            if low_light
+            else content.b_normal_result
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            outcome,
+            data_card.x + THEME.card_padding,
+            data_card.y + 52,
+            data_card.width - 2 * THEME.card_padding,
+            color=THEME.text_secondary,
+            max_lines=3,
+        )
+        self._draw_evidence_metrics(
+            canvas,
+            batch,
+            data_card,
+            conditions=("P0", "P1"),
+            start_y=data_card.y + 124,
+            line_height=21,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.b_no_improvement,
+            data_card.x + THEME.card_padding,
+            data_card.y + 207,
+            data_card.width - 2 * THEME.card_padding,
+            color=THEME.text_secondary,
+            max_lines=2,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.b_clahe_limitation,
+            data_card.x + THEME.card_padding,
+            data_card.y + 260,
+            data_card.width - 2 * THEME.card_padding,
+            color=THEME.warning,
+            max_lines=4,
+        )
+        self._draw_batch_provenance(
+            canvas,
+            batch,
+            data_card,
+            y=data_card.bottom - 15,
+        )
+
+    def _draw_evidence_a1(
+        self,
+        canvas: np.ndarray,
+        body: Rect,
+    ) -> None:
+        content = self._evidence_catalog.content
+        gap = THEME.gap
+        left_width = int(round((body.width - gap) * 0.64))
+        plot_card = Rect(body.x, body.y, left_width, body.height)
+        data_card = Rect(
+            plot_card.right + gap,
+            body.y,
+            body.width - left_width - gap,
+            body.height,
+        )
+        self._draw_card(canvas, plot_card, "A1 RETAINED STATIC JITTER COMPARISON")
+        self._draw_evidence_image(
+            canvas,
+            "a1_static_jitter",
+            Rect(
+                plot_card.x + THEME.card_padding,
+                plot_card.y + 36,
+                plot_card.width - 2 * THEME.card_padding,
+                plot_card.height - 50,
+            ),
+        )
+        self._draw_card(canvas, data_card, "A1 RETAINED TRIAL DATA")
+        batch = self._evidence_catalog.batch("a1_static")
+        self._put_text(
+            canvas,
+            f"Trials: {_trial_counts(batch)}",
+            data_card.x + THEME.card_padding,
+            data_card.y + 54,
+            scale=THEME.font_small,
+            color=THEME.text_primary,
+            max_width=data_card.width - 2 * THEME.card_padding,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.a1_result,
+            data_card.x + THEME.card_padding,
+            data_card.y + 85,
+            data_card.width - 2 * THEME.card_padding,
+            color=THEME.text_secondary,
+            max_lines=3,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.a1_caution,
+            data_card.x + THEME.card_padding,
+            data_card.y + 143,
+            data_card.width - 2 * THEME.card_padding,
+            color=THEME.warning,
+            max_lines=3,
+        )
+        self._draw_evidence_metrics(
+            canvas,
+            batch,
+            data_card,
+            conditions=("F0", "F1", "F2"),
+            start_y=data_card.y + 218,
+            line_height=21,
+        )
+        self._draw_batch_provenance(
+            canvas,
+            batch,
+            data_card,
+            y=data_card.bottom - 15,
+        )
+
+    def _draw_evidence_a2(
+        self,
+        canvas: np.ndarray,
+        body: Rect,
+    ) -> None:
+        content = self._evidence_catalog.content
+        gap = THEME.gap
+        left_width = int(round((body.width - gap) * 0.64))
+        plot_card = Rect(body.x, body.y, left_width, body.height)
+        status_card = Rect(
+            plot_card.right + gap,
+            body.y,
+            body.width - left_width - gap,
+            body.height,
+        )
+        self._draw_card(canvas, plot_card, content.a2_figure_title)
+        self._draw_evidence_image(
+            canvas,
+            "a2_unavailable",
+            Rect(
+                plot_card.x + THEME.card_padding,
+                plot_card.y + 36,
+                plot_card.width - 2 * THEME.card_padding,
+                plot_card.height - 50,
+            ),
+        )
+        self._draw_card(canvas, status_card, content.a2_primary_heading)
+        self._pill(
+            canvas,
+            Rect(
+                status_card.x + THEME.card_padding,
+                status_card.y + 51,
+                min(status_card.width - 2 * THEME.card_padding, 200),
+                34,
+            ),
+            content.a2_status,
+            THEME.error,
+        )
+        self._put_text(
+            canvas,
+            f"Reason: {content.a2_reason}",
+            status_card.x + THEME.card_padding,
+            status_card.y + 112,
+            scale=THEME.font_small,
+            color=THEME.warning,
+            max_width=status_card.width - 2 * THEME.card_padding,
+        )
+        batch = self._evidence_catalog.batch("a2_dynamic")
+        self._draw_evidence_paragraph(
+            canvas,
+            content.a2_summary,
+            status_card.x + THEME.card_padding,
+            status_card.y + 145,
+            status_card.width - 2 * THEME.card_padding,
+            color=THEME.text_secondary,
+            max_lines=3,
+        )
+        self._draw_evidence_metrics(
+            canvas,
+            batch,
+            status_card,
+            conditions=("F0", "F1", "F2"),
+            start_y=status_card.y + 212,
+            line_height=21,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.a2_zero_boundary,
+            status_card.x + THEME.card_padding,
+            status_card.y + 292,
+            status_card.width - 2 * THEME.card_padding,
+            color=THEME.warning,
+            max_lines=3,
+        )
+        self._draw_batch_provenance(
+            canvas,
+            batch,
+            status_card,
+            y=status_card.bottom - 15,
+        )
+
+    def _draw_evidence_rq3(
+        self,
+        canvas: np.ndarray,
+        body: Rect,
+    ) -> None:
+        content = self._evidence_catalog.content
+        gap = THEME.gap
+        left_width = int(round((body.width - gap) * 0.42))
+        left = Rect(body.x, body.y, left_width, body.height)
+        right = Rect(
+            body.x + left_width + gap,
+            body.y,
+            body.width - left_width - gap,
+            body.height,
+        )
+        self._draw_card(canvas, left, "RQ3  /  PRACTICAL TOUCHLESS INTERACTION")
+        text_x = left.x + THEME.card_padding
+        text_width = left.width - 2 * THEME.card_padding
+        self._draw_evidence_paragraph(
+            canvas,
+            content.rq3_rotation,
+            text_x,
+            left.y + 58,
+            text_width,
+            color=THEME.text_secondary,
+            max_lines=2,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.rq3_scaling_and_states,
+            text_x,
+            left.y + 108,
+            text_width,
+            color=THEME.text_secondary,
+            max_lines=3,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.rq3_false_positive,
+            text_x,
+            left.y + 174,
+            text_width,
+            color=THEME.warning,
+            max_lines=3,
+        )
+        self._draw_evidence_paragraph(
+            canvas,
+            content.rq3_claim_boundary,
+            text_x,
+            left.y + 242,
+            text_width,
+            color=THEME.text_secondary,
+            max_lines=3,
+        )
+        self._put_text(
+            canvas,
+            f"G7 demo run: {self._evidence_catalog.live_demo_run_id}",
+            left.x + THEME.card_padding,
+            left.bottom - 60,
+            scale=THEME.font_micro,
+            color=THEME.text_secondary,
+            max_width=left.width - 2 * THEME.card_padding,
+        )
+        self._put_text(
+            canvas,
+            f"Execution revision: {self._evidence_catalog.live_demo_revision}",
+            left.x + THEME.card_padding,
+            left.bottom - 37,
+            scale=THEME.font_micro,
+            color=THEME.text_muted,
+            max_width=left.width - 2 * THEME.card_padding,
+        )
+
+        self._draw_card(canvas, right, content.dip_title)
+        image_rect = Rect(
+            right.x + THEME.card_padding,
+            right.y + 36,
+            right.width - 2 * THEME.card_padding,
+            max(120, body.height - 113),
+        )
+        self._draw_evidence_image(canvas, "dip_visual", image_rect)
+        policy = self._evidence_catalog.dip_policy
+        policy_text = (
+            "visualization policy unavailable"
+            if policy is None
+            else f"visualization policy={policy}"
+        )
+        self._put_text(
+            canvas,
+            (
+                f"{policy_text}  |  "
+                f"{content.dip_result_boundary}"
+            ),
+            right.x + THEME.card_padding,
+            right.bottom - 25,
+            scale=THEME.font_micro,
+            color=THEME.warning,
+            max_width=right.width - 2 * THEME.card_padding,
+        )
+
+    def _draw_evidence_image(
+        self,
+        canvas: np.ndarray,
+        asset_id: str,
+        bounds: Rect,
+    ) -> bool:
+        cv2.rectangle(
+            canvas,
+            (bounds.x, bounds.y),
+            (bounds.right - 1, bounds.bottom - 1),
+            THEME.preview_background,
+            thickness=-1,
+        )
+        image = self._evidence_catalog.load_image(asset_id)
+        if image is None:
+            cv2.rectangle(
+                canvas,
+                (bounds.x, bounds.y),
+                (bounds.right - 1, bounds.bottom - 1),
+                THEME.border,
+                thickness=1,
+                lineType=cv2.LINE_AA,
+            )
+            self._put_text(
+                canvas,
+                "Evidence asset unavailable",
+                bounds.x + bounds.width // 2,
+                bounds.y + bounds.height // 2,
+                scale=THEME.font_small,
+                color=THEME.warning,
+                max_width=bounds.width - 18,
+                align="center",
+            )
+            return False
+        target = fit_aspect_rect(
+            image.shape[1],
+            image.shape[0],
+            bounds,
+        )
+        resized = cv2.resize(
+            image,
+            (target.width, target.height),
+            interpolation=cv2.INTER_AREA,
+        )
+        canvas[
+            target.y : target.bottom,
+            target.x : target.right,
+        ] = resized
+        cv2.rectangle(
+            canvas,
+            (bounds.x, bounds.y),
+            (bounds.right - 1, bounds.bottom - 1),
+            THEME.border,
+            thickness=1,
+            lineType=cv2.LINE_AA,
+        )
+        return True
+
+    def _draw_evidence_metrics(
+        self,
+        canvas: np.ndarray,
+        batch: EvidenceBatch,
+        rect: Rect,
+        *,
+        conditions: tuple[str, ...],
+        start_y: int,
+        line_height: int,
+    ) -> None:
+        if not batch.metrics_available:
+            self._put_text(
+                canvas,
+                "Recorded metric data unavailable",
+                rect.x + THEME.card_padding,
+                start_y,
+                scale=THEME.font_micro,
+                color=THEME.warning,
+                max_width=rect.width - 2 * THEME.card_padding,
+            )
+            return
+        rows = batch.metric_rows
+        if not rows:
+            self._put_text(
+                canvas,
+                "Recorded metric data unavailable",
+                rect.x + THEME.card_padding,
+                start_y,
+                scale=THEME.font_micro,
+                color=THEME.warning,
+                max_width=rect.width - 2 * THEME.card_padding,
+            )
+            return
+        for row_index, metric_row in enumerate(rows):
+            by_condition = {
+                metric.condition: metric
+                for metric in metric_row.metrics
+            }
+            values = [by_condition.get(condition) for condition in conditions]
+            if any(
+                metric is None or not metric.available
+                for metric in values
+            ):
+                reasons = sorted({
+                    metric.unavailable_reason
+                    for metric in values
+                    if metric is not None
+                    and not metric.available
+                    and metric.unavailable_reason is not None
+                })
+                reason = (
+                    reasons[0]
+                    if reasons
+                    else "metric_unavailable"
+                )
+                line = f"{metric_row.trial_id}  UNAVAILABLE  {reason}"
+                color = THEME.warning
+            else:
+                value_parts = [
+                    f"{condition} {metric.value_text}"
+                    for condition, metric in zip(
+                        conditions,
+                        values,
+                        strict=True,
+                    )
+                    if metric is not None
+                ]
+                sample_counts = {
+                    metric.sample_count
+                    for metric in values
+                    if metric is not None
+                }
+                sample_text = (
+                    f"  (n={next(iter(sample_counts))})"
+                    if len(sample_counts) == 1
+                    and None not in sample_counts
+                    else ""
+                )
+                line = (
+                    f"{metric_row.trial_id}  "
+                    f"{'  |  '.join(value_parts)}{sample_text}"
+                )
+                color = THEME.text_secondary
+            self._put_text(
+                canvas,
+                line,
+                rect.x + THEME.card_padding,
+                start_y + row_index * line_height,
+                scale=THEME.font_micro,
+                color=color,
+                max_width=rect.width - 2 * THEME.card_padding,
+            )
+
+    def _draw_batch_provenance(
+        self,
+        canvas: np.ndarray,
+        batch: EvidenceBatch,
+        rect: Rect,
+        *,
+        y: int,
+    ) -> None:
+        batch_id = batch.batch_id or "batch identity unavailable"
+        self._put_text(
+            canvas,
+            f"BATCH {batch_id}",
+            rect.x + THEME.card_padding,
+            y,
+            scale=THEME.font_micro,
+            color=THEME.text_muted,
+            max_width=rect.width - 2 * THEME.card_padding,
+        )
+        if batch.analysis_revision is not None:
+            self._put_text(
+                canvas,
+                f"ANALYSIS REVISION {batch.analysis_revision}",
+                rect.x + THEME.card_padding,
+                y - 17,
+                scale=THEME.font_micro,
+                color=THEME.text_muted,
+                max_width=rect.width - 2 * THEME.card_padding,
+            )
+
+    def _draw_evidence_nav_button(
+        self,
+        canvas: np.ndarray,
+        rect: Rect,
+        label: str,
+        *,
+        enabled: bool,
+    ) -> None:
+        cv2.rectangle(
+            canvas,
+            (rect.x, rect.y),
+            (rect.right - 1, rect.bottom - 1),
+            THEME.surface if enabled else THEME.background,
+            thickness=-1,
+        )
+        cv2.rectangle(
+            canvas,
+            (rect.x, rect.y),
+            (rect.right - 1, rect.bottom - 1),
+            THEME.accent if enabled else THEME.border,
+            thickness=1,
+            lineType=cv2.LINE_AA,
+        )
+        self._put_text(
+            canvas,
+            label,
+            rect.x + rect.width // 2,
+            rect.y + 18,
+            scale=THEME.font_micro,
+            color=THEME.text_secondary if enabled else THEME.text_muted,
+            max_width=rect.width - 8,
+            align="center",
+        )
+
     def _draw_header(
         self,
         canvas: np.ndarray,
@@ -505,7 +1411,12 @@ class LiveDashboard:
     ) -> None:
         rect = layout.header
         self._panel(canvas, rect, raised=True)
-        title = "DIP TOUCHLESS STEM"
+        is_evidence = mode is DashboardMode.EVIDENCE
+        title = (
+            "DIP TOUCHLESS STEM"
+            if not is_evidence
+            else "DIP TOUCHLESS STEM  /  FROZEN G7 EVIDENCE"
+        )
         self._put_text(
             canvas,
             title,
@@ -514,7 +1425,11 @@ class LiveDashboard:
             scale=THEME.font_title,
             color=THEME.text_primary,
         )
-        descriptor = subtitle or "LIVE INTERACTION"
+        descriptor = subtitle or (
+            "LIVE INTERACTION"
+            if not is_evidence
+            else "READ-ONLY RESULTS  |  G8 PRESENTATION SESSION IS SEPARATE"
+        )
         self._put_text(
             canvas,
             descriptor,
@@ -540,13 +1455,19 @@ class LiveDashboard:
             THEME.accent,
         )
         phase_color = (
-            THEME.error
+            THEME.accent
+            if is_evidence
+            else THEME.error
             if application.phase is ApplicationPhase.ERROR
             else THEME.success
             if application.phase is ApplicationPhase.RUNNING
             else THEME.accent
         )
-        status_text = application.phase.value
+        status_text = (
+            "G8 VIEWER"
+            if is_evidence
+            else application.phase.value
+        )
         status_width = self._text_width(status_text, THEME.font_small)
         self._pill(
             canvas,
@@ -559,16 +1480,31 @@ class LiveDashboard:
             status_text,
             phase_color,
         )
-        self._put_text(
-            canvas,
-            f"RUN  {application.run_id}",
-            rect.right - 270,
-            rect.y + 49,
-            scale=THEME.font_small,
-            color=THEME.text_secondary,
-            max_width=250,
-            align="right",
-        )
+        if is_evidence:
+            self._put_text(
+                canvas,
+                (
+                    f"RELEASE {self._evidence_catalog.release_tag}"
+                    f"  @  {self._evidence_catalog.release_commit[:12]}"
+                ),
+                rect.right - 320,
+                rect.y + 49,
+                scale=THEME.font_small,
+                color=THEME.text_secondary,
+                max_width=300,
+                align="right",
+            )
+        else:
+            self._put_text(
+                canvas,
+                f"RUN  {application.run_id}",
+                rect.right - 270,
+                rect.y + 49,
+                scale=THEME.font_small,
+                color=THEME.text_secondary,
+                max_width=250,
+                align="right",
+            )
 
     def _draw_camera(
         self,
@@ -1048,6 +1984,67 @@ class LiveDashboard:
             self._control_panel_button,
         )
         y = rect.y + 18
+        if mode is DashboardMode.EVIDENCE:
+            self._put_text(
+                canvas,
+                "D DEMO  |  A ANALYSIS  |  E EVIDENCE  |  [ ] PAGE  |  R RESET  |  Q STOP  |  P PANEL",
+                rect.x + THEME.card_padding,
+                y,
+                scale=THEME.font_small,
+                color=THEME.text_secondary,
+                max_width=(
+                    self._control_panel_button.x
+                    - rect.x
+                    - 2 * THEME.card_padding
+                ),
+            )
+            button_y = rect.y + 38
+            center_x = rect.x + rect.width // 2
+            self._evidence_previous_button = Rect(
+                center_x - 150,
+                button_y,
+                105,
+                27,
+            )
+            self._evidence_next_button = Rect(
+                center_x + 45,
+                button_y,
+                105,
+                27,
+            )
+            self._draw_evidence_nav_button(
+                canvas,
+                self._evidence_previous_button,
+                "< PREVIOUS",
+                enabled=self._evidence_page_index > 0,
+            )
+            self._draw_evidence_nav_button(
+                canvas,
+                self._evidence_next_button,
+                "NEXT >",
+                enabled=(
+                    self._evidence_page_index
+                    < len(self._evidence_catalog.pages) - 1
+                ),
+            )
+            page_name = self._evidence_catalog.pages[
+                self._evidence_page_index
+            ].key
+            self._put_text(
+                canvas,
+                (
+                    f"{page_name}  |  PAGE "
+                    f"{self._evidence_page_index + 1}/"
+                    f"{len(self._evidence_catalog.pages)}"
+                ),
+                center_x,
+                rect.bottom - 5,
+                scale=THEME.font_micro,
+                color=THEME.text_muted,
+                align="center",
+            )
+            return
+
         self._put_text(
             canvas,
             "A ANALYSIS  |  D DEMO  |  R RESET  |  Q/ESC STOP  |  P PANEL",
@@ -1525,3 +2522,11 @@ def _frame_point_to_preview(
 
 def _display_value(value: str | None) -> str:
     return value if value else "n/a"
+
+
+def _trial_counts(batch: EvidenceBatch) -> str:
+    recorded = batch.recorded_trial_count
+    evaluable = batch.evaluable_trial_count
+    if recorded is None or evaluable is None:
+        return "recorded/evaluable counts unavailable"
+    return f"{recorded} recorded / {evaluable} evaluable"

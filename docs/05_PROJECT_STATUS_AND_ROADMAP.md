@@ -130,18 +130,34 @@ change the scope or interpretation of the frozen G7 experiment release.
 
 ## 4. Current task
 
-**Task G8-U5 — Implement the Spatial Control Panel described in `docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md`.**
+**Task G8-U6 — Implement the read-only Evidence Mode described in `docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md` — COMPLETE.**
 
 The G7 controlled evaluation and submission package are complete and
 frozen at `g7-final`. The active G8 direction is a separately scoped
-post-G7 application/Extension continuation. U1 through U4 are implemented;
-the next roadmap unit is the Extension-owned spatial control panel. Preserve
-the existing G7/Core boundary while continuing that presentation work.
+post-G7 application/Extension continuation. U1 through U5 are implemented.
+U6 presents selected frozen G7 artifacts in the application without
+modifying evidence or research conclusions. The next roadmap unit is U7.
+Preserve the existing G7/Core boundary while continuing that presentation
+work.
 
 G8 is not a new research experiment and does not claim commercial
 readiness. Any change to Core semantics, public contracts, experiment
 metrics, or G7 evidence requires the canonical governance and change
 review process.
+
+### G8-U6 Evidence Mode completion — 2026-09-30
+
+Evidence Mode displays selected immutable G7 plots and recorded trial values
+across six navigable pages. It preserves the A2 unavailable status and reason,
+the CLAHE non-activation limitation, A1 trial availability and five-frame
+caution, the practical false-positive limitation, and separate release/demo
+provenance. Missing images and malformed optional metadata produce explicit
+unavailable states.
+
+Focused Extension tests passed (40), the full project suite passed (478),
+`compileall extensions/stem3d` succeeded, and six synthetic dashboard pages
+rendered for presentation inspection. No physical webcam smoke was run for
+U6. The frozen G7 evidence files and `g7-final` tag remain unchanged.
 
 ### G6 experiment-readiness completion record (historical)
 
@@ -1199,7 +1215,7 @@ None. G7 provenance and all final experiment artifacts remain frozen.
 
 ## 5. Immediate next tasks
 
-G7 is closed. U1–U4 are implemented on `feat/final-ui-extension`. U2
+G7 is closed. U1–U6 are implemented on `feat/final-ui-extension`. U2
 provides DEMO/ANALYSIS modes, live ROI and pointer overlays, distinct
 raw/filtered landmarks, DIP diagnostics, and run identity from recorded
 metadata. U3 defines the `STEMScene` contract and local `SceneRegistry`,
@@ -1226,14 +1242,14 @@ not use a webcam or physical hand input. Continue with the post-G7 roadmap in
    cube without changing `InteractionState` semantics.
 4. **U4 — STEM scenes — COMPLETE:** provide coordinate geometry, H2O/CH4
    molecular geometry, and a deterministic educational orbital system.
-5. **U5 — Spatial Control Panel — NEXT:** add screen-space touchless navigation
+5. **U5 — Spatial Control Panel — COMPLETE:** add screen-space touchless navigation
    using normalized `pointer_xy`, valid pinch rising edges, and explicit
    UI/scene focus routing. Keep all click and focus behavior in the
    Extension.
-6. **U6 — Evidence mode:** display selected frozen G7 assets and retain
+6. **U6 — Evidence mode — COMPLETE:** display selected frozen G7 assets and retain
    unavailable findings and known limitations without editing or
    regenerating the source evidence.
-7. **U7/U8 — UX hardening and validation:** implement clear loading,
+7. **U7/U8 — UX hardening and validation — NEXT:** implement clear loading,
    error, empty, and disabled states; keyboard fallback; focused tests;
    and full regression.
 8. **U9/U10 — Physical validation and release:** exercise the complete

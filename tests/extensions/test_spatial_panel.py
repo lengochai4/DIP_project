@@ -403,15 +403,52 @@ def test_controller_routes_panel_actions_and_suppresses_scene_motion() -> None:
     assert dashboard.mode is DashboardMode.ANALYSIS
     assert len(renderer.rendered) == held_count
 
+    evidence_pointer = _pointer_for_button(
+        dashboard.spatial_panel_layout(),
+        "mode:EVIDENCE",
+    )
+    controller.consume_interaction(
+        _interaction(10, pointer_xy=evidence_pointer, pinch_active=False)
+    )
+    controller.consume_interaction(
+        _interaction(11, pointer_xy=evidence_pointer, pinch_active=True)
+    )
+    assert dashboard.mode is DashboardMode.EVIDENCE
+    assert len(renderer.rendered) == held_count
+
+    demo_pointer = _pointer_for_button(
+        dashboard.spatial_panel_layout(),
+        "mode:DEMO",
+    )
+    controller.consume_interaction(
+        _interaction(12, pointer_xy=demo_pointer, pinch_active=False)
+    )
+    controller.consume_interaction(
+        _interaction(13, pointer_xy=demo_pointer, pinch_active=True)
+    )
+    assert dashboard.mode is DashboardMode.DEMO
+
+    analysis_pointer = _pointer_for_button(
+        dashboard.spatial_panel_layout(),
+        "mode:ANALYSIS",
+    )
+    controller.consume_interaction(
+        _interaction(14, pointer_xy=analysis_pointer, pinch_active=False)
+    )
+    controller.consume_interaction(
+        _interaction(15, pointer_xy=analysis_pointer, pinch_active=True)
+    )
+    assert dashboard.mode is DashboardMode.ANALYSIS
+
     reset_pointer = _pointer_for_button(
         dashboard.spatial_panel_layout(),
         "reset",
     )
     controller.consume_interaction(
-        _interaction(10, pointer_xy=reset_pointer, pinch_active=False)
+        _interaction(16, pointer_xy=reset_pointer, pinch_active=False)
     )
     controller.consume_interaction(
-        _interaction(11, pointer_xy=reset_pointer, pinch_active=True)
+        _interaction(17, pointer_xy=reset_pointer, pinch_active=True)
     )
     assert renderer.rendered[-1].transform.yaw_rad == pytest.approx(0.0)
     assert dashboard.spatial_panel_state.hovered_button is None
@@ -422,11 +459,11 @@ def test_controller_routes_panel_actions_and_suppresses_scene_motion() -> None:
         "close",
     )
     controller.consume_interaction(
-        _interaction(12, pointer_xy=close_pointer, pinch_active=False)
+        _interaction(18, pointer_xy=close_pointer, pinch_active=False)
     )
     close_render_count = len(renderer.rendered)
     controller.consume_interaction(
-        _interaction(13, pointer_xy=close_pointer, pinch_active=True)
+        _interaction(19, pointer_xy=close_pointer, pinch_active=True)
     )
     assert dashboard.spatial_panel_state.open is False
     assert (
@@ -436,10 +473,10 @@ def test_controller_routes_panel_actions_and_suppresses_scene_motion() -> None:
     assert dashboard.spatial_panel_state.hovered_button is None
     assert dashboard.spatial_panel_state.pressed_button is None
     controller.consume_interaction(
-        _interaction(14, pointer_xy=close_pointer, pinch_active=True)
+        _interaction(20, pointer_xy=close_pointer, pinch_active=True)
     )
     controller.consume_interaction(
-        _interaction(15, pointer_xy=close_pointer, pinch_active=False)
+        _interaction(21, pointer_xy=close_pointer, pinch_active=False)
     )
     assert len(renderer.rendered) == close_render_count
 
@@ -452,6 +489,10 @@ def test_controller_routes_panel_actions_and_suppresses_scene_motion() -> None:
         )
     )
     assert len(renderer.rendered) == close_render_count + 1
+    dashboard.handle_key(ord("e"))
+    assert dashboard.mode is DashboardMode.EVIDENCE
+    dashboard.handle_key(ord("a"))
+    assert dashboard.mode is DashboardMode.ANALYSIS
     dashboard.handle_key(ord("3"))
     assert extension.active_scene_id == "orbital-system"
     dashboard.handle_key(ord("1"))

@@ -141,6 +141,15 @@ def build_spatial_panel_layout(
 
     mode_y = viewport.y + 250
     small_gap = 10
+    mode_gap = 8
+    mode_button_width = max(
+        1,
+        (inner_width - 2 * mode_gap) // 3,
+    )
+    final_mode_button_width = max(
+        1,
+        inner_width - 2 * mode_button_width - 2 * mode_gap,
+    )
     half_width = max(1, (inner_width - small_gap) // 2)
     buttons.extend(
         (
@@ -150,7 +159,7 @@ def build_spatial_panel_layout(
                 rect=Rect(
                     inner_x,
                     mode_y,
-                    half_width,
+                    mode_button_width,
                     button_height,
                 ),
                 selected=mode is DashboardMode.DEMO,
@@ -159,12 +168,23 @@ def build_spatial_panel_layout(
                 button_id="mode:ANALYSIS",
                 label="Analysis",
                 rect=Rect(
-                    inner_x + half_width + small_gap,
+                    inner_x + mode_button_width + mode_gap,
                     mode_y,
-                    inner_width - half_width - small_gap,
+                    mode_button_width,
                     button_height,
                 ),
                 selected=mode is DashboardMode.ANALYSIS,
+            ),
+            PanelButton(
+                button_id="mode:EVIDENCE",
+                label="Evidence",
+                rect=Rect(
+                    inner_x + 2 * (mode_button_width + mode_gap),
+                    mode_y,
+                    final_mode_button_width,
+                    button_height,
+                ),
+                selected=mode is DashboardMode.EVIDENCE,
             ),
         )
     )
