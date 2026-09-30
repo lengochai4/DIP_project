@@ -10,6 +10,11 @@ from .controller import (
 from .renderer import (
     OpenGLStemRenderer,
 )
+from .scenes import (
+    CoordinateCubeScene,
+    SceneRegistry,
+    STEMScene,
+)
 from .scene_state import (
     SceneTransform,
     Stem3DSceneState,
@@ -17,7 +22,10 @@ from .scene_state import (
 
 __all__ = [
     "OpenGLStemRenderer",
+    "CoordinateCubeScene",
+    "SceneRegistry",
     "SceneTransform",
+    "STEMScene",
     "Stem3DApplicationController",
     "Stem3DExtension",
     "Stem3DSceneState",

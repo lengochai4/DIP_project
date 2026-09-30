@@ -35,6 +35,10 @@ from dip_touchless.tracking import (
 from .application import Stem3DExtension
 from .controller import Stem3DApplicationController
 from .renderer import OpenGLStemRenderer
+from .scenes import (
+    CoordinateCubeScene,
+    SceneRegistry,
+)
 from .scene_state import Stem3DSceneState
 from .ui import (
     ApplicationPhase,
@@ -244,12 +248,18 @@ def main() -> None:
         run_id=run_id,
     )
 
+    scene_state = Stem3DSceneState(
+        initial_scale=renderer_cfg["initial_scale"],
+        min_scale=renderer_cfg["min_scale"],
+        max_scale=renderer_cfg["max_scale"],
+    )
+    scene_registry = SceneRegistry(
+        [CoordinateCubeScene(scene_state)],
+        initial_scene_id=CoordinateCubeScene.id,
+    )
+
     extension = Stem3DExtension(
-        scene_state=Stem3DSceneState(
-            initial_scale=renderer_cfg["initial_scale"],
-            min_scale=renderer_cfg["min_scale"],
-            max_scale=renderer_cfg["max_scale"],
-        ),
+        scene_registry=scene_registry,
         renderer=OpenGLStemRenderer(
             width=int(renderer_cfg["width"]),
             height=int(renderer_cfg["height"]),

@@ -1200,11 +1200,13 @@ None. G7 provenance and all final experiment artifacts remain frozen.
 
 ## 5. Immediate next tasks
 
-G7 is closed. U1 and U2 are implemented on
-`feat/final-ui-extension`. U2 provides DEMO/ANALYSIS modes, live ROI and
-pointer overlays, distinct raw/filtered landmarks, DIP diagnostics, and
-run identity from recorded metadata. U2-focused tests pass (26), and the
-full automated suite passes (444). Continue with the post-G7 roadmap in
+G7 is closed. U1–U3 are implemented on `feat/final-ui-extension`. U2
+provides DEMO/ANALYSIS modes, live ROI and pointer overlays, distinct
+raw/filtered landmarks, DIP diagnostics, and run identity from recorded
+metadata. U3 defines the `STEMScene` contract and local `SceneRegistry`,
+routes the coordinate cube through scene lifecycle, and leaves Core
+unchanged. U3-focused tests pass (45), and the full automated suite
+passes (451). Continue with the post-G7 roadmap in
 `docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md`, in this order:
 
 1. **U1 — Application foundation — COMPLETE:** add an application controller,
@@ -1214,10 +1216,10 @@ full automated suite passes (444). Continue with the post-G7 roadmap in
 2. **U2 — DIP visibility — COMPLETE:** present camera, ROI, landmarks, pointer,
    tracking, illumination, CLAHE, filter, and runtime identity using the
    public read-only realtime presentation seam.
-3. **U3 — Scene architecture — NEXT:** define the Extension-owned `STEMScene`
+3. **U3 — Scene architecture — COMPLETE:** define the Extension-owned `STEMScene`
    lifecycle and local registry, then migrate the existing coordinate
    cube without changing `InteractionState` semantics.
-4. **U4 — STEM scenes:** add the coordinate-geometry, molecule, and
+4. **U4 — STEM scenes — NEXT:** add the coordinate-geometry, molecule, and
    orbital-mechanics experiences through the scene interface.
 5. **U5 — Spatial Control Panel:** add screen-space touchless navigation
    using normalized `pointer_xy`, valid pinch rising edges, and explicit

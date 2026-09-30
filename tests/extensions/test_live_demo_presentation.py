@@ -475,17 +475,25 @@ class _ControllerRenderer:
 
 def test_application_controller_owns_lifecycle_reset_and_public_callbacks() -> None:
     from extensions.stem3d import (
+        CoordinateCubeScene,
+        SceneRegistry,
         Stem3DApplicationController,
         Stem3DExtension,
         Stem3DSceneState,
     )
 
     renderer = _ControllerRenderer()
-    extension = Stem3DExtension(
-        scene_state=Stem3DSceneState(
+    scene = CoordinateCubeScene(
+        Stem3DSceneState(
             initial_scale=1.0,
             min_scale=0.5,
             max_scale=2.0,
+        )
+    )
+    extension = Stem3DExtension(
+        scene_registry=SceneRegistry(
+            [scene],
+            initial_scene_id=scene.id,
         ),
         renderer=renderer,
     )

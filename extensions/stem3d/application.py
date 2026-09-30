@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import math
 from typing import Protocol
 
 from dip_touchless.core import (
     InteractionState,
 )
 
-from .scene_state import (
-    SceneTransform,
-    Stem3DSceneState,
+from .scenes import (
+    STEMScene,
+    SceneRegistry,
 )
+from .scene_state import SceneTransform
 
 
 class StemRenderer(Protocol):
@@ -30,56 +32,90 @@ class StemRenderer(Protocol):
 
 
 class Stem3DExtension:
-    """Consume InteractionState and drive a renderer."""
+    """Route public interaction commands through the active STEM scene."""
 
     def __init__(
         self,
         *,
-        scene_state: Stem3DSceneState,
+        scene_registry: SceneRegistry,
         renderer: StemRenderer,
     ) -> None:
-        self._scene_state = (
-            scene_state
-        )
+        self._scene_registry = scene_registry
         self._renderer = renderer
         self._renderer_open = False
+        self._previous_timestamp_s: float | None = None
 
     @property
-    def transform(
-        self,
-    ) -> SceneTransform:
-        return (
-            self._scene_state.transform
-        )
+    def active_scene(self) -> STEMScene | None:
+        return self._scene_registry.active_scene
+
+    @property
+    def active_scene_id(self) -> str | None:
+        return self._scene_registry.active_scene_id
 
     def open(self) -> None:
+        if self._renderer_open:
+            return
+
         self._renderer.open()
         self._renderer_open = True
+        try:
+            scene = self._scene_registry.activate_initial()
+            scene.render(self._renderer)
+        except Exception:
+            try:
+                self._scene_registry.deactivate()
+            finally:
+                try:
+                    self._renderer.close()
+                finally:
+                    self._renderer_open = False
+            raise
 
     def consume(
         self,
         state: InteractionState,
-    ) -> SceneTransform:
-        transform = (
-            self._scene_state.consume(
-                state
-            )
-        )
+    ) -> None:
+        scene = self._require_active_scene()
+        timestamp_s = state.timestamp_s
+        if (
+            isinstance(timestamp_s, bool)
+            or not isinstance(timestamp_s, (int, float))
+            or not math.isfinite(timestamp_s)
+        ):
+            raise ValueError("InteractionState timestamp must be finite")
 
-        self._renderer.render(
-            transform
-        )
+        dt_s = 0.0
+        if self._previous_timestamp_s is not None:
+            dt_s = timestamp_s - self._previous_timestamp_s
+            if dt_s < 0.0:
+                raise ValueError(
+                    "InteractionState timestamps must be non-decreasing"
+                )
 
-        return transform
+        scene.apply_interaction(state)
+        scene.update(dt_s)
+        self._previous_timestamp_s = float(timestamp_s)
+        scene.render(self._renderer)
 
-    def reset(self) -> SceneTransform:
-        """Reset the current scene transform and refresh an open renderer."""
+    def activate_scene(self, scene_id: str) -> STEMScene:
+        """Activate a registered scene and display its initial state."""
 
-        self._scene_state.reset()
-        transform = self._scene_state.transform
+        if not self._renderer_open:
+            raise RuntimeError("STEM extension is not open")
+        scene = self._scene_registry.activate(scene_id)
+        self._previous_timestamp_s = None
+        scene.render(self._renderer)
+        return scene
+
+    def reset(self) -> None:
+        """Reset the active scene and refresh the renderer if open."""
+
+        self._scene_registry.reset_active()
+        self._previous_timestamp_s = None
         if self._renderer_open:
-            self._renderer.render(transform)
-        return transform
+            scene = self._require_active_scene()
+            scene.render(self._renderer)
 
     def close_requested(
         self,
@@ -91,7 +127,19 @@ class Stem3DExtension:
 
     def close(self) -> None:
         try:
-            if self._renderer_open:
-                self._renderer.close()
+            self._scene_registry.deactivate()
         finally:
-            self._renderer_open = False
+            try:
+                if self._renderer_open:
+                    self._renderer.close()
+            finally:
+                self._renderer_open = False
+                self._previous_timestamp_s = None
+
+    def _require_active_scene(self) -> STEMScene:
+        if not self._renderer_open:
+            raise RuntimeError("STEM extension is not open")
+        scene = self._scene_registry.active_scene
+        if scene is None:
+            raise RuntimeError("no STEM scene is active")
+        return scene

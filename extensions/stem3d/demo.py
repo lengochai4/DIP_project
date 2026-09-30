@@ -9,6 +9,10 @@ from dip_touchless.core import InteractionState
 
 from .application import Stem3DExtension
 from .renderer import OpenGLStemRenderer
+from .scenes import (
+    CoordinateCubeScene,
+    SceneRegistry,
+)
 from .scene_state import Stem3DSceneState
 
 
@@ -97,8 +101,13 @@ def main() -> None:
         ),
     )
 
+    scene_registry = SceneRegistry(
+        [CoordinateCubeScene(scene_state)],
+        initial_scene_id=CoordinateCubeScene.id,
+    )
+
     extension = Stem3DExtension(
-        scene_state=scene_state,
+        scene_registry=scene_registry,
         renderer=renderer,
     )
 

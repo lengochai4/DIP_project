@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 import pytest
@@ -6,7 +7,9 @@ from dip_touchless.core import (
     InteractionState,
 )
 from extensions.stem3d import (
+    CoordinateCubeScene,
     OpenGLStemRenderer,
+    SceneRegistry,
     SceneTransform,
     Stem3DExtension,
     Stem3DSceneState,
@@ -65,26 +68,36 @@ def _state(
 
 def test_extension_consumes_interaction_state() -> None:
     renderer = FakeRenderer()
-
-    extension = Stem3DExtension(
-        scene_state=Stem3DSceneState(
+    scene = CoordinateCubeScene(
+        Stem3DSceneState(
             initial_scale=1.0,
             min_scale=0.5,
             max_scale=2.0,
-        ),
+        )
+    )
+    registry = SceneRegistry(
+        [scene],
+        initial_scene_id=scene.id,
+    )
+
+    extension = Stem3DExtension(
+        scene_registry=registry,
         renderer=renderer,
     )
 
     extension.open()
 
-    result = extension.consume(
+    extension.consume(
         _state(
             rotation=(0.1, -0.2),
             scale_delta=0.25,
         )
     )
+    result = scene.transform
 
     assert renderer.opened is True
+    assert scene.active is True
+    assert extension.active_scene_id == scene.id
 
     assert result.yaw_rad == pytest.approx(
         0.1
@@ -98,28 +111,36 @@ def test_extension_consumes_interaction_state() -> None:
         1.25
     )
 
-    assert renderer.rendered == [
-        result
-    ]
+    assert renderer.rendered[-1] == result
 
     extension.close()
 
     assert renderer.closed is True
+    assert scene.active is False
+    assert registry.active_scene is None
 
 
 def test_invalid_interaction_renders_unchanged_scene() -> None:
     renderer = FakeRenderer()
-
-    extension = Stem3DExtension(
-        scene_state=Stem3DSceneState(
+    scene = CoordinateCubeScene(
+        Stem3DSceneState(
             initial_scale=1.0,
             min_scale=0.5,
             max_scale=2.0,
-        ),
-        renderer=renderer,
+        )
+    )
+    registry = SceneRegistry(
+        [scene],
+        initial_scene_id=scene.id,
     )
 
-    result = extension.consume(
+    extension = Stem3DExtension(
+        scene_registry=registry,
+        renderer=renderer,
+    )
+    extension.open()
+
+    extension.consume(
         _state(
             valid=False,
             rotation=(1.0, 1.0),
@@ -127,11 +148,13 @@ def test_invalid_interaction_renders_unchanged_scene() -> None:
         )
     )
 
-    assert result == SceneTransform(
+    assert scene.transform == SceneTransform(
         yaw_rad=0.0,
         pitch_rad=0.0,
         scale=1.0,
     )
+    assert renderer.rendered[-1] == scene.transform
+    extension.close()
 
 
 @pytest.mark.parametrize(
@@ -158,19 +181,30 @@ def test_stem3d_extension_modules_do_not_import_algorithm_internals(
     # Extension. The boundary restriction applies to the Extension modules
     # that consume InteractionState, not to the composition root.
     extension_modules = (
-        path.read_text(
-            encoding="utf-8",
-        )
-        for path in extension_root.glob(
-            "*.py"
-        )
+        ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for path in extension_root.rglob("*.py")
         if path.name != "live_demo.py"
     )
-    source = "\n".join(extension_modules)
+    imported_modules: set[str] = set()
+    for module in extension_modules:
+        for node in ast.walk(module):
+            if isinstance(node, ast.Import):
+                imported_modules.update(
+                    alias.name for alias in node.names
+                )
+            elif isinstance(node, ast.ImportFrom):
+                imported_module = node.module or ""
+                imported_modules.update(
+                    f"{imported_module}.{alias.name}"
+                    if imported_module
+                    else alias.name
+                    for alias in node.names
+                )
 
-    assert (
-        forbidden_import
-        not in source
+    assert not any(
+        module == forbidden_import
+        or module.startswith(f"{forbidden_import}.")
+        for module in imported_modules
     )
 
 
