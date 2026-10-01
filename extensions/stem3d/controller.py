@@ -10,7 +10,7 @@ from dip_touchless.core import (
     TrackingFrame,
 )
 
-from .application import Stem3DExtension
+from .application import RendererFailure, Stem3DExtension
 from .ui.dashboard import LiveDashboard
 from .ui.presentation_model import (
     ApplicationPhase,
@@ -196,6 +196,10 @@ class Stem3DApplicationController:
                 presentation,
                 self._state,
             )
+        except RendererFailure:
+            # The integrated window host identifies GL failures separately
+            # from dashboard pixel composition; preserve that error identity.
+            raise
         except Exception as exc:
             raise DashboardFailure(
                 f"Dashboard could not display the current frame: {exc}"

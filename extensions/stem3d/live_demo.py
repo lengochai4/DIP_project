@@ -34,7 +34,8 @@ from dip_touchless.tracking import (
 
 from .application import Stem3DExtension
 from .controller import Stem3DApplicationController
-from .renderer import OpenGLStemRenderer
+from .shell_renderer import ApplicationShellRenderer
+from .ui.shell import ProductDashboard
 from .scenes import build_tier1_scene_registry
 from .ui import (
     ApplicationPhase,
@@ -310,6 +311,10 @@ def main() -> None:
             },
             "tracking": {"model_path": str(MODEL_PATH)},
             "filter": {"mode": "RAW"},
+            "renderer": {
+                "width": THEME.default_window_width,
+                "height": THEME.default_window_height,
+            },
         },
     )
     cfg = resolved.to_dict()
@@ -326,19 +331,20 @@ def main() -> None:
         max_scale=renderer_cfg["max_scale"],
     )
 
+    renderer = ApplicationShellRenderer(
+        width=int(renderer_cfg["width"]),
+        height=int(renderer_cfg["height"]),
+        target_fps=int(renderer_cfg["target_fps"]),
+        title="DIP Touchless STEM",
+    )
     extension = Stem3DExtension(
         scene_registry=scene_registry,
-        renderer=OpenGLStemRenderer(
-            width=int(renderer_cfg["width"]),
-            height=int(renderer_cfg["height"]),
-            target_fps=int(renderer_cfg["target_fps"]),
-            title="DIP Touchless STEM - Live Demo",
-        ),
+        renderer=renderer,
     )
     controller = Stem3DApplicationController(
         run_id=run_id,
         extension=extension,
-        dashboard=LiveDashboard(),
+        dashboard=ProductDashboard(window_host=renderer),
         runtime_identity=build_runtime_identity(metadata),
     )
 

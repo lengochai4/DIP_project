@@ -104,7 +104,7 @@ G4 — BOUNDED ADAPTIVE 1-EURO: COMPLETE
 G5 — GESTURE + 3D EXTENSION: COMPLETE
 G6 — EXPERIMENT READINESS: COMPLETE
 G7 — FINAL EVALUATION / PACKAGE: COMPLETE (FROZEN AT `g7-final`)
-G8 — POST-G7 UI / STEM EXTENSION PRODUCTIZATION: PLANNED
+G8 — POST-G7 UI / STEM EXTENSION PRODUCTIZATION: IN PROGRESS (U7.5 COMPLETE)
 ```
 
 G0–G1 completion establishes the engineering baseline:
@@ -130,16 +130,17 @@ change the scope or interpretation of the frozen G7 experiment release.
 
 ## 4. Current task
 
-**Task G8-U7 — Harden presentation loading, error, empty, disabled, and cleanup states — COMPLETE.**
+**Task G8-U7.5 — Final enterprise UI / unified product application shell — COMPLETE.**
 
 The G7 controlled evaluation and submission package are complete and
 frozen at `g7-final`. The active G8 direction is a separately scoped
-post-G7 application/Extension continuation. U1 through U7 are implemented.
+post-G7 application/Extension continuation. U1 through U7 and the approved
+U7.5 presentation refinement are implemented.
 U6 presents selected frozen G7 artifacts without modifying evidence or
 research conclusions. U7 adds explicit lifecycle feedback, failure
 handling, disabled controls, keyboard fallback, and cleanup hardening. The
-next roadmap unit is U8. Preserve the existing G7/Core boundary while
-continuing that presentation work.
+next roadmap unit is U8 — Automated Validation. Preserve the existing
+G7/Core boundary while continuing that presentation work.
 
 G8 is not a new research experiment and does not claim commercial
 readiness. Any change to Core semantics, public contracts, experiment
@@ -182,6 +183,49 @@ webcam/hand smoke was run for U7.
 
 Core algorithms, research contracts, G7 results/evidence, and the `g7-final`
 tag are unchanged. The next roadmap unit is U8 — Automated Validation.
+
+### G8-U7.5 Unified product application shell completion — 2026-10-01
+
+U7 remains COMPLETE. U7.5 is COMPLETE as a separate approved post-G7
+presentation refinement; U8 remains NEXT and has not been started.
+
+The live composition now uses a single integrated Pygame/OpenGL window,
+one event queue, and a reusable UI texture around the existing scene
+drawing code. Workspace is the display label for the existing DEMO mode;
+no mode enum or Core contract changed. The same controller, presentation
+adapter, scene registry, Evidence catalog, and U5 interaction router are
+reused. An OpenCV emergency error view remains available if the GL host
+cannot initialize or fails; it replaces the failed host rather than
+creating a second normal application window.
+
+Workspace prioritizes the scene and compact Live Vision. Analysis shows
+the unmirrored ROI/raw/filtered/pointer preview, all eight pipeline stages,
+and compact diagnostics. Evidence retains all six frozen pages, recorded
+trial values, unavailable outcomes, limitations, and distinct release/demo
+provenance. Session identity is available on demand through Help. Control
+Space is a 320-pixel screen-space drawer preserving rising-edge selection,
+validity gating, rearm, and the release barrier before scene control resumes.
+Help and provenance dialogs prevent mouse clicks through to covered actions.
+
+Visual tokens, cached geometric outline icons, typography measurements,
+bounded resized-evidence caching, and reuse of the GL texture are centralized
+in the Extension. Hover/press feedback uses presentation time only. Lifecycle
+and component-error states remain explicit, with renderer failure identity
+preserved by the application controller. Live demo run IDs retain `g8-demo-*`.
+
+Validation executed: 132 focused Extension tests and 538 full-project tests
+passed; Extension compile validation succeeded and `git diff --check` was
+clean. Synthetic real-OpenGL QA rendered and inspected Workspace scenes,
+Analysis, all six Evidence pages, provenance/session details, Control Space,
+Help, no-hand/loss, component errors, startup, and shutdown at 1024x640,
+1280x720, 1600x900, and 1920x1080. Native SDL resize, keyboard event dispatch,
+texture reuse, and cleanup were exercised. These are synthetic presentation
+checks, not a physical webcam/hand smoke or new research measurements.
+Physical-hand smoke for U7.5: NOT RUN.
+
+Core algorithms, public research contracts, frozen metrics, G7 evidence,
+`FINAL_REPORT.md`, and the `g7-final` release identity are unchanged.
+No staging, commit, push, or U8/U9/U10/G9 implementation belongs to this task.
 
 ### G6 experiment-readiness completion record (historical)
 
@@ -1239,7 +1283,7 @@ None. G7 provenance and all final experiment artifacts remain frozen.
 
 ## 5. Immediate next tasks
 
-G7 is closed. U1–U7 are implemented on `feat/final-ui-extension`. U2
+G7 is closed. U1–U7 and U7.5 are implemented on `feat/final-ui-extension`. U2
 provides DEMO/ANALYSIS modes, live ROI and pointer overlays, distinct
 raw/filtered landmarks, DIP diagnostics, and run identity from recorded
 metadata. U3 defines the `STEMScene` contract and local `SceneRegistry`,
@@ -1277,9 +1321,13 @@ not use a webcam or physical hand input. Continue with the post-G7 roadmap in
    failures explicit; clear stale tracking/interaction presentation;
    disable unusable touchless controls; preserve keyboard fallback; and
    make partial initialization and shutdown cleanup safe.
-8. **U8 — Automated validation — NEXT:** run targeted Extension tests and
+8. **U7.5 — Unified product application shell — COMPLETE:** integrate the
+   existing scene renderer and presentation surface into one normal window;
+   refine Workspace, Analysis, Evidence, Control Space, Help, and lifecycle
+   states without changing the frozen research baseline.
+9. **U8 — Automated validation — NEXT:** run targeted Extension tests and
    full `pytest` regression for the post-G7 UI/Extension surface.
-9. **U9/U10 — Physical validation and release:** exercise the complete
+10. **U9/U10 — Physical validation and release:** exercise the complete
    application with the webcam, document screenshots/demo instructions,
    record limitations, and create a new post-G7 release identity without
    moving `g7-final`.

@@ -67,7 +67,8 @@ class OpenGLStemRenderer:
             pygame.init()
             pygame.display.set_mode(
                 (self._width, self._height),
-                pygame.DOUBLEBUF | pygame.OPENGL,
+                pygame.DOUBLEBUF | pygame.OPENGL
+                | (pygame.RESIZABLE if getattr(self, "_resizable", False) else 0),
             )
             self._set_caption(self._title)
             GL.glViewport(0, 0, self._width, self._height)
@@ -166,6 +167,16 @@ class OpenGLStemRenderer:
         self._set_caption(caption)
 
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+        self._draw_scene_frame(frame)
+
+        pygame.display.flip()
+        self._clock.tick(self._target_fps)
+
+    def _draw_scene_frame(self, frame: SceneFrame) -> None:
+        """Shared scene drawing; window composition owns the viewport."""
+
+        gl = self._gl
+        assert gl is not None
         gl.glLoadIdentity()
         gl.glTranslatef(0.0, 0.0, -5.6)
         gl.glRotatef(math.degrees(frame.transform.pitch_rad), 1.0, 0.0, 0.0)
@@ -180,9 +191,6 @@ class OpenGLStemRenderer:
         self._draw_lines(frame.lines)
         gl.glEnable(gl.GL_LIGHTING)
         self._draw_spheres(frame.spheres)
-
-        pygame.display.flip()
-        self._clock.tick(self._target_fps)
 
     def close(self) -> None:
         """Release the reusable GLU quadric and Pygame display resources."""
