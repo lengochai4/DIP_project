@@ -1,4 +1,4 @@
-# Full-hand geometry and single-frame classification
+# Full-hand geometry, classification and temporal stabilization
 
 This is an additive v1.1 Extension module. It is not imported by the v1.0
 application composition, does not implement the Core GestureEngine protocol,
@@ -75,3 +75,60 @@ poses remain unvalidated; synthetic fixtures are not physical robustness evidenc
 - Tests: synthetic landmark poses, transforms, thumb cases, boundary/conflict
   cases, invalid geometry, statelessness and immutable diagnostics.
 - Existing results invalidated: no; the module is not wired into any runtime.
+
+## A4 temporal tracker
+
+```text
+PoseObservation + explicit TrackingStatus + filter_reset flag
+    -> TemporalPoseTracker.update
+    -> immutable StablePoseState
+```
+
+The caller supplies TemporalPoseConfig: ordinary enter/exit dwell, PINCH
+enter/exit dwell, rearm dwell and reset gap, all in seconds. There are no
+production defaults. Dwell is measured from the first continuous candidate
+timestamp, not frame count or wall-clock time. Confirmation occurs at `>= dwell`;
+a timestamp gap resets only at `> reset_gap_s`. Switching away from a stable
+pose requires the maximum of the old pose's exit dwell and new pose's enter
+dwell, measured concurrently. A new candidate restarts that reference. A return
+to the old stable pose cancels the pending switch. Every replacement-candidate
+frame is action-blocked until confirmed.
+
+Initialization, run change, non-finite/non-increasing timestamps, non-increasing
+frame identity, excessive gaps, filter reset, reacquisition and explicit reset
+produce an immediate neutral state. Unusable tracking/geometry also releases
+immediately, cancels pending dwell and disarms. Repeated continuous loss frames
+do not repeat reset events. Invalid samples never contribute to dwell.
+
+The initialization/reacquisition/reset frame itself cannot rearm. Subsequent
+continuous known non-PINCH poses with `pinch.exit=True` must satisfy rearm dwell.
+The frame completing rearm is still neutral; pose entry dwell starts on the next
+frame. A hand that reappears pinched cannot reactivate until released evidence
+rearms it. UNKNOWN cancels rearm and pending transitions and safely releases
+the stable pose, regardless of configured exit dwell.
+
+The sole UNKNOWN exception is A3's exact PINCH_BOUNDARY_BAND observation with
+usable geometry and known finger states. If PINCH is already stable/armed, it
+retains its latch across that band, cancelling any pending exit transition.
+**action_allowed remains false on every UNKNOWN band frame.** A later definite
+PINCH-enter sample may resume permission; definite released candidates must
+satisfy PINCH exit dwell before changing stable pose. A band cannot finish a
+pending PINCH entry or create a latch. Other UNKNOWN reasons never retain PINCH.
+
+Consumers must not infer action permission from stable_pose/pinch_latched.
+Only action_allowed describes current-frame eligibility; it is not a rotation,
+scale, click or other command. No runtime/InteractionState/UI integration exists.
+
+Diagnostics expose raw candidate, pending pose, candidate/rearm reference times,
+stable pose, armed flag, latch, per-update reasons and original A3 source reasons.
+transition_id increments on stable pose changes, including safe release;
+reset_id increments on reset events. Both remain monotonic for the lifetime of
+one tracker, even across explicit reset and run changes. There are no fabricated
+measurements or tracking confidence values. Explicit reset returns a neutral
+snapshot immediately and makes the next sample initialization-neutral.
+
+A4 compatibility/change record: additive timestamp-driven state machine in
+temporal.py/temporal_contracts.py; canonical contracts and Core behavior unchanged;
+synthetic dwell/glitch/boundary/loss/reset/replay tests added; no experimental
+impact or invalidated G7 results. Physical validation and timing calibration have
+not been performed for A4.

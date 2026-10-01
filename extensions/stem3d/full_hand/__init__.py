@@ -12,6 +12,8 @@ from .pose_contracts import (
     HandPose, PinchGeometry, PoseObservation, PoseThresholds, PredicateDiagnostic,
     ThumbThresholds,
 )
+from .temporal import TemporalPoseTracker
+from .temporal_contracts import StablePoseState, TemporalPoseConfig, TemporalReason
 
 __all__ = [
     "Finger", "FingerGeometry", "FrameGeometry", "GeometryReason",
@@ -20,4 +22,5 @@ __all__ = [
     "HandPose", "PinchGeometry", "PoseObservation", "PoseThresholds",
     "PredicateDiagnostic", "ThumbThresholds", "estimate_finger_state",
     "classify_pose", "evaluate_pinch_geometry",
+    "TemporalPoseTracker", "StablePoseState", "TemporalPoseConfig", "TemporalReason",
 ]
