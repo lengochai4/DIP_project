@@ -1,0 +1,26 @@
+# Uncalibrated development observation profile, not a G7 configuration.
+# Values are explicit engineering starters from synthetic fixtures, not findings.
+pose:
+  fingers:
+    extended_min_angle_rad: 2.6
+    flexed_max_angle_rad: 1.5
+    extended_min_straightness: 0.9
+    flexed_max_straightness: 0.65
+  thumb:
+    chain:
+      extended_min_angle_rad: 2.6
+      flexed_max_angle_rad: 1.5
+      extended_min_straightness: 0.9
+      flexed_max_straightness: 0.65
+    opposition_max_distance_palm: 0.5
+    spread_min_distance_palm: 0.65
+    extended_max_axis_to_palm_rad: 2.0
+  pinch_enter_distance_palm: 0.2
+  pinch_exit_distance_palm: 0.35
+temporal:
+  enter_dwell_s: 0.125
+  exit_dwell_s: 0.25
+  pinch_enter_dwell_s: 0.25
+  pinch_exit_dwell_s: 0.375
+  rearm_dwell_s: 0.125
+  reset_gap_s: 2.0

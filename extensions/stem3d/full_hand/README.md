@@ -1,7 +1,7 @@
 # Full-hand geometry, classification and temporal stabilization
 
 This is an additive v1.1 Extension module. It is not imported by the v1.0
-application composition, does not implement the Core GestureEngine protocol,
+default v1.0 application composition, does not implement the Core GestureEngine protocol,
 and emits no InteractionState or application commands.
 
 ## A2 to A3 data flow
@@ -132,3 +132,74 @@ temporal.py/temporal_contracts.py; canonical contracts and Core behavior unchang
 synthetic dwell/glitch/boundary/loss/reset/replay tests added; no experimental
 impact or invalidated G7 results. Physical validation and timing calibration have
 not been performed for A4.
+
+## A5 OBSERVE_FULL_HAND composition
+
+Run the opt-in application (existing Python 3.11 environment, model and demo3d
+dependencies documented in the submission guide):
+
+```powershell
+python -m extensions.stem3d.full_hand_app --mode OBSERVE_FULL_HAND
+```
+
+The default development profile is `config/extensions/full_hand_observe.yaml`;
+override with `--profile <path>`. It contains explicit uncalibrated A3/A4 starting
+values from synthetic fixtures. It changes no legacy gains, pinch thresholds or
+G7 configuration. `--mode LEGACY` delegates to the unchanged default composition;
+`python -m extensions.stem3d.live_demo` also remains legacy.
+
+```text
+camera source -> GeometryCaptureSource (actual image.shape, SAME FramePacket)
+    -> unchanged Core provider/validator/filter
+    -> unchanged legacy GestureEngine -> SAME InteractionState
+    -> controller/router/scene (one delivery)
+    -> readonly presentation callback
+        -> A2 geometry -> A3 classification -> A4 temporal tracker
+        -> FullHandSnapshot -> separate diagnostic sink
+        -> existing legacy presentation callback
+```
+
+The observer never calls the gesture engine, interaction consumer, router or
+scene. No full-hand command adapter is present. Observation runs after Core
+logging and command delivery, outside Core stage-timing measurements. It may add
+unmeasured frame-loop overhead; deterministic parity applies to the same input
+samples, not an assertion that separately captured physical runs are identical.
+
+Source/presentation/tracking/interaction identity and actual dimensions must
+align. An observer alignment/analysis failure resets only the observer and emits
+an unavailable diagnostic; legacy delivery continues. Source open/close clears
+cached geometry/snapshots and resets the tracker, including restart. Core loss,
+reacquisition and filter-reset metadata feed A4 explicitly. Duplicate diagnostic
+delivery of the same identity is idempotent. Sinks receive immutable diagnostics,
+never the source image or mutable processing components. Sink errors are reported
+and do not replace legacy output.
+
+`FullHandObserver.latest_snapshot` and its optional snapshot sink make current
+pose/finger/temporal diagnostics available to future presentation adapters;
+current UI fields/layout are unchanged. Console prints state changes. Separate
+files under `runs/full-hand-observe/<legacy-run-id>/` are:
+
+- `manifest.json`: sidecar schema, legacy run metadata/revision/model/config
+  provenance, resolved observer profile and profile SHA-256.
+- `snapshots.jsonl`: one snapshot per processed frame, full geometry validity and
+  reasons, finger predicates, pose predicates, temporal/reset/transition identity.
+
+No images/video are written by this sidecar. These are local development
+observation artifacts, never frozen G7 evidence or replacements for Core logs.
+The journal closes even after cancellation, provider/runtime errors or controller
+shutdown. No files are opened until the application is actually started.
+
+P1 is ready to execute, but has NOT RUN: use one hand at a time, show OPEN,
+POINT, PINCH and FIST, pause between poses, try comfortable in-plane rotations
+and both left/right hands separately, then withdraw/reacquire. Record visible
+candidate/stable states, ambiguity, false classifications and tracking drops
+honestly against run/profile identity. UNKNOWN/uncalibrated thresholds remain
+expected limitations; do not tune legacy sensitivity to make observation pass.
+
+A5 change record: add observation/profile/journal modules and a separate entry
+point; add optional Extension-only factory/source/presentation hooks to the live
+composition with identical defaults. Canonical/Core contracts, research logger
+schema, scenes/router and legacy commands are unchanged. Tests compare every
+InteractionState field and Core log object on deterministic inputs, single scene
+delivery and router click, alignment, reset/loss/restart and failure cleanup.
+Existing G7 results are not invalidated. No G9 source is restored or copied.

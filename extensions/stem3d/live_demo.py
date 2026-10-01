@@ -11,6 +11,7 @@ from dip_touchless.capture import OpenCVCameraSource
 from dip_touchless.configuration import resolve_config
 from dip_touchless.core import (
     FramePacket,
+    FrameSource,
     InteractionState,
     TrackingFrame,
 )
@@ -206,6 +207,8 @@ def _build_runtime(
     cfg: Mapping[str, Any],
     run_id: str,
     controller: Stem3DApplicationController,
+    source_adapter: Callable[[FrameSource], FrameSource] | None = None,
+    presentation_consumer: Callable[..., object] | None = None,
 ) -> RealtimeRuntime:
     camera = cfg["camera"]
     roi = cfg["roi"]
@@ -237,7 +240,7 @@ def _build_runtime(
             f"Hand model/provider could not initialize: {exc}",
         ) from exc
 
-    source: _GuardedCameraSource | None = None
+    source: FrameSource | None = None
     logger: FileRunLogger | None = None
     try:
         source = _GuardedCameraSource(
@@ -253,6 +256,8 @@ def _build_runtime(
         logger = FileRunLogger(
             PROJECT_ROOT / logging_cfg["output_dir"]
         )
+        if source_adapter is not None:
+            source = source_adapter(source)
         return RealtimeRuntime(
             source=source,
             provider=provider,
@@ -285,7 +290,8 @@ def _build_runtime(
             ),
             gesture_engine=_build_gesture_engine(gesture),
             interaction_consumer=controller.consume_interaction,
-            presentation_consumer=controller.consume_presentation,
+            presentation_consumer=(controller.consume_presentation if presentation_consumer is None
+                                   else presentation_consumer),
             stop_requested=controller.stop_requested,
         )
     except Exception as exc:
@@ -301,7 +307,7 @@ def _build_runtime(
         raise
 
 
-def main() -> None:
+def main(*, runtime_builder: Callable[..., RealtimeRuntime] | None = None) -> None:
     resolved = resolve_config(
         DEFAULT_CONFIG,
         overrides={
@@ -364,11 +370,11 @@ def main() -> None:
         controller.report_startup_status(
             "Initializing hand model and provider"
         )
-        runtime = _build_runtime(
-            cfg=cfg,
-            run_id=run_id,
-            controller=controller,
-        )
+        if runtime_builder is None:
+            runtime = _build_runtime(cfg=cfg, run_id=run_id, controller=controller)
+        else:
+            runtime = runtime_builder(cfg=cfg, run_id=run_id, controller=controller,
+                                      metadata=metadata)
         controller.report_startup_status(
             "Opening camera and waiting for the first frame"
         )
