@@ -45,8 +45,11 @@ setting.
   of those MCPs. A straight but opposed thumb is INTERMEDIATE, not automatically
   a curled thumb. Missing thumb features are UNKNOWN.
 - OPEN requires five EXTENDED states. POINT requires index EXTENDED and
-  middle/ring/pinky FLEXED; the thumb may be any known state. FIST requires five
-  FLEXED states. Intermediate states never satisfy extended/flexed predicates.
+  middle/ring/pinky FLEXED; the thumb may be any known state. FIST requires four
+  non-thumb FLEXED states and a FLEXED thumb, or an INTERMEDIATE thumb with
+  explicit opposition and a compatible palm-axis angle. This FIST-only predicate
+  does not relabel the thumb or loosen chain thresholds. Other intermediate
+  finger states do not substitute for required extended/flexed predicates.
 - PinchGeometry exposes independent `distance < enter` and `distance > exit`
   predicates. Equalities and the interval between thresholds are an unresolved
   boundary band. No active latch, previous-pose input, dwell or timestamp history
@@ -108,8 +111,12 @@ rearms it. UNKNOWN cancels rearm and pending transitions and safely releases
 the stable pose, regardless of configured exit dwell.
 
 The sole UNKNOWN exception is A3's exact PINCH_BOUNDARY_BAND observation with
-usable geometry and known finger states. If PINCH is already stable/armed, it
-retains its latch across that band, cancelling any pending exit transition.
+usable geometry and known finger states. It preserves any already earned arm
+and existing stable memory/latch, cancelling pending entry/exit transitions.
+An unarmed tracker remains explicitly waiting for release (`PINCH_BAND_WAIT`).
+The band clears release-dwell progress: it never counts as release or rearm
+evidence. Only subsequent continuous known non-PINCH samples with strict
+`distance > exit` can complete rearm; returning to PINCH cancels release dwell.
 **action_allowed remains false on every UNKNOWN band frame.** A later definite
 PINCH-enter sample may resume permission; definite released candidates must
 satisfy PINCH exit dwell before changing stable pose. A band cannot finish a
@@ -196,6 +203,10 @@ The operator confirmed the requested pose and environmental checklist. See
 identities, counts, limitations and recommendations that have not been implemented.
 Full-hand commands remain disabled; legacy sensitivity and the observation profile
 were unchanged. A labeled repeat is needed before promoting pose reliability.
+
+A5.1 subsequently fixes only pre-entry band handling and FIST thumb compatibility.
+See [the A5.1 change record](../../../docs/V11_A51_TARGETED_FIXES.md). The original
+P1 findings remain historical; no new physical observation is claimed.
 
 A5 change record: add observation/profile/journal modules and a separate entry
 point; add optional Extension-only factory/source/presentation hooks to the live

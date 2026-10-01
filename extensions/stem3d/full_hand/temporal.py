@@ -137,9 +137,13 @@ class TemporalPoseTracker:
         band_only = (observation.pose is HandPose.UNKNOWN
                      and observation.reasons == (ClassificationReason.PINCH_BOUNDARY_BAND,)
                      and observation.pinch.boundary_band)
-        if band_only and self._stable is HandPose.PINCH and self._armed:
+        if band_only:
+            # The band is neither release evidence nor genuine pose ambiguity.
+            # Preserve an earned arm/latch, or remain explicitly waiting for
+            # release. No dwell (entry, exit or rearm) may bridge this band.
             self._clear_pending(reasons)
-            reasons.append(R.PINCH_BAND_HOLD)
+            self._rearm_since = None
+            reasons.append(R.PINCH_BAND_HOLD if self._armed else R.PINCH_BAND_WAIT)
             return self._state(observation.pose, reasons, observation.reasons)
         if observation.pose is HandPose.UNKNOWN:
             self._neutralize(reasons)

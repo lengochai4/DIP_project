@@ -34,10 +34,12 @@ def evaluate_pinch_geometry(distance: float | None, thresholds: PoseThresholds) 
 def classify_pose(hand: HandGeometry, thresholds: PoseThresholds) -> PoseObservation:
     """OPEN: all extended; POINT: index extended, other three non-thumb flexed.
 
-    POINT allows any known thumb state. FIST requires all five flexed. PINCH
+    POINT allows any known thumb state. FIST requires four flexed fingers and
+    a flexed thumb or an opposed, axis-compatible intermediate thumb. PINCH
     enter takes precedence over POINT/FIST. Invalid/conflicting features and
     the pinch boundary band are UNKNOWN. Intermediate states are not errors,
-    but never substitute for required extended/flexed predicates.
+    but only the explicit FIST thumb-opposition predicate can accept an
+    intermediate thumb. Individual finger states are not relabeled.
     """
     supplied = {f.finger: f for f in hand.fingers}
     complete = len(hand.fingers) == 5 and set(supplied) == set(Finger)
@@ -55,11 +57,21 @@ def classify_pose(hand: HandGeometry, thresholds: PoseThresholds) -> PoseObserva
     open_ = all(s is FingerState.EXTENDED for s in states.values()) if usable and known else None
     point = (states[Finger.INDEX] is FingerState.EXTENDED and
              all(states[f] is FingerState.FLEXED for f in (Finger.MIDDLE, Finger.RING, Finger.PINKY))) if usable and known else None
-    fist = all(s is FingerState.FLEXED for s in states.values()) if usable and known else None
+    thumb_observation = fingers[0]
+    thumb_predicates = {p.name: p.passed for p in thumb_observation.predicates}
+    thumb_compatible = (
+        states[Finger.THUMB] is FingerState.FLEXED or
+        (states[Finger.THUMB] is FingerState.INTERMEDIATE
+         and thumb_predicates.get("thumb_opposed") is True
+         and thumb_predicates.get("thumb_extended_axis") is True)
+    ) if usable and known else None
+    fist = (thumb_compatible and all(states[f] is FingerState.FLEXED
+            for f in (Finger.INDEX, Finger.MIDDLE, Finger.RING, Finger.PINKY))) if usable and known else None
     predicates = (
         Predicate("geometry_usable", usable), Predicate("finger_states_known", known),
         *pinch.predicates, Predicate("pose_open", open_),
-        Predicate("pose_point", point), Predicate("pose_fist", fist),
+        Predicate("pose_point", point), Predicate("fist_thumb_compatible", thumb_compatible),
+        Predicate("pose_fist", fist),
     )
     pose, reasons = HandPose.UNKNOWN, ()
     if not usable:

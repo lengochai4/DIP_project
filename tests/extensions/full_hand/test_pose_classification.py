@@ -228,10 +228,12 @@ def test_pinch_precedes_overlapping_point_and_fist_predicates(pose, predicate):
     assert next(p.passed for p in result.predicates if p.name == predicate)
 
 
-def test_point_allows_intermediate_thumb_but_fist_does_not():
+def test_point_allows_intermediate_thumb_but_fist_requires_opposition():
     for pose in ("POINT", "FIST"):
         hand = _hand(pose)
-        finger = replace(hand.fingers[0], joint_angles_rad=(2., 2.), straightness=.8)
+        finger = replace(hand.fingers[0], joint_angles_rad=(2., 2.), straightness=.8,
+                         thumb=replace(hand.fingers[0].thumb,
+                             tip_to_index_mcp_palm=.6, tip_to_pinky_mcp_palm=1.))
         hand = replace(hand, fingers=(finger, *hand.fingers[1:]))
         result = classify_pose(hand, _thresholds())
         assert result.fingers[0].state is FingerState.INTERMEDIATE
@@ -246,6 +248,28 @@ def test_conflicting_finger_geometry_blocks_even_pinch():
     assert result.pinch.enter
     assert result.pose is HandPose.UNKNOWN and result.reasons == (Reason.FINGER_UNKNOWN,)
     assert result.fingers[1].reasons == (Reason.CONFLICTING_FEATURES,)
+
+
+@pytest.mark.parametrize("distance,axis,expected", [
+    (.5, 2., HandPose.FIST), (.501, 2., HandPose.UNKNOWN),
+    (.5, 2.001, HandPose.UNKNOWN),
+])
+def test_fist_intermediate_thumb_requires_explicit_opposition_and_axis(distance, axis, expected):
+    hand = _hand("FIST")
+    thumb = replace(hand.fingers[0], joint_angles_rad=(2., 2.), straightness=.8,
+        thumb=replace(hand.fingers[0].thumb, tip_to_index_mcp_palm=distance,
+                      tip_to_pinky_mcp_palm=1., axis_to_palm_rad=axis))
+    result = classify_pose(replace(hand, fingers=(thumb, *hand.fingers[1:])), _thresholds())
+    assert result.fingers[0].state is FingerState.INTERMEDIATE
+    assert result.pose is expected
+
+
+def test_fist_thumb_compatibility_never_overrides_conflicting_chain_or_pinch_band():
+    hand = _hand("FIST")
+    thumb = replace(hand.fingers[0], joint_angles_rad=(1., 1.), straightness=.95)
+    result = classify_pose(replace(hand, fingers=(thumb, *hand.fingers[1:])), _thresholds())
+    assert result.pose is HandPose.UNKNOWN and result.reasons == (Reason.FINGER_UNKNOWN,)
+    assert next(p.passed for p in result.predicates if p.name == "fist_thumb_compatible") is None
 
 
 def test_degenerate_geometry_propagates_reasons_and_unknown():

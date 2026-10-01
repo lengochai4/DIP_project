@@ -26,6 +26,7 @@ class TemporalReason(str, Enum):
     STABLE_TRANSITION = "STABLE_TRANSITION"
     SAFE_RELEASE = "SAFE_RELEASE"
     PINCH_BAND_HOLD = "PINCH_BAND_HOLD"
+    PINCH_BAND_WAIT = "PINCH_BAND_WAIT"
 
 
 @dataclass(frozen=True, slots=True)

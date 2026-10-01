@@ -166,9 +166,12 @@ def test_band_never_finishes_an_unconfirmed_pinch_entry():
     tracker = _ready()
     _update(tracker, HandPose.PINCH, .75)
     band = _update(tracker, HandPose.UNKNOWN, 1., band=True)
-    assert not band.pinch_latched and not band.armed
-    assert band.stable_pose is HandPose.UNKNOWN and band.pending_pose is None
-    assert not _update(tracker, HandPose.PINCH, 1.5).action_allowed
+    assert not band.pinch_latched and band.armed
+    assert not band.action_allowed and band.pending_pose is None
+    restarted = _update(tracker, HandPose.PINCH, 1.125)
+    assert restarted.candidate_since_s == 1.125 and not restarted.action_allowed
+    assert _update(tracker, HandPose.PINCH, 1.375).pinch_latched
+    assert band.stable_pose is HandPose.OPEN
 
 
 @pytest.mark.parametrize("start", [HandPose.OPEN, HandPose.PINCH])
@@ -379,6 +382,49 @@ def test_unknown_cannot_contribute_to_rearm_dwell():
     _update(tracker, HandPose.UNKNOWN, .25)
     state = _update(tracker, HandPose.OPEN, .375)
     assert state.rearm_since_s == .375 and not state.armed
+
+
+@pytest.mark.parametrize("distance", [.2, .3, .35])
+def test_band_does_not_rearm_or_bridge_release_dwell_even_at_equalities(distance):
+    tracker = TemporalPoseTracker(_config())
+    _update(tracker, HandPose.PINCH, 0.)
+    _update(tracker, HandPose.OPEN, .125)
+    for t in (.25, .5, .75):
+        obs = _obs(HandPose.UNKNOWN, t, band=True)
+        obs = replace(obs, pinch=replace(obs.pinch, distance_palm=distance))
+        state = tracker.update(obs, tracking_status=TrackingStatus.VALID)
+        assert not state.armed and not state.action_allowed
+        assert state.rearm_since_s is None and R.PINCH_BAND_WAIT in state.reasons
+    assert not _update(tracker, HandPose.PINCH, .875).armed
+    first = _update(tracker, HandPose.OPEN, 1.)
+    assert first.rearm_since_s == 1. and not first.armed
+    assert _update(tracker, HandPose.OPEN, 1.125).armed
+
+
+def test_return_to_pinch_cancels_release_dwell_without_band_counting_as_release():
+    tracker = _pinched()
+    _update(tracker, HandPose.OPEN, 1.125)
+    returned = _update(tracker, HandPose.PINCH, 1.25)
+    assert returned.pending_pose is None and returned.pinch_latched
+    assert R.CANDIDATE_CANCELLED in returned.reasons
+    band = _update(tracker, HandPose.UNKNOWN, 1.375, band=True)
+    assert not band.action_allowed
+    first = _update(tracker, HandPose.OPEN, 1.5)
+    assert first.candidate_since_s == 1.5 and not first.action_allowed
+    assert not _update(tracker, HandPose.OPEN, 1.75).action_allowed
+    assert _update(tracker, HandPose.OPEN, 1.875).stable_pose is HandPose.OPEN
+
+
+@pytest.mark.parametrize("status", [TrackingStatus.NO_HAND, TrackingStatus.INVALID,
+                                   TrackingStatus.REACQUIRED])
+def test_loss_or_reacquisition_overrides_earned_band_arm(status):
+    tracker = _ready()
+    assert _update(tracker, HandPose.UNKNOWN, .75, band=True).armed
+    state = tracker.update(_obs(HandPose.UNKNOWN, .875, band=True), tracking_status=status)
+    assert not state.armed and state.stable_pose is HandPose.UNKNOWN
+    returned = _update(tracker, HandPose.UNKNOWN, 1., band=True)
+    assert not returned.armed and not returned.action_allowed
+    assert not _update(tracker, HandPose.PINCH, 1.125).armed
 
 
 def test_a2_a3_a4_sequence_preserves_real_classifier_band_semantics():
