@@ -1328,10 +1328,12 @@ not use a webcam or physical hand input. Continue with the post-G7 roadmap in
    states without changing the frozen research baseline.
 9. **U8 — Automated validation — COMPLETE for the final presentation pass:**
    Extension/UI tests and full regression executed on 2026-10-01; see below.
-10. **U9/U10 — Physical validation and release — NOT STARTED:** exercise the complete
-   application with the webcam, document screenshots/demo instructions,
-   record limitations, and create a new post-G7 release identity without
-   moving `g7-final`.
+10. **U9 — Physical validation — NOT STARTED:** final webcam smoke remains optional
+    for the current submission-preparation task and is NOT RUN.
+11. **U10 — Submission preparation — COMPLETE; release pending:** setup/run guides,
+    package-path verification, demo flow, screenshot checklist and limitations
+    are prepared. Screenshots are not claimed captured. No release/tag was made;
+    a future post-G7 identity must not move `g7-final`.
 
 G8 is a product-direction phase, not a new scientific evaluation. Do not
 add cloud, account, telemetry-backend, or unrelated platform features.
@@ -1394,3 +1396,48 @@ Existing results invalidated: no.
 
 Implementation stopped after verification. Recommended single commit (not made):
 `feat(stem3d): finalize product presentation`.
+
+### U10 submission and demo preparation — 2026-10-01
+
+The preceding final-product-pass entry is historical. Its changes are now
+committed at `7bd1ebb` (`feat(stem3d): finalize product presentation`), the clean
+starting revision for this task. U10 preparation is COMPLETE within the user's
+documentation/verification scope; physical validation, final captures and release
+are pending. No new feature phase was started.
+
+Updated root/submission entry guides and added `submission/DEMO_GUIDE.md` and
+`models/README.md`. Setup includes the `demo3d` extra, the pinned model download
+and checksum, root-relative resources and writable session output. The demo flow
+is Workspace → Analysis → Evidence → STEM scenes with existing keyboard fallback.
+The live Raw/F0 path and frozen F1/F2 evidence are distinguished explicitly.
+
+Executed checks:
+
+- `.venv\Scripts\python.exe -m pytest -q`: 555 passed.
+- `.venv\Scripts\python.exe -m compileall extensions/stem3d`: passed.
+- `git diff --check`: passed.
+- `.venv\Scripts\python.exe -m pip check`: no broken requirements.
+- Existing environment imports/version checks and actual model initialize/close:
+  passed without a camera. No fresh-environment installation is claimed.
+- Local ignored source preview: 173 files, ZIP CRC/content checks, extracted
+  Core/demo imports and config/frozen-resource paths passed. This working-tree
+  preview includes the new guides, excludes the model/environment/caches/runs,
+  and is not a tagged release or the final hand-in archive.
+- Frozen checks match `g7-final`: 23 blobs across `FINAL_REPORT.md`,
+  `submission/evidence/`, `experiments/final/`, plus six PNG SHA-256 hashes.
+  This count excludes the intentionally updated, non-frozen `submission/README.md`.
+  Tag peeled commit remains `f454c6b8325c85199c0122c0e822fe8e76c1526c`.
+- Core/config/analysis/frozen/staged diffs empty. Five G9 source paths absent;
+  existing G9 stash retained at `d709da693e6adc4dec94e6925e7cd202ae0dd507`.
+
+Physical webcam smoke: NOT RUN. Existing automated lifecycle tests cover startup,
+cancellation, component errors and cleanup; no physical shutdown observation is
+claimed. No additional obsolete production/debug code was clearly safe to remove;
+the synthetic renderer smoke and ignored QA artifacts remain separate from the
+final application and submission evidence.
+
+Canonical change: current status and validation only. Algorithmic, experimental,
+interaction, sensitivity, dependency and UI architecture changes: NONE. Existing
+results invalidated: no. No stage, commit, push or tag performed. Recommended
+commit: `docs: finalize submission and demo package`; release preparation should
+use a new post-G7 tag only after review and record any omitted physical validation.

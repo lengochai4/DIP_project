@@ -70,7 +70,7 @@ python -m pip install --upgrade pip
 Install the project and development dependencies:
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,demo3d]"
 ```
 
 Verify the environment:
@@ -87,6 +87,28 @@ pytest
 ```
 
 ---
+
+### Final submission / demo
+
+Download and verify `models/hand_landmarker.task` as described in
+[model setup](models/README.md). From the repository root, with the environment
+above activated, run:
+
+```powershell
+python -m extensions.stem3d.live_demo
+```
+
+Press S or Enter to start; Q or Escape to exit. This is the integrated
+Workspace / Analysis / Evidence application on the legacy interaction path.
+The live entry point uses Raw (F0); frozen F1/F2 comparisons are evidence,
+not a live filter selector. For an optional synthetic renderer smoke without
+a camera or model, use `python -m extensions.stem3d.demo`.
+
+Use the [submission guide](submission/README.md) for package contents and
+validation, and the [demo flow and screenshot checklist](submission/DEMO_GUIDE.md)
+for the presentation. Deliver the repository source tree, not just a wheel:
+the demo resources and Extension are outside the installed Core package.
+G9 remains deferred and is not part of the submission path.
 
 ## 4. Project structure
 

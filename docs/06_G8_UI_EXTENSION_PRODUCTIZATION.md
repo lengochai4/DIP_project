@@ -1322,4 +1322,18 @@ visual QA covers four desktop sizes and 69 local render surfaces. Final UI
 physical smoke: NOT RUN. All frozen artifact checks passed. No stage, commit,
 push, new release/tag, G9 restoration or subsequent feature phase was performed.
 
+## 26. U10 submission handoff — 2026-10-01
+
+Submission preparation is complete; physical validation, final screenshot capture
+and release remain pending. The setup/package entry point is
+[`submission/README.md`](../submission/README.md); the presentation sequence and
+capture checklist are in [`submission/DEMO_GUIDE.md`](../submission/DEMO_GUIDE.md).
+External model setup is in [`models/README.md`](../models/README.md).
+
+The delivery is a repository source package with demo/config/evidence paths
+preserved, not a standalone Core wheel. Model download is separate from a Git
+archive. Frozen artifacts, Core, legacy interaction, sensitivity and architecture
+are unchanged. G9 remains deferred/stashed. Executed checks and explicit NOT RUN
+physical status are recorded in `05_PROJECT_STATUS_AND_ROADMAP.md`.
+
 ---
