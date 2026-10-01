@@ -9,34 +9,27 @@ import cv2
 import numpy as np
 
 from ..application import RendererFailure
+from ..scenes.molecule import MOLECULE_PRESETS
 from .dashboard import LiveDashboard, _tracking_label, _tracking_badge_color
 from .icons import draw_icon
 from .layout import Rect, fit_aspect_rect
 from .presentation_model import ApplicationPhase, DashboardMode
 from .shell_layout import calculate_shell_layout, ShellLayout
 from .spatial_panel import PanelButton, SpatialPanelLayout
+from .shortcuts import HELP_LINES
 from .theme import THEME
 
 
 MODE_LABELS = {DashboardMode.DEMO: "Workspace", DashboardMode.ANALYSIS: "Analysis",
                DashboardMode.EVIDENCE: "Evidence"}
 SCENE_LABELS = {"coordinate-geometry": "Coordinate Geometry",
-                "molecule": "Molecular Geometry", "orbital-system": "Orbital System"}
+                "molecule": "Molecule", "orbital-system": "Orbital"}
 SCENE_DESCRIPTIONS = {
     "coordinate-geometry": "Explore axes, spatial orientation and transformations.",
     "molecule": "Explore molecular structure and bond geometry.",
-    "orbital-system": "Explore relative motion along educational circular orbits.",
+    "orbital-system": "Simplified elliptical orbit / educational model.",
 }
-HELP_LINES = (
-    ("TOUCHLESS", "Move index finger to rotate. Pinch to scale."),
-    ("CONTROL SPACE", "Move the pointer, release, then pinch once to select."),
-    ("SCENES", "1 / 2 / 3 selects Geometry / Molecule / Orbital."),
-    ("MODES", "D Workspace   A Analysis   E Evidence"),
-    ("ACTIONS", "P Control Space   R Reset   F1 / ? Help"),
-    ("CONTEXT", "H / C selects Water / Methane in Molecular Geometry."),
-    ("EVIDENCE", "[ / ] changes the frozen evidence page."),
-    ("EXIT", "Q / ESC exits. Window close releases the application."),
-)
+EVIDENCE_PAGE_ORDER = (0, 3, 4, 1, 2, 5)
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,12 +51,12 @@ def build_drawer_layout(width, height, *, active_scene_id=None,
                        interaction_available, scene_id == active_scene_id))
     for index, (value, label) in enumerate(MODE_LABELS.items()):
         buttons.append(PanelButton(f"mode:{value.value}", label,
-                       Rect(x, rect.y+246+index*38, w, 32),
+                       Rect(x+index*(w//3), rect.y+298, w//3-4, 32),
                        interaction_available, value is mode))
     for index, (action, label) in enumerate((("reset", "Reset Scene"),
                                              ("close", "Close"))):
         buttons.append(PanelButton(action, label,
-                       Rect(x, rect.bottom-86+index*42, w, 34),
+                       Rect(x+index*(w//2+4), rect.bottom-52, w//2-4, 34),
                        interaction_available))
     return SpatialPanelLayout(rect, tuple(buttons))
 
@@ -235,7 +228,12 @@ class ProductDashboard(LiveDashboard):
             elif hit in {"previous", "next"}:
                 self._change_evidence_page(-1 if hit == "previous" else 1)
             elif hit.startswith("page:"):
-                self._change_evidence_page(int(hit.split(":", 1)[1]) - self._evidence_page_index)
+                self._evidence_page_index=int(hit.split(":", 1)[1])
+
+    def _change_evidence_page(self, direction):
+        position=EVIDENCE_PAGE_ORDER.index(self._evidence_page_index)
+        position=max(0,min(len(EVIDENCE_PAGE_ORDER)-1,position+direction))
+        self._evidence_page_index=EVIDENCE_PAGE_ORDER[position]
 
     def _toggle_help(self):
         self._help_open = not self._help_open
@@ -370,15 +368,14 @@ class ProductDashboard(LiveDashboard):
                     color=color,width=148)
         cv2.line(canvas,(0,layout.header.bottom),(layout.width,layout.header.bottom),
                  THEME.divider,1)
-        self._text(canvas,"SCENES",layout.sidebar.x+8,layout.sidebar.y+22,
-                    scale=THEME.font_caption,color=THEME.text_muted)
         active = self._spatial_panel_state.active_scene_id or "coordinate-geometry"
-        for index,(scene_id,label) in enumerate(SCENE_LABELS.items()):
+        scene_width = THEME.shell_scene_button_width
+        for index,(scene_id,label) in enumerate(() if self.mode is DashboardMode.EVIDENCE else SCENE_LABELS.items()):
             icon = {"coordinate-geometry":"geometry","molecule":"molecule",
                     "orbital-system":"orbit"}[scene_id]
-            self._button(canvas,f"scene:{scene_id}",label.replace(" ","\n",1),
-                         Rect(layout.sidebar.x,layout.sidebar.y+40+index*68,
-                              layout.sidebar.width,60),icon=icon,
+            self._button(canvas,f"scene:{scene_id}",label,
+                         Rect(layout.sidebar.x+index*(scene_width+8),layout.sidebar.y,
+                              scene_width,layout.sidebar.height),icon=icon,
                          selected=active==scene_id,
                          enabled=app.phase is ApplicationPhase.RUNNING)
         cv2.line(canvas,(0,layout.footer.y),(layout.width,layout.footer.y),THEME.divider,1)
@@ -388,7 +385,9 @@ class ProductDashboard(LiveDashboard):
             self._button(canvas,key,label,Rect(x,layout.footer.y+7,width,34),
                          icon=icon,enabled=(key=="help" or app.phase is ApplicationPhase.RUNNING))
         status = ("Read-only G7 results / Live session is separate" if evidence
-                  else app.status_message or "Local scientific visualization")
+                  else "Pinch to scale" if state and state.interaction.valid and state.interaction.pinch_active
+                  else "Index motion to rotate" if state and state.interaction.valid
+                  else "Waiting for a hand" if state else app.status_message or "Local scientific visualization")
         self._text(canvas,status,layout.width-480,layout.footer.y+29,
                     scale=THEME.font_caption,color=THEME.text_secondary,width=460)
 
@@ -403,34 +402,37 @@ class ProductDashboard(LiveDashboard):
                 self._button(canvas,f"preset:{key}",key,
                              Rect(rect.right-138+index*62,rect.y+10,56,30),
                              selected=key in application.active_scene)
-        self._text(canvas,SCENE_DESCRIPTIONS[scene_id],rect.x+16,rect.bottom-19,
-                    scale=THEME.font_caption,color=THEME.text_secondary,width=rect.width-32)
+        note = ("+X red / +Y green / +Z blue / origin gold" if scene_id == "coordinate-geometry"
+                else application.active_scene if scene_id == "molecule"
+                else SCENE_DESCRIPTIONS[scene_id])
         if scene_id == "molecule":
-            self._text(canvas,application.active_scene,rect.x+16,rect.bottom-42,
-                        scale=THEME.font_caption,color=THEME.text_muted,width=rect.width-32)
-        else:
-            self._text(canvas,"Index motion rotates / Pinch scales",rect.x+16,rect.bottom-42,
-                       scale=THEME.font_caption,color=THEME.text_muted,width=rect.width-32)
-        return Rect(rect.x+1,rect.y+48,rect.width-2,rect.height-112)
+            preset = MOLECULE_PRESETS["CH4" if "CH4" in application.active_scene else "H2O"]
+            note = (f"{preset.name} ({preset.formula}) / {preset.geometry_name} / "
+                    f"approx. {preset.approximate_bond_angle_deg:g} deg")
+        self._text(canvas,note,rect.x+16,rect.bottom-18,
+                   scale=THEME.font_caption,color=THEME.text_secondary,width=rect.width-32)
+        return Rect(rect.x+1,rect.y+48,rect.width-2,rect.height-84)
 
     def _vision(self, canvas, rect, image, state):
-        preview_height = min(rect.height-140, round((rect.width-24)*image.shape[0]/image.shape[1]))
+        preview_height = min(rect.height-112, round((rect.width-24)*image.shape[0]/image.shape[1]))
         proxy = SimpleNamespace(vision=rect, vision_image=Rect(
             rect.x+12,rect.y+44,rect.width-24,max(1,preview_height)))
-        self._draw_camera(canvas,proxy,image,state,self.mode)
+        self._draw_camera(canvas,proxy,image,state,self.mode,
+                          show_roi=self.mode is DashboardMode.ANALYSIS)
         # Replace the legacy camera heading using the same pixel transform.
         cv2.rectangle(canvas,(rect.x+2,rect.y+2),(rect.right-2,rect.y+34),THEME.surface,-1)
         draw_icon(canvas,"camera",rect.x+12,rect.y+10,color=THEME.text_secondary)
         self._text(canvas,"Live Vision",rect.x+40,rect.y+26,scale=THEME.font_section)
         y = proxy.vision_image.bottom+32
-        self._text(canvas,_tracking_label(state.tracking_status),rect.x+12,y,
-                    scale=THEME.font_caption,color=_tracking_badge_color(state.tracking_status),
-                    width=rect.width-24)
+        self._text(canvas,"Pinch active" if state.interaction.valid and state.interaction.pinch_active
+                   else "Interaction ready" if state.interaction.valid else "Interaction unavailable",
+                   rect.x+12,y,scale=THEME.font_caption,color=THEME.text_secondary,width=rect.width-24)
         hint = {"NO_HAND":"Move your hand into view.","TEMPORARY_LOSS":"Waiting for tracking to return.",
                 "REACQUIRED":"Release pinch to resume.","INVALID":"Observation unavailable."}.get(
                     state.tracking_status,"Touchless control ready." if state.interaction.valid
                     else "Keyboard controls available.")
-        self._paragraph(canvas,hint,Rect(rect.x+12,y+14,rect.width-24,50),max_lines=2)
+        if self.mode is not DashboardMode.ANALYSIS:
+            self._paragraph(canvas,hint,Rect(rect.x+12,y+14,rect.width-24,50),max_lines=2)
         if self.mode is DashboardMode.ANALYSIS:
             self._text(canvas,"Frame normalized / unmirrored",rect.x+12,rect.bottom-12,
                         scale=THEME.font_caption,color=THEME.text_muted,width=rect.width-24)
@@ -439,22 +441,23 @@ class ProductDashboard(LiveDashboard):
         self._box(canvas,rect)
         self._text(canvas,"DIP Pipeline",rect.x+12,rect.y+20,scale=THEME.font_section)
         roi, light = state.roi, state.illumination
-        items = (("camera","Camera","Ready"),("roi","ROI",roi.state if roi else "Unavailable"),
-                 ("illumination","Light",light.state if light else "Unavailable"),
+        items = (("camera","Camera","Ready"),("roi","ROI",roi.state.title() if roi else "Unavailable"),
+                 ("illumination","Illumination",light.state.replace('_',' ').title() if light else "Unavailable"),
                  ("enhancement","CLAHE","Active" if light and light.enhancement_active else
                   "Bypass" if light else "Unavailable"),
-                 ("tracking","Tracking",_tracking_label(state.tracking_status)),
-                 ("filter","Filter",{"RAW":"F0 / Raw","ONE_EURO_FIXED":"F1",
+                 ("tracking","Landmark Tracking",_tracking_label(state.tracking_status)),
+                 ("filter","Temporal Filter",{"RAW":"F0 / Raw","ONE_EURO_FIXED":"F1",
                   "ONE_EURO_ADAPTIVE":"F2"}.get(state.filter.mode,state.filter.mode)),
                  ("gesture","Gesture","Valid" if state.interaction.valid else "Neutral"),
-                 ("interaction","Interaction","Ready" if state.interaction.valid else "Unavailable"))
+                 ("interaction","InteractionState","Valid" if state.interaction.valid else "Neutral"))
         step = (rect.width-24)//len(items)
+        label_scale=min(THEME.font_caption, THEME.font_caption*(step-10)/
+                        max(self._text_width(label,THEME.font_caption) for _,label,_ in items))
         for index,(icon,label,value) in enumerate(items):
             x=rect.x+12+index*step
-            self._text(canvas,label,x,rect.y+43,scale=THEME.font_caption,width=step-8)
-            draw_icon(canvas,icon,x,rect.y+51,size=THEME.icon_sm,color=THEME.text_secondary)
-            self._text(canvas,value,x+21,rect.y+64,scale=THEME.font_caption,
-                        color=THEME.text_secondary,width=step-25)
+            self._text(canvas,label,x,rect.y+43,scale=label_scale,width=step-8)
+            self._text(canvas,value,x,rect.y+64,scale=THEME.font_caption,
+                        color=THEME.text_secondary,width=step-8)
             if index < len(items)-1:
                 cv2.line(canvas,(x+step-8,rect.y+48),(x+step-4,rect.y+52),THEME.divider,1)
                 cv2.line(canvas,(x+step-4,rect.y+52),(x+step-8,rect.y+56),THEME.divider,1)
@@ -465,20 +468,26 @@ class ProductDashboard(LiveDashboard):
                       (target.right-1,target.bottom-1),THEME.preview_background,-1)
         for index,(label,color) in enumerate((("Raw",THEME.landmark_raw),
                 ("Filtered",THEME.landmark_filtered),("Pointer",THEME.tracking_valid))):
-            x=target.x+8+index*(target.width//3)
+            x=target.x+4+index*(target.width//3)
             cv2.circle(canvas,(x+3,target.bottom-12),3,color,1,cv2.LINE_AA)
-            self._text(canvas,label,x+12,target.bottom-7,scale=THEME.font_caption,
-                       width=target.width//3-23)
+            self._text(canvas,label,x+10,target.bottom-7,scale=THEME.font_small,
+                       width=target.width//3-14)
 
     def _diagnostics(self, canvas, rect, state, application):
         self._box(canvas,rect)
         light=state.illumination
-        values=((f"Mean V {self._fmt(light.mean_v if light else None)}",
-                 f"Range V {self._fmt(light.robust_range_v if light else None)}"),
+        interaction=state.interaction
+        rotation=("Unavailable" if interaction.rotation_delta is None else
+                  f"{interaction.rotation_delta[0]:+.3f}, {interaction.rotation_delta[1]:+.3f} rad")
+        values=((f"Mean V {self._fmt(light.mean_v if light else None)} / Range V {self._fmt(light.robust_range_v if light else None)}",
+                 f"Pinch ratio {self._fmt(interaction.pinch_ratio)}",
+                 f"Run {application.run_id}"),
                 (f"Filter dt {self._fmt(state.filter.dt_s)} s",
-                 f"Cutoff {self._fmt(state.filter.cutoff_hz)} Hz"),
-                (f"Pinch {self._fmt(state.interaction.pinch_ratio)}",
-                 f"Interaction {'valid' if state.interaction.valid else 'unavailable'}"))
+                 f"Cutoff {self._fmt(state.filter.cutoff_hz)} Hz",
+                 f"Core compute {self._fmt(state.filter.compute_total_ms)} ms"),
+                (f"Rotation {rotation}",
+                 f"Scale delta {self._fmt(interaction.scale_delta)}",
+                 f"Frame {state.frame_id} / {state.timestamp_s:.3f} s"))
         step=rect.width//3
         for i,lines in enumerate(values):
             for row,text in enumerate(lines):
@@ -500,8 +509,12 @@ class ProductDashboard(LiveDashboard):
         valid=self._spatial_panel_state.interaction_available
         self._text(canvas,"Release, then pinch to select" if valid else "Keyboard controls remain available",
                     rect.x+16,rect.y+55,scale=THEME.font_caption,color=THEME.text_muted,width=rect.width-32)
-        for label,y in (("SCENE",72),("MODE",234)):
+        for label,y in (("Scene",72),("Interaction",234),("View",286)):
             self._text(canvas,label,rect.x+16,rect.y+y,scale=THEME.font_caption,color=THEME.text_muted)
+        self._text(canvas,"Index motion rotates / Pinch scales",rect.x+16,rect.y+257,
+                   scale=THEME.font_caption,width=rect.width-32)
+        self._text(canvas,"Help: F1 / ?",rect.x+16,rect.bottom-78,
+                   scale=THEME.font_caption,color=THEME.text_muted,width=rect.width-32)
         view=self._spatial_panel_state
         for button in panel.buttons:
             self._button(canvas,button.button_id,button.label,button.rect,
@@ -516,7 +529,8 @@ class ProductDashboard(LiveDashboard):
         rect=Rect(bounds.x+(bounds.width-min(620,bounds.width))//2,bounds.y+16,
                   min(620,bounds.width),min(430,bounds.height-32))
         self._box(canvas,rect,fill=THEME.surface_overlay,border=THEME.border)
-        self._text(canvas,"Help / Touchless workspace",rect.x+24,rect.y+36,scale=THEME.font_view)
+        self._text(canvas,"Help / Touchless workspace",rect.x+24,rect.y+36,
+                   scale=THEME.font_view,width=rect.width-124)
         self._button(canvas,"help","Close",Rect(rect.right-85,rect.y+12,70,30))
         for i,(title,body) in enumerate(HELP_LINES):
             y=rect.y+72+i*39
@@ -603,11 +617,13 @@ class ProductDashboard(LiveDashboard):
         catalog=self._evidence_catalog
         self._text(canvas,"Frozen G7 Research Results",bounds.x,bounds.y+26,scale=THEME.font_view)
         self._button(canvas,"provenance","Provenance",Rect(bounds.right-156,bounds.y,156,34),icon="evidence")
-        labels=("Overview","B Normal","B Low-light","A1","A2","RQ3 / DIP")
-        tab_w=min(115,(bounds.width-12)//6)
-        for i,label in enumerate(labels):
+        # Presentation order only; catalog page identities/provenance stay intact.
+        labels=((0,"Overview"),(3,"A1 Static"),(4,"A2 Dynamic"),
+                (1,"B Normal"),(2,"B Low-light"),(5,"RQ3 / Demo"))
+        tab_w=min(THEME.shell_evidence_tab_width,(bounds.width-12)//6)
+        for position,(i,label) in enumerate(labels):
             key=f"page:{i}"
-            self._button(canvas,key,label,Rect(bounds.x+i*(tab_w+2),bounds.y+43,tab_w,32),
+            self._button(canvas,key,label,Rect(bounds.x+position*(tab_w+2),bounds.y+43,tab_w,32),
                          selected=i==self._evidence_page_index)
         body=Rect(bounds.x,bounds.y+89,bounds.width,bounds.height-119)
         c=catalog.content
@@ -622,9 +638,12 @@ class ProductDashboard(LiveDashboard):
                           body.width//2-8,body.height//2-8)
                 self._box(canvas,rect)
                 self._text(canvas,title,rect.x+16,rect.y+28,scale=THEME.font_section,width=rect.width-32)
-                self._paragraph(canvas,result,Rect(rect.x+16,rect.y+46,rect.width-32,80),max_lines=3)
-                self._paragraph(canvas,limitation,Rect(rect.x+16,rect.bottom-76,rect.width-32,70),
-                                max_lines=3,color=THEME.warning)
+                self._text(canvas,"UNAVAILABLE" if i==2 else "AVAILABLE / LIMITATION",
+                           rect.x+16,rect.y+49,scale=THEME.font_caption,
+                           color=THEME.warning if i==2 else THEME.text_muted,width=rect.width-32)
+                self._paragraph(canvas,result,Rect(rect.x+16,rect.y+63,rect.width-32,60),max_lines=2)
+                self._paragraph(canvas,limitation,Rect(rect.x+16,rect.bottom-60,rect.width-32,50),
+                                max_lines=2,color=THEME.warning)
         elif index in {1,2}:
             left=Rect(body.x,body.y,int(body.width*.56),body.height)
             right=Rect(left.right+16,body.y,body.right-left.right-16,body.height)
@@ -639,16 +658,18 @@ class ProductDashboard(LiveDashboard):
             self._paragraph(canvas,c.b_no_improvement,
                             Rect(right.x+16,right.bottom-86,right.width-32,80),max_lines=4)
         elif index==3:
-            graph_h=int(body.height*.56)
-            self._asset(canvas,"a1_static_jitter",Rect(body.x,body.y,body.width,graph_h))
-            notes=Rect(body.x,body.y+graph_h+12,body.width,body.height-graph_h-12)
+            graph=Rect(body.x,body.y,int(body.width*.56),body.height)
+            self._asset(canvas,"a1_static_jitter",graph)
+            notes=Rect(graph.right+16,body.y,body.right-graph.right-16,body.height)
             self._box(canvas,notes)
             batch=catalog.batch("a1_static")
             self._text(canvas,f"A1 / {batch.evaluable_trial_count} of {batch.recorded_trial_count} trials evaluable",notes.x+16,notes.y+25,
-                        scale=THEME.font_section)
-            self._paragraph(canvas,c.a1_result,Rect(notes.x+16,notes.y+37,notes.width-32,60),max_lines=2)
-            self._paragraph(canvas,c.a1_caution,Rect(notes.x+16,notes.y+83,notes.width-32,60),
-                            max_lines=2,color=THEME.warning)
+                        scale=THEME.font_section,width=notes.width-32)
+            self._paragraph(canvas,c.a1_result,Rect(notes.x+16,notes.y+48,notes.width-32,100),max_lines=5)
+            self._text(canvas,"LIMITATION",notes.x+16,notes.y+185,
+                       scale=THEME.font_caption,color=THEME.warning)
+            self._paragraph(canvas,c.a1_caution,Rect(notes.x+16,notes.y+197,notes.width-32,140),
+                            max_lines=7,color=THEME.warning)
         elif index==4:
             self._box(canvas,body)
             draw_icon(canvas,"warning",body.x+24,body.y+24,size=THEME.icon_lg,color=THEME.warning)
@@ -678,9 +699,9 @@ class ProductDashboard(LiveDashboard):
                     bounds.x,bounds.bottom-6,scale=THEME.font_caption,color=THEME.text_muted,
                     width=bounds.width-180)
         self._button(canvas,"previous","Previous",Rect(bounds.right-172,bounds.bottom-29,80,28),
-                     enabled=index>0)
+                     enabled=EVIDENCE_PAGE_ORDER.index(index)>0)
         self._button(canvas,"next","Next",Rect(bounds.right-84,bounds.bottom-29,80,28),
-                     enabled=index<len(catalog.pages)-1)
+                     enabled=EVIDENCE_PAGE_ORDER.index(index)<len(EVIDENCE_PAGE_ORDER)-1)
 
     def build_application_state_screen(self, application, *, width=None, height=None):
         self._last_application_state = application
@@ -694,7 +715,9 @@ class ProductDashboard(LiveDashboard):
         self._box(canvas,rect)
         phase=application.phase
         titles={"camera":"Camera unavailable","model/provider":"Hand model unavailable",
-                "renderer":"Renderer unavailable","dashboard":"Application view unavailable"}
+                "renderer":"Renderer unavailable","dashboard":"Application view unavailable",
+                "logging":"Run logging unavailable","scene":"Scene unavailable",
+                "runtime":"Processing stopped unexpectedly"}
         title=titles.get(application.failure_component,"Application error") if phase is ApplicationPhase.ERROR else {
             ApplicationPhase.READY:"Your touchless STEM workspace",
             ApplicationPhase.STARTING:"Initializing your workspace",
@@ -716,13 +739,16 @@ class ProductDashboard(LiveDashboard):
         if phase is ApplicationPhase.ERROR:
             guidance={"camera":"Check the webcam connection and restart the application.",
                       "model/provider":"Check the local hand model and restart the application.",
-                      "renderer":"Check graphics support and the optional demo3d dependencies."}.get(
+                      "renderer":"Check graphics support and the optional demo3d dependencies.",
+                      "logging":"Check output-folder access and available disk space, then restart.",
+                      "scene":"Close the application and check the local scene resources.",
+                      "runtime":"Close the application. Review the console details before restarting."}.get(
                           application.failure_component,"Close the application and restart.")
             self._paragraph(canvas,guidance,Rect(rect.x+24,rect.y+222,rect.width-48,80))
             self._text(canvas,"Q / ESC exits safely.",rect.x+24,rect.bottom-30,
                         scale=THEME.font_caption,color=THEME.text_muted)
         elif phase is ApplicationPhase.READY:
-            self._button(canvas,"start","Start Workspace",Rect(rect.x+24,rect.bottom-94,190,42),icon="ready")
+            self._button(canvas,"start","Start Workspace",Rect(rect.x+24,rect.bottom-94,190,42),icon="ready",selected=True)
             self._text(canvas,"S / Enter / Space starts",rect.x+24,rect.bottom-28,
                         scale=THEME.font_caption,color=THEME.text_muted)
         if self._help_open:

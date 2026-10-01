@@ -34,6 +34,7 @@ from .spatial_panel import (
     build_spatial_panel_layout,
 )
 from .theme import THEME
+from .shortcuts import SCENE_SHORTCUTS
 
 
 _ANALYSIS_PIPELINE_LINES = (
@@ -645,11 +646,7 @@ class LiveDashboard:
             key in {ord("1"), ord("2"), ord("3")}
             and self._controls_active()
         ):
-            scene_id = {
-                ord("1"): "coordinate-geometry",
-                ord("2"): "molecule",
-                ord("3"): "orbital-system",
-            }[key]
+            scene_id = SCENE_SHORTCUTS[key]
             if self._scene_select_action is not None:
                 self._scene_select_action(scene_id)
         elif (
@@ -1787,6 +1784,8 @@ class LiveDashboard:
         image_bgr: np.ndarray,
         state: PresentationState,
         mode: DashboardMode,
+        *,
+        show_roi: bool = True,
     ) -> None:
         self._draw_card(canvas, layout.vision, "CAMERA VIEW")
         image_h, image_w = image_bgr.shape[:2]
@@ -1796,7 +1795,7 @@ class LiveDashboard:
             layout.vision_image,
         )
         preview = cv2.resize(
-            image_bgr.copy(),
+            image_bgr,
             (target.width, target.height),
             interpolation=(
                 cv2.INTER_AREA
@@ -1808,7 +1807,7 @@ class LiveDashboard:
         x2, y2 = target.right, target.bottom
         canvas[y1:y2, x1:x2] = preview
 
-        if state.roi is not None:
+        if show_roi and state.roi is not None:
             rx, ry, rw, rh = state.roi.bounds_xywh
             sx = target.width / image_w
             sy = target.height / image_h
@@ -2879,11 +2878,11 @@ def _availability_label(value: bool | None) -> str:
 
 def _tracking_label(status: str) -> str:
     return {
-        "VALID": "VALID",
-        "NO_HAND": "NO HAND",
-        "TEMPORARY_LOSS": "TRACKING LOST",
-        "REACQUIRED": "REACQUIRING",
-        "INVALID": "INVALID",
+        "VALID": "Tracking",
+        "NO_HAND": "No Hand",
+        "TEMPORARY_LOSS": "Tracking Lost",
+        "REACQUIRED": "Reacquired",
+        "INVALID": "Unavailable",
     }.get(status, status)
 
 

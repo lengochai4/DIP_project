@@ -11,6 +11,7 @@ import numpy as np
 
 from .renderer import OpenGLStemRenderer
 from .ui.layout import Rect
+from .ui.theme import THEME
 from .scenes.visuals import SceneFrame
 
 
@@ -55,6 +56,11 @@ class ApplicationShellRenderer(OpenGLStemRenderer):
         self._validate_frame(frame)
         self._scene_frame = frame
 
+    def _scene_view_angles(self, frame: SceneFrame) -> tuple[float, float]:
+        if frame.scene_id in {"coordinate-geometry", "orbital-system"}:
+            return (THEME.scene_view_pitch_deg, THEME.scene_view_yaw_deg)
+        return (0.0, 0.0)
+
     def close_requested(self) -> bool:
         self._require_open()
         pygame = self._pygame
@@ -92,6 +98,7 @@ class ApplicationShellRenderer(OpenGLStemRenderer):
         self._canvas_size = (canvas.shape[1], canvas.shape[0])
         sx, sy = self._width / canvas.shape[1], self._height / canvas.shape[0]
         gl.glViewport(0, 0, self._width, self._height)
+        gl.glClearColor(*(channel/255 for channel in reversed(THEME.background)), 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         if viewport is not None and self._scene_frame is not None:
             target = Rect(round(viewport.x*sx), round(viewport.y*sy),

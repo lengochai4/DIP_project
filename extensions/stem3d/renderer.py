@@ -179,6 +179,9 @@ class OpenGLStemRenderer:
         assert gl is not None
         gl.glLoadIdentity()
         gl.glTranslatef(0.0, 0.0, -5.6)
+        view_pitch, view_yaw = self._scene_view_angles(frame)
+        gl.glRotatef(view_pitch, 1.0, 0.0, 0.0)
+        gl.glRotatef(view_yaw, 0.0, 1.0, 0.0)
         gl.glRotatef(math.degrees(frame.transform.pitch_rad), 1.0, 0.0, 0.0)
         gl.glRotatef(math.degrees(frame.transform.yaw_rad), 0.0, 1.0, 0.0)
         gl.glScalef(
@@ -191,6 +194,10 @@ class OpenGLStemRenderer:
         self._draw_lines(frame.lines)
         gl.glEnable(gl.GL_LIGHTING)
         self._draw_spheres(frame.spheres)
+
+    def _scene_view_angles(self, frame: SceneFrame) -> tuple[float, float]:
+        """Presentation camera framing; never changes the scene transform."""
+        return (0.0, 0.0)
 
     def close(self) -> None:
         """Release the reusable GLU quadric and Pygame display resources."""

@@ -53,7 +53,7 @@ def sample():
     return packet.image, state, ApplicationState("g8-demo-test", ApplicationPhase.RUNNING)
 
 
-@pytest.mark.parametrize("size", [(1024,640),(1280,720),(1600,900),(1920,1080)])
+@pytest.mark.parametrize("size", [(1024,640),(1280,720),(1440,900),(1600,900),(1920,1080)])
 @pytest.mark.parametrize("mode", list(DashboardMode))
 def test_shell_layout_is_bounded_and_modes_are_distinct(size, mode):
     layout = calculate_shell_layout(*size, mode)
@@ -253,7 +253,8 @@ def test_all_pipeline_stage_labels_fit_the_minimum_size(sample):
     dashboard.set_mode(DashboardMode.ANALYSIS)
     labels=[]
     original=dashboard._text
-    stages={"Camera","ROI","Light","CLAHE","Tracking","Filter","Gesture","Interaction"}
+    stages={"Camera","ROI","Illumination","CLAHE","Landmark Tracking",
+            "Temporal Filter","Gesture","InteractionState"}
     def capture(canvas,text,*args,**kwargs):
         if text in stages:
             labels.append(text)
@@ -325,3 +326,98 @@ def test_new_drawer_preserves_rising_edge_rearm_and_scene_focus_rules():
     assert not router.route(state,None).forward_to_scene
     assert not router.route(released,None).forward_to_scene
     assert router.route(state,None).forward_to_scene
+
+
+@pytest.mark.parametrize("size",[(1280,720),(1440,900),(1600,900),(1920,1080)])
+def test_final_workspace_priority_and_drawer_nonoverlap(size):
+    layout=calculate_shell_layout(*size)
+    assert .70 <= layout.stem.width/layout.content.width <= .80
+    assert layout.sidebar.height == THEME.shell_scene_bar_height
+    assert layout.vision.height <= THEME.shell_vision_max_height
+    panel=build_drawer_layout(*size)
+    for i,button in enumerate(panel.buttons):
+        assert panel.viewport.x <= button.rect.x < button.rect.right <= panel.viewport.right
+        assert panel.viewport.y <= button.rect.y < button.rect.bottom <= panel.viewport.bottom
+        for other in panel.buttons[i+1:]:
+            assert (button.rect.right <= other.rect.x or other.rect.right <= button.rect.x
+                    or button.rect.bottom <= other.rect.y or other.rect.bottom <= button.rect.y)
+
+
+def test_workspace_hides_engineering_and_analysis_exposes_actual_outputs(sample):
+    dashboard=ProductDashboard(window_host=FakeHost())
+    texts=[]
+    original=dashboard._text
+    def capture(canvas,text,*args,**kwargs):
+        texts.append(text)
+        return original(canvas,text,*args,**kwargs)
+    dashboard._text=capture
+    dashboard.build_surface(*sample)
+    assert not any(text.startswith(('Run ','Core compute','Filter dt','Pinch ratio','Rotation ')) for text in texts)
+    texts.clear()
+    dashboard.set_mode(DashboardMode.ANALYSIS)
+    dashboard.build_surface(*sample)
+    assert 'Rotation +0.010, -0.020 rad' in texts
+    assert 'Scale delta 0.030' in texts
+    assert 'Core compute 3.300 ms' in texts
+    assert 'Run g8-demo-test' in texts
+    assert 'Frame normalized / unmirrored' in texts
+
+
+def test_evidence_navigation_follows_visible_sections_and_hides_scene_navigation(sample):
+    dashboard=ProductDashboard(window_host=FakeHost())
+    dashboard.set_mode(DashboardMode.EVIDENCE)
+    dashboard.build_surface(*sample)
+    assert not any(key.startswith('scene:') for key in dashboard._targets)
+    for index in (3,4,1,2,5):
+        dashboard.handle_key(ord(']'))
+        assert dashboard.evidence_page_index == index
+    dashboard.handle_key(ord(']'))
+    assert dashboard.evidence_page_index == 5
+    for index in (2,1,4,3,0):
+        dashboard.handle_key(ord('['))
+        assert dashboard.evidence_page_index == index
+
+
+@pytest.mark.parametrize('component', ['camera','model/provider','renderer','logging','scene','runtime'])
+def test_error_guidance_remains_user_facing(component):
+    dashboard=ProductDashboard(window_host=FakeHost())
+    texts=[]
+    original=dashboard._paragraph
+    def capture(canvas,text,*args,**kwargs):
+        texts.append(text)
+        return original(canvas,text,*args,**kwargs)
+    dashboard._paragraph=capture
+    app=ApplicationState('qa',ApplicationPhase.ERROR,failure_component=component,
+        error_message='Traceback: internal provider detail')
+    dashboard.build_application_state_screen(app)
+    assert any('restart' in text.lower() or 'check' in text.lower() for text in texts)
+    assert not any('Traceback' in text for text in texts)
+
+
+def test_camera_framing_is_presentation_only():
+    from extensions.stem3d.scenes import build_tier1_scene_registry
+    renderer=ApplicationShellRenderer(width=1280,height=720,target_fps=30)
+    registry=build_tier1_scene_registry(initial_scale=1.,min_scale=.5,max_scale=2.)
+    for scene in registry.scenes:
+        registry.activate(scene.id)
+        before=scene.transform
+        frame=scene.frame
+        angles=renderer._scene_view_angles(frame)
+        if scene.id in {'coordinate-geometry','orbital-system'}:
+            assert angles == (THEME.scene_view_pitch_deg,THEME.scene_view_yaw_deg)
+        else:
+            assert angles == (0.,0.)
+        assert scene.transform == before == frame.transform
+
+
+def test_roi_overlay_is_analysis_only_and_source_is_read_only(sample):
+    image,state,app=sample
+    image.setflags(write=False)
+    dashboard=ProductDashboard(window_host=FakeHost())
+    for mode,expected in ((DashboardMode.DEMO,False),(DashboardMode.ANALYSIS,True)):
+        dashboard.set_mode(mode)
+        surface=dashboard.build_surface(image,state,app)
+        rect=surface.layout.vision
+        preview=surface.canvas[rect.y+44:rect.bottom-70,rect.x+12:rect.right-12]
+        assert bool(np.any(np.all(preview==THEME.accent,axis=2))) is expected
+    assert image.flags.writeable is False

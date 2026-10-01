@@ -1274,4 +1274,52 @@ The project direction should be explainable in one sentence:
 
 Every G8 design decision should reinforce that separation.
 
+## 25. Final scientific/product presentation state — 2026-10-01
+
+The final presentation pass uses the existing legacy G7 interaction. G9
+experimental sources are not present in the working tree and must not be
+restored into the final submission path. This is a polished final prototype
+and product-oriented scientific visualization workspace, not commercial
+validation. Physical U9/U10 work remains not started.
+
+- **Workspace:** compact 56 px header, restrained primary mode tabs, horizontal
+  scene navigation, dominant STEM viewport and compact Live Vision. Technical
+  ROI/landmark overlays and numerical diagnostics are reserved for Analysis.
+  Tracking is shown in the header; interaction readiness/pinch state is concise.
+  Control Space, Reset and Help remain accessible without permanent large cards.
+- **Analysis:** compact eight-stage DIP flow; ROI, raw/filtered landmarks and
+  pointer remain distinct. Diagnostic rows use existing public values for
+  illumination, filter timing/cutoff, pinch ratio, yaw/pitch command, scale delta,
+  Core compute time and run/frame identity. Unavailable values remain unavailable.
+- **Evidence:** no STEM viewport or scene-navigation strip. Section order is
+  Overview -> A1 Static -> A2 Dynamic -> B Normal -> B Low-light -> RQ3 / Demo;
+  mouse tabs and keyboard/Previous/Next navigation follow that display order.
+  Catalog page identities and provenance remain unchanged. A1's existing plot
+  is enlarged; AVAILABLE, UNAVAILABLE and LIMITATION remain explicit. Frozen
+  text/images are read without recalculating results or editing source assets.
+- **Scenes:** shared theme background and restrained camera inclination make
+  Coordinate Geometry's Z axis/grid and the elliptical Orbital path visible at
+  initial orientation. Camera framing is separate from the scene transform and
+  interaction deltas. Molecule keeps its original H2O/CH4 geometry and displays
+  shape/approximate angle from existing preset definitions. No new scientific
+  values or scene API were introduced.
+- **Control Space / Help:** 320 px right-side drawer with Scene, Interaction,
+  View and Reset/Close groups, plus on-demand Help. Legacy release/pinch UI
+  selection and keyboard/mouse behavior are preserved. Help and console share
+  shortcut descriptions in `ui/shortcuts.py`; no G9 gestures are described.
+- **Lifecycle:** welcome/start, initializing, no-hand and error states use
+  concise guidance. Camera/model/renderer/logging/scene/runtime error guidance
+  avoids displaying raw exception text in the normal shell. Existing console
+  diagnostics, emergency renderer fallback and cleanup ownership are retained.
+- **Presentation work:** remove an unnecessary camera-image copy before resize
+  and cache immutable layout calculations with a bounded cache. Existing icon,
+  text-width and evidence-resize caches remain. No Core processing is skipped,
+  and no measured FPS/latency improvement is claimed.
+
+Validation is recorded in `05_PROJECT_STATUS_AND_ROADMAP.md`: 149 Extension/UI
+tests, 555 full-suite tests, compileall and whitespace validation passed. Synthetic
+visual QA covers four desktop sizes and 69 local render surfaces. Final UI
+physical smoke: NOT RUN. All frozen artifact checks passed. No stage, commit,
+push, new release/tag, G9 restoration or subsequent feature phase was performed.
+
 ---

@@ -104,7 +104,7 @@ G4 — BOUNDED ADAPTIVE 1-EURO: COMPLETE
 G5 — GESTURE + 3D EXTENSION: COMPLETE
 G6 — EXPERIMENT READINESS: COMPLETE
 G7 — FINAL EVALUATION / PACKAGE: COMPLETE (FROZEN AT `g7-final`)
-G8 — POST-G7 UI / STEM EXTENSION PRODUCTIZATION: IN PROGRESS (U7.5 COMPLETE)
+G8 — POST-G7 UI / STEM EXTENSION PRODUCTIZATION: FINAL UI PASS COMPLETE; U8 VALIDATED; PHYSICAL/RELEASE PENDING
 ```
 
 G0–G1 completion establishes the engineering baseline:
@@ -130,7 +130,7 @@ change the scope or interpretation of the frozen G7 experiment release.
 
 ## 4. Current task
 
-**Task G8-U7.5 — Final enterprise UI / unified product application shell — COMPLETE.**
+**Task G8 — Final product presentation pass — COMPLETE; implementation stopped.**
 
 The G7 controlled evaluation and submission package are complete and
 frozen at `g7-final`. The active G8 direction is a separately scoped
@@ -139,8 +139,9 @@ U7.5 presentation refinement are implemented.
 U6 presents selected frozen G7 artifacts without modifying evidence or
 research conclusions. U7 adds explicit lifecycle feedback, failure
 handling, disabled controls, keyboard fallback, and cleanup hardening. The
-next roadmap unit is U8 — Automated Validation. Preserve the existing
-G7/Core boundary while continuing that presentation work.
+final presentation pass and U8 automated validation are complete as recorded
+in Section 5. U9/U10 physical validation and release have not started. This
+handoff stops after UI verification and does not authorize another feature phase.
 
 G8 is not a new research experiment and does not claim commercial
 readiness. Any change to Core semantics, public contracts, experiment
@@ -1325,12 +1326,71 @@ not use a webcam or physical hand input. Continue with the post-G7 roadmap in
    existing scene renderer and presentation surface into one normal window;
    refine Workspace, Analysis, Evidence, Control Space, Help, and lifecycle
    states without changing the frozen research baseline.
-9. **U8 — Automated validation — NEXT:** run targeted Extension tests and
-   full `pytest` regression for the post-G7 UI/Extension surface.
-10. **U9/U10 — Physical validation and release:** exercise the complete
+9. **U8 — Automated validation — COMPLETE for the final presentation pass:**
+   Extension/UI tests and full regression executed on 2026-10-01; see below.
+10. **U9/U10 — Physical validation and release — NOT STARTED:** exercise the complete
    application with the webcam, document screenshots/demo instructions,
    record limitations, and create a new post-G7 release identity without
    moving `g7-final`.
 
 G8 is a product-direction phase, not a new scientific evaluation. Do not
 add cloud, account, telemetry-backend, or unrelated platform features.
+
+### Final product presentation pass — 2026-10-01
+
+FINAL PRODUCT PASS: COMPLETE within the UI/presentation scope requested by the
+user. Starting branch: `feat/final-ui-extension`, HEAD
+`30d86f09b4c58fb552b3e54913746acfc53c0b9f`. This pass retains the existing
+legacy G7 interaction and the integrated single-window shell. Experimental G9
+sources remain outside the working tree; no stash was restored. Two ignored
+directories containing only obsolete G9 `.pyc` files were removed after checking
+their resolved workspace paths and contents. All five prohibited G9 source paths
+are absent, including the two directories themselves.
+
+Workspace uses a compact horizontal scene selector, dominant STEM viewport,
+small Live Vision, concise interaction feedback and on-demand controls/help.
+ROI and raw/filtered overlays remain in Analysis; Analysis displays the actual
+public interaction deltas, filter/illumination state, Core compute timing and
+session/frame identity. Evidence is a separate read-only findings view with
+Overview, A1 Static, A2 Dynamic, B Normal, B Low-light and RQ3 / Demo sections.
+It retains frozen unavailable outcomes, negative findings, limitations and
+provenance. Camera framing and background polish change presentation only;
+molecule values, orbital behavior and scene transforms are unchanged.
+
+Executed validation:
+
+- `.venv\Scripts\python.exe -m pytest tests/extensions -q --tb=short`: 149 passed.
+- `.venv\Scripts\python.exe -m pytest -q --tb=short`: 555 passed.
+- `.venv\Scripts\python.exe -m compileall extensions/stem3d`: passed.
+- `git diff --check`: passed.
+- Synthetic OpenGL/UI QA: 69 local images covering Workspace, Analysis, all
+  Evidence pages, three scenes plus both molecule presets, Control Space, Help,
+  no-hand, ready/loading/error states and a missing-evidence-asset state. Four
+  desktop sizes: 1280x720, 1440x900, 1600x900 and 1920x1080. Images and helper
+  scripts are ignored local QA artifacts under `runs/final-product-qa/`, not
+  submission screenshots or physical research evidence.
+- G7 integrity: 24 Git blobs across report/submission/final manifests and six
+  raw PNG SHA-256 hashes match `g7-final`; the peeled release commit remains
+  `f454c6b8325c85199c0122c0e822fe8e76c1526c`.
+- Core, configuration, analysis, frozen report/evidence/manifests and staged
+  diffs are empty. No stage, commit or push was performed.
+
+Final UI physical smoke: NOT RUN. Historical G7 live demo evidence remains
+historical. No FPS/latency improvement, quantified density reduction, commercial
+validation or production-readiness claim is made. U9/U10 remain not started.
+
+Change: final G8 presentation hierarchy, responsive layout, diagnostic visibility,
+evidence readability/navigation, camera framing and shared shortcut descriptions.
+Reason: finish a polished scientific visualization workspace on the legacy path.
+Canonical file/section changed: this status/validation section only.
+Code/modules affected: `extensions/stem3d/` presentation code and Extension tests.
+Algorithmic impact: NONE; frozen Core and legacy GestureEngine unchanged.
+Experimental impact: NONE; no replacement metrics or research evidence.
+Compatibility impact: existing InteractionState/scene APIs and resource ownership
+preserved; protected renderer framing hook defaults to the original view.
+Tests added/updated: desktop geometry, drawer overlap, actual Analysis output,
+evidence navigation, error guidance, camera framing and read-only ROI presentation.
+Existing results invalidated: no.
+
+Implementation stopped after verification. Recommended single commit (not made):
+`feat(stem3d): finalize product presentation`.

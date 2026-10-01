@@ -349,14 +349,9 @@ def main() -> None:
     )
 
     print("DIP Touchless STEM live demo.")
-    print("Move index fingertip to rotate the active scene; pinch to scale.")
-    print(
-        "S/ENTER/SPACE starts; A/D/E selects modes; 1/2/3 selects scenes."
-    )
-    print(
-        "P opens Control Space; H/C selects molecule presets only in Molecule; "
-        "[ ] navigates Evidence; R resets; Q/ESC stops."
-    )
+    from .ui.shortcuts import HELP_LINES
+    for label, description in HELP_LINES:
+        print(f"{label}: {description}")
     print(f"Run ID: {run_id}")
 
     failure: Exception | None = None

@@ -1,6 +1,7 @@
 """One responsive application shell; all rectangles use viewport pixels."""
 
 from dataclasses import dataclass
+from functools import lru_cache
 
 from .layout import Rect
 from .presentation_model import DashboardMode
@@ -22,6 +23,7 @@ class ShellLayout:
     drawer: Rect
 
 
+@lru_cache(maxsize=32, typed=True)
 def calculate_shell_layout(
     width: int, height: int, mode: DashboardMode = DashboardMode.DEMO,
 ) -> ShellLayout:
@@ -35,16 +37,21 @@ def calculate_shell_layout(
     header = Rect(0, 0, width, THEME.shell_header_height)
     footer = Rect(0, height - THEME.shell_footer_height, width,
                   THEME.shell_footer_height)
-    sidebar = Rect(s, header.bottom + s, THEME.shell_sidebar_width,
-                   footer.y - header.bottom - 2 * s)
-    content = Rect(sidebar.right + s, sidebar.y,
-                   width - sidebar.right - 2 * s, sidebar.height)
+    # Retain the layout field for callers; scene navigation is now a compact
+    # horizontal strip, leaving desktop width to the scientific viewport.
+    sidebar = Rect(s, header.bottom + s, width - 2*s,
+                   THEME.shell_scene_bar_height)
+    content = Rect(s, sidebar.bottom+s, width-2*s,
+                   footer.y-sidebar.bottom-2*s)
     drawer = Rect(width - THEME.shell_drawer_width - s, content.y,
                   THEME.shell_drawer_width, content.height)
     if mode is DashboardMode.EVIDENCE:
+        content = Rect(s, header.bottom+s, width-2*s, footer.y-header.bottom-2*s)
+        drawer = Rect(width-THEME.shell_drawer_width-s, content.y,
+                      THEME.shell_drawer_width, content.height)
         return ShellLayout(width, height, header, sidebar, content, None,
                            None, None, None, footer, drawer)
-    extra_height = 164 if mode is DashboardMode.ANALYSIS else 0
+    extra_height = THEME.shell_analysis_height if mode is DashboardMode.ANALYSIS else 0
     area = Rect(content.x, content.y, content.width,
                 content.height - extra_height)
     vision_width = (
@@ -53,7 +60,8 @@ def calculate_shell_layout(
     )
     stem = Rect(area.x, area.y, area.width - vision_width - s, area.height)
     vision = Rect(stem.right + s, area.y, vision_width,
-                  area.height if mode is DashboardMode.ANALYSIS else min(area.height, 320))
+                  area.height if mode is DashboardMode.ANALYSIS else
+                  min(area.height, THEME.shell_vision_max_height))
     pipeline = diagnostics = None
     if mode is DashboardMode.ANALYSIS:
         pipeline = Rect(content.x, area.bottom + s, content.width, 76)
