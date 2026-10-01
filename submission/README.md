@@ -82,8 +82,9 @@ git archive --format=zip --prefix=DIP_project/ --output=../DIP_project-submissio
 
 Extract the ZIP elsewhere and repeat setup, model verification and the application
 command before distributing it. A ZIP has no Git revision context; preserve
-the source commit in the handoff notes. Any optional model/screenshots are
-separate additions and are not automatically included by `git archive`.
+the source commit in the handoff notes. The committed R2 screenshots and frozen
+evidence are included by `git archive`. The ignored model and any additional
+uncommitted captures are separate additions; they are not automatically included.
 
 ## Verification recorded on 2026-10-01
 
@@ -101,10 +102,12 @@ a fresh environment is claimed; the existing Python 3.11 environment was checked
   ignored under `runs/u10-preparation/`, not a final release archive.
 - Startup, cancellation, component failure, partial initialization and shutdown
   are covered by existing automated tests; this is not a physical camera smoke.
-- Physical webcam smoke for this final application: **NOT RUN**.
+- Physical webcam smoke (R3, after U10 preparation): **PASS with usability
+  limitations**; see [R3_PHYSICAL_SMOKE.md](R3_PHYSICAL_SMOKE.md) for exact runs,
+  checklist attribution, orientation/sensitivity feedback and validation.
 - Final screenshot capture (R2): 15 synthetic 1600 × 900 presentation captures,
   contact sheet and manifest in [screenshots/](screenshots/README.md).
-  Real webcam captures are not included; physical smoke remains NOT RUN.
+  Real webcam captures are not included in R2; R3 was separately run physically.
 
 ## Provenance and known limitations
 
@@ -134,8 +137,15 @@ that release and from the current presentation revision.
 G8 final desktop application and U10 packaging are complete. The release roadmap
 is R1 terminology/docs alignment → R2 final screenshots → R3 final application
 smoke → R4 final release/tag. R2 synthetic presentation screenshots are complete;
-real webcam captures are not included and physical smoke remains pending;
-physical smoke is currently NOT RUN. Advanced interaction, including the deferred
+real webcam captures are not included in R2. R3 physical smoke passed with
+documented orientation discomfort and low sensitivity; functional readiness is
+READY FOR RELEASE with documented limitations. R4 review is READY TO RELEASE;
+commit/tag publication remains pending. See [v1.0 release notes](RELEASE_NOTES_v1.0.md).
+Advanced interaction, including the deferred
 G9 Product V2 prototype, belongs to the backlog after v1.0 and is not required
 for this release. Recommend `dip-touchless-stem-v1.0` after review and release
 checks; never move or rewrite `g7-final`.
+
+User-adjustable sensitivity Settings remain a post-v1.0 backlog item; no gains,
+thresholds or preview mapping were changed to make R3 pass. R4 review changed
+documentation only; no stage, commit, push or tag was performed.

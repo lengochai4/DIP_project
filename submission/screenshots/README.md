@@ -56,6 +56,9 @@ visually inspected. Frozen report/evidence/experiment files and G9 stash were
 checked unchanged. No Core, interaction or UI architecture files were edited.
 
 All requested presentation categories are covered. Real webcam screenshots are
-not included. Physical application smoke: **NOT RUN**. The capture harness is
-not an R3 startup/interaction/shutdown validation. R3 and R4 were not started;
-no release, stage, commit, push or tag was performed.
+not included. At R2 capture time, physical application smoke was **NOT RUN**;
+the capture harness was not an R3 startup/interaction/shutdown validation.
+R3 subsequently passed with real webcam input and documented limitations; see
+[R3_PHYSICAL_SMOKE.md](../R3_PHYSICAL_SMOKE.md). R4 review is READY TO RELEASE;
+see [release notes](../RELEASE_NOTES_v1.0.md). Neither later step changes these
+images' synthetic source. Commit/tag publication remains pending.

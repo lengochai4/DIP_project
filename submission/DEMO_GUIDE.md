@@ -58,8 +58,8 @@ Curate a separate screenshot attachment at handoff, if required.
 - [x] Orbital scene with educational context (synthetic).
 - [x] Control Space open, without hiding the selected scene unnecessarily (synthetic).
 - [x] No Hand state; describe how keyboard fallback remains usable (supplied synthetic state).
-- [ ] Physical start → interaction → exit → restart result recorded separately,
-      or explicitly marked NOT RUN.
+- [x] R3 physical start → interaction → exit → restart result recorded separately
+      in [R3_PHYSICAL_SMOKE.md](R3_PHYSICAL_SMOKE.md); PASS with usability limitations.
 
 R2 now has 15 curated 1600 × 900 synthetic application captures in
 [`screenshots/`](screenshots/README.md), plus a contact sheet and provenance/hash
@@ -71,7 +71,8 @@ specifically for R2 using unchanged application code.
 ## Honest closing statement
 
 The final desktop application is complete; research results remain the limited frozen
-G7 observations. Final physical webcam validation is NOT RUN in this preparation.
+G7 observations. R3 final physical webcam smoke passed with user-reported preview
+orientation discomfort and low sensitivity; neither behavior was changed.
 Tracking can be affected by lighting/background; A2 remains unavailable and B
 does not isolate active CLAHE. G9 interaction work remains deferred. No claim
 of production readiness or new quantitative performance is supported here.
@@ -80,8 +81,10 @@ of production readiness or new quantitative performance is supported here.
 
 R1 terminology/docs alignment and R2 synthetic final screenshots are complete.
 R3 records the final application's startup, existing interaction, exit
-and restart smoke (currently NOT RUN); R4 prepares the reviewed source package
+and restart smoke (PASS with documented usability limitations); R4 prepares the reviewed source package
 and application release tag `dip-touchless-stem-v1.0`. Only R2 synthetic captures
-were produced; R3 physical smoke and R4 release/tag were not started. Advanced interaction remains
+were produced in R2; R3 was subsequently completed with real webcam input.
+R4 review is READY TO RELEASE; commit/tag publication is pending. See
+[v1.0 release notes](RELEASE_NOTES_v1.0.md). Advanced interaction, including sensitivity Settings, remains
 after v1.0. This guide's existing filename and the technical `live_demo`/`demo`
 module names are retained for compatibility.

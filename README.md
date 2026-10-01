@@ -98,6 +98,10 @@ above activated, run:
 python -m extensions.stem3d.live_demo
 ```
 
+Use the source tree from the final reviewed application commit. After publication,
+select tag `dip-touchless-stem-v1.0` or its source archive; cloning the default
+branch alone does not identify this release. The tag is not yet created.
+
 Press S or Enter to start; Q or Escape to exit. This is the integrated
 Workspace / Analysis / Evidence application on the legacy interaction path.
 The live entry point uses Raw (F0); frozen F1/F2 comparisons are evidence,
@@ -109,8 +113,10 @@ validation, and the [application walkthrough and screenshot checklist](submissio
 for the presentation. Deliver the repository source tree, not just a wheel:
 the application resources and Extension are outside the installed Core package.
 G9 remains deferred and is not part of the submission path.
-G8 and U10 packaging are complete. Remaining release work is R1 terminology/docs
-alignment, R2 final screenshots, R3 final application smoke and R4 final release.
+G8, U10 and R1–R3 are complete. R2 images are labelled synthetic; R3 physical
+smoke passed with documented orientation/sensitivity limitations. R4 review is
+READY TO RELEASE; commit/tag publication remains pending. Read the
+[v1.0 release notes](submission/RELEASE_NOTES_v1.0.md).
 The recommended application tag is `dip-touchless-stem-v1.0`; `g7-final` remains
 the separate frozen research release. See the current roadmap in `docs/05`.
 

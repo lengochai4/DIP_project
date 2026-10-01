@@ -109,8 +109,8 @@ G9 — PRODUCT V2 EXPERIMENTAL INTERACTION: STASHED / DEFERRED
 U10 — SUBMISSION PACKAGING: COMPLETE
 R1 — TERMINOLOGY / DOCS ALIGNMENT: COMPLETE
 R2 — FINAL SCREENSHOTS: COMPLETE (SYNTHETIC PRESENTATION CAPTURES)
-R3 — FINAL APPLICATION SMOKE: PENDING (PHYSICAL WEBCAM: NOT RUN)
-R4 — FINAL RELEASE / TAG: PENDING
+R3 — FINAL APPLICATION PHYSICAL SMOKE: PASS (DOCUMENTED USABILITY LIMITATIONS)
+R4 — FINAL RELEASE REVIEW: READY TO RELEASE; COMMIT / TAG PUBLICATION PENDING
 ```
 
 G0–G1 completion establishes the engineering baseline:
@@ -136,13 +136,15 @@ change the scope or interpretation of the frozen G7 experiment release.
 
 ## 4. Current task
 
-**R2 — Final screenshots — COMPLETE using synthetic input; stop after capture checks.**
+**R4 — Final application release review — READY TO RELEASE; stop before commit/tag.**
 
 G7 research/Core is frozen at `g7-final`. G8 final desktop application and U10
 submission packaging are complete. G9 Product V2 experimental interaction is
 stashed/deferred; it is not part of the v1.0 application. Final synthetic
-presentation screenshots are complete. Real webcam captures are not included;
-final application smoke and the application release remain pending.
+presentation screenshots are complete. Real webcam captures are not included
+in R2. R3 real webcam smoke passed with user-reported orientation discomfort and
+low sensitivity. R4 release review is complete; commit/tag publication remains
+pending. No feature, interaction or sensitivity changes belong to this review.
 
 Use “final application” and “application walkthrough” for current product-level
 documentation. Preserve historical research wording, evidence labels such as
@@ -155,8 +157,8 @@ documentation. Preserve historical research wording, evidence labels such as
 | --- | --- | --- |
 | R1 — Terminology/docs alignment | COMPLETE | Current application wording and one consistent release roadmap |
 | R2 — Final screenshots | COMPLETE (synthetic) | 15 curated 1600 × 900 images, contact sheet and manifest under `submission/screenshots/`; frozen evidence unchanged |
-| R3 — Final application smoke | PENDING; physical webcam NOT RUN | Record startup, existing interaction, view/scene navigation, exit and restart; report failures or omitted physical checks honestly |
-| R4 — Final release/tag | PENDING | Review source package and release notes, record screenshot/smoke status, recommend new application tag `dip-touchless-stem-v1.0` |
+| R3 — Final application smoke | PASS with usability limitations | Two real webcam runs; all twelve items user-confirmed; clean shutdown/restart logged; see `submission/R3_PHYSICAL_SMOKE.md` |
+| R4 — Final release/tag | Review READY TO RELEASE; publication pending | Reviewed source package/notes; create `dip-touchless-stem-v1.0` only on the final reviewed documentation commit |
 
 R1 does not authorize performing R2–R4. Never move, delete or rewrite `g7-final`.
 The v1.0 application release is separate from the frozen research identity.
@@ -165,7 +167,9 @@ The v1.0 application release is separate from the frozen research identity.
 
 Keep the G9 Product V2 prototype stashed/deferred. Any future grab/release or
 motion-mapping investigations, interaction tuning or additional gestures require
-a separately approved post-v1.0 scope. They are not release blockers and must
+a separately approved post-v1.0 scope. User-adjustable sensitivity Settings are
+also deferred here following R3 feedback; existing gains/thresholds remain intact.
+They are not release blockers and must
 not alter the frozen Core or G7 evidence. No backlog implementation starts here.
 
 G8 is not a new research experiment and does not claim commercial
@@ -1358,12 +1362,13 @@ not use a webcam or physical hand input. Continue with the post-G7 roadmap in
    states without changing the frozen research baseline.
 9. **U8 — Automated validation — COMPLETE for the final presentation pass:**
    Extension/UI tests and full regression executed on 2026-10-01; see below.
-10. **U9 — Physical validation — NOT RUN:** remaining final application smoke is
-    tracked under R3 in Section 4.
+10. **U9 / R3 — Physical validation — PASS with usability limitations:** two real
+    webcam runs, user-confirmed checklist and clean shutdown/restart are recorded
+    in `submission/R3_PHYSICAL_SMOKE.md`; sensitivity/orientation remain unchanged.
 11. **U10 — Submission packaging — COMPLETE:** setup/run guides, package-path
     verification, application walkthrough, screenshot checklist and limitations
-    are prepared. Remaining screenshots and release are tracked under R2/R4;
-    they do not reopen the completed application or packaging work.
+    are prepared. R2 screenshots and R4 review are complete; commit/tag
+    publication remains pending and does not reopen application/packaging work.
 
 G8 is a product-direction phase, not a new scientific evaluation. Do not
 add cloud, account, telemetry-backend, or unrelated platform features.
@@ -1482,3 +1487,37 @@ Core, interaction behavior, sensitivity, UI architecture, evidence, experiments
 and G7 artifacts are unchanged. Validation: `git diff --check` passed.
 No stage, commit, push, tag, screenshot capture, physical smoke or later roadmap
 step was performed by this alignment task.
+
+### R4 final application release review — 2026-10-01
+
+READY TO RELEASE with the documented R3 usability limitations. Review covered
+all pending status/package/walkthrough/R3 documentation, the committed R2 images
+and provenance, launch/model/dependency instructions, and the source-package path.
+Added `submission/RELEASE_NOTES_v1.0.md`; corrected the source-archive guide to
+include committed screenshots and to exclude the ignored external model.
+
+Executed validation: 555 tests passed; `compileall extensions/stem3d`,
+`git diff --check` and existing-environment `pip check` passed. Local working-tree
+source preview: 193 files, ZIP CRC/content, extracted imports/resources and 43
+local Markdown links passed. R2 dimensions/hashes, R3 run identities/frame counts
+and the local model SHA-256 were verified. No fresh-environment installation or
+new physical run is claimed by R4.
+
+Core/config/experiments/analysis match the frozen G7 tree; application/tests match
+the R3 execution revision `21ab8cddf037c9f21f33ca6f2ec8fb237eaebb72`. All 23 frozen
+file SHA-256 hashes and `g7-final` remain unchanged. All five G9 source paths are
+absent; the existing stash is retained. Interaction semantics, sensitivity and
+UI architecture changes: NONE. Python Core package version `0.1.0` is unchanged;
+v1.0 identifies the application release.
+
+Recommended final commit: `docs: finalize v1.0 release notes and smoke record`.
+Include only `README.md`, this status document, `docs/06`,
+`submission/README.md`, `submission/DEMO_GUIDE.md`,
+`submission/screenshots/README.md`, `submission/R3_PHYSICAL_SMOKE.md` and
+`submission/RELEASE_NOTES_v1.0.md`. The screenshot binaries and R1/R2 guides are
+already committed at `21ab8cdd`; local QA ZIPs/helpers/logs are not commit inputs.
+
+`dip-touchless-stem-v1.0` was absent locally and on `origin` during review. It is
+safe to create on the final reviewed documentation commit after that commit is
+made; current HEAD does not yet include the pending R3/release documentation.
+No stage, commit, push or tag was performed. Release publication remains pending.

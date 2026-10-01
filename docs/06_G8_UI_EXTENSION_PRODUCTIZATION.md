@@ -1352,12 +1352,28 @@ preserve technical module names, dependency extras, run IDs and evidence labels.
 | --- | --- | --- |
 | R1 — Terminology/docs alignment | COMPLETE | Align current guides and roadmap without implementation changes |
 | R2 — Final screenshots | COMPLETE (synthetic) | 15 curated 1600 × 900 images plus contact sheet/manifest in `submission/screenshots/`; no real webcam captures |
-| R3 — Final application smoke | PENDING; physical webcam NOT RUN | Record startup, unchanged interaction/navigation, shutdown and restart |
-| R4 — Final release/tag | PENDING | Review package/release notes and recommend `dip-touchless-stem-v1.0` |
+| R3 — Final application smoke | PASS with usability limitations | Two real webcam runs, user-confirmed checklist and clean shutdown/restart; see `submission/R3_PHYSICAL_SMOKE.md` |
+| R4 — Final release/tag | Review READY TO RELEASE; publication pending | Reviewed package/notes; recommend `dip-touchless-stem-v1.0` on the final documentation commit |
 
 Advanced interaction backlog is after v1.0. Keep G9 stashed; no gestures,
 sensitivity changes or interaction redesign are prerequisites for this release.
 The new application tag must remain distinct from immutable `g7-final`.
 R1 does not start screenshots, smoke, release or backlog work.
+
+R3 was subsequently executed on 2026-10-01 at application revision `21ab8cdd`.
+The user confirmed all checklist items, while reporting a flipped-feeling preview
+and low sensitivity. Preview/pointer remain consistently unmirrored; no behavior
+was changed. Sensitivity Settings are deferred after v1.0. Functional readiness
+is READY FOR RELEASE with these documented limitations; R4 remains pending and
+was not started. Details and attribution are in
+[`R3_PHYSICAL_SMOKE.md`](../submission/R3_PHYSICAL_SMOKE.md).
+
+R4 review on 2026-10-01 is READY TO RELEASE. Current setup, source-package paths,
+R2 labels/hashes and R3 attribution were reviewed. The application, Core, frozen
+G7 report/evidence/experiments, interaction semantics and sensitivity are unchanged;
+G9 source files remain absent and the stash is retained. Release notes are in
+[`RELEASE_NOTES_v1.0.md`](../submission/RELEASE_NOTES_v1.0.md). Publication remains
+pending; no stage, commit, push or tag was performed. Earlier R3 statements about
+R4 not having started describe the state at physical-smoke time.
 
 ---
