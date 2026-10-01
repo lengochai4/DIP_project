@@ -1,7 +1,7 @@
 # Hand Landmarker model setup
 
-The live demo expects `models/hand_landmarker.task` in the repository root.
-The binary is ignored by Git and must be supplied separately for an offline demo.
+The final application expects `models/hand_landmarker.task` in the repository root.
+The binary is ignored by Git and must be supplied separately for offline use.
 
 Source: Google's [Hand Landmarker Python guide](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker/python).
 The pinned float16 version-1 asset is also referenced by the

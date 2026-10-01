@@ -104,7 +104,13 @@ G4 — BOUNDED ADAPTIVE 1-EURO: COMPLETE
 G5 — GESTURE + 3D EXTENSION: COMPLETE
 G6 — EXPERIMENT READINESS: COMPLETE
 G7 — FINAL EVALUATION / PACKAGE: COMPLETE (FROZEN AT `g7-final`)
-G8 — POST-G7 UI / STEM EXTENSION PRODUCTIZATION: FINAL UI PASS COMPLETE; U8 VALIDATED; PHYSICAL/RELEASE PENDING
+G8 — FINAL DESKTOP APPLICATION: COMPLETE; U8 VALIDATED
+G9 — PRODUCT V2 EXPERIMENTAL INTERACTION: STASHED / DEFERRED
+U10 — SUBMISSION PACKAGING: COMPLETE
+R1 — TERMINOLOGY / DOCS ALIGNMENT: COMPLETE
+R2 — FINAL SCREENSHOTS: COMPLETE (SYNTHETIC PRESENTATION CAPTURES)
+R3 — FINAL APPLICATION SMOKE: PENDING (PHYSICAL WEBCAM: NOT RUN)
+R4 — FINAL RELEASE / TAG: PENDING
 ```
 
 G0–G1 completion establishes the engineering baseline:
@@ -130,23 +136,47 @@ change the scope or interpretation of the frozen G7 experiment release.
 
 ## 4. Current task
 
-**Task G8 — Final product presentation pass — COMPLETE; implementation stopped.**
+**R2 — Final screenshots — COMPLETE using synthetic input; stop after capture checks.**
 
-The G7 controlled evaluation and submission package are complete and
-frozen at `g7-final`. The active G8 direction is a separately scoped
-post-G7 application/Extension continuation. U1 through U7 and the approved
-U7.5 presentation refinement are implemented.
-U6 presents selected frozen G7 artifacts without modifying evidence or
-research conclusions. U7 adds explicit lifecycle feedback, failure
-handling, disabled controls, keyboard fallback, and cleanup hardening. The
-final presentation pass and U8 automated validation are complete as recorded
-in Section 5. U9/U10 physical validation and release have not started. This
-handoff stops after UI verification and does not authorize another feature phase.
+G7 research/Core is frozen at `g7-final`. G8 final desktop application and U10
+submission packaging are complete. G9 Product V2 experimental interaction is
+stashed/deferred; it is not part of the v1.0 application. Final synthetic
+presentation screenshots are complete. Real webcam captures are not included;
+final application smoke and the application release remain pending.
+
+Use “final application” and “application walkthrough” for current product-level
+documentation. Preserve historical research wording, evidence labels such as
+“RQ3 / Demo”, technical module names `extensions.stem3d.live_demo` and
+`extensions.stem3d.demo`, the `demo3d` dependency extra and existing run IDs.
+
+### Final application release roadmap
+
+| Step | Status | Deliverable |
+| --- | --- | --- |
+| R1 — Terminology/docs alignment | COMPLETE | Current application wording and one consistent release roadmap |
+| R2 — Final screenshots | COMPLETE (synthetic) | 15 curated 1600 × 900 images, contact sheet and manifest under `submission/screenshots/`; frozen evidence unchanged |
+| R3 — Final application smoke | PENDING; physical webcam NOT RUN | Record startup, existing interaction, view/scene navigation, exit and restart; report failures or omitted physical checks honestly |
+| R4 — Final release/tag | PENDING | Review source package and release notes, record screenshot/smoke status, recommend new application tag `dip-touchless-stem-v1.0` |
+
+R1 does not authorize performing R2–R4. Never move, delete or rewrite `g7-final`.
+The v1.0 application release is separate from the frozen research identity.
+
+### Advanced interaction backlog — after v1.0
+
+Keep the G9 Product V2 prototype stashed/deferred. Any future grab/release or
+motion-mapping investigations, interaction tuning or additional gestures require
+a separately approved post-v1.0 scope. They are not release blockers and must
+not alter the frozen Core or G7 evidence. No backlog implementation starts here.
 
 G8 is not a new research experiment and does not claim commercial
 readiness. Any change to Core semantics, public contracts, experiment
 metrics, or G7 evidence requires the canonical governance and change
 review process.
+
+### Historical completion records
+
+The records below describe their execution-time status. The current stage and
+R1–R4 roadmap above supersede earlier “next task” or “not started” statements.
 
 ### G8-U6 Evidence Mode completion — 2026-09-30
 
@@ -1328,12 +1358,12 @@ not use a webcam or physical hand input. Continue with the post-G7 roadmap in
    states without changing the frozen research baseline.
 9. **U8 — Automated validation — COMPLETE for the final presentation pass:**
    Extension/UI tests and full regression executed on 2026-10-01; see below.
-10. **U9 — Physical validation — NOT STARTED:** final webcam smoke remains optional
-    for the current submission-preparation task and is NOT RUN.
-11. **U10 — Submission preparation — COMPLETE; release pending:** setup/run guides,
-    package-path verification, demo flow, screenshot checklist and limitations
-    are prepared. Screenshots are not claimed captured. No release/tag was made;
-    a future post-G7 identity must not move `g7-final`.
+10. **U9 — Physical validation — NOT RUN:** remaining final application smoke is
+    tracked under R3 in Section 4.
+11. **U10 — Submission packaging — COMPLETE:** setup/run guides, package-path
+    verification, application walkthrough, screenshot checklist and limitations
+    are prepared. Remaining screenshots and release are tracked under R2/R4;
+    they do not reopen the completed application or packaging work.
 
 G8 is a product-direction phase, not a new scientific evaluation. Do not
 add cloud, account, telemetry-backend, or unrelated platform features.
@@ -1397,7 +1427,7 @@ Existing results invalidated: no.
 Implementation stopped after verification. Recommended single commit (not made):
 `feat(stem3d): finalize product presentation`.
 
-### U10 submission and demo preparation — 2026-10-01
+### U10 submission and application preparation — 2026-10-01
 
 The preceding final-product-pass entry is historical. Its changes are now
 committed at `7bd1ebb` (`feat(stem3d): finalize product presentation`), the clean
@@ -1407,7 +1437,7 @@ are pending. No new feature phase was started.
 
 Updated root/submission entry guides and added `submission/DEMO_GUIDE.md` and
 `models/README.md`. Setup includes the `demo3d` extra, the pinned model download
-and checksum, root-relative resources and writable session output. The demo flow
+and checksum, root-relative resources and writable session output. The application walkthrough
 is Workspace → Analysis → Evidence → STEM scenes with existing keyboard fallback.
 The live Raw/F0 path and frozen F1/F2 evidence are distinguished explicitly.
 
@@ -1420,7 +1450,7 @@ Executed checks:
 - Existing environment imports/version checks and actual model initialize/close:
   passed without a camera. No fresh-environment installation is claimed.
 - Local ignored source preview: 173 files, ZIP CRC/content checks, extracted
-  Core/demo imports and config/frozen-resource paths passed. This working-tree
+  Core/application imports and config/frozen-resource paths passed. This working-tree
   preview includes the new guides, excludes the model/environment/caches/runs,
   and is not a tagged release or the final hand-in archive.
 - Frozen checks match `g7-final`: 23 blobs across `FINAL_REPORT.md`,
@@ -1441,3 +1471,14 @@ interaction, sensitivity, dependency and UI architecture changes: NONE. Existing
 results invalidated: no. No stage, commit, push or tag performed. Recommended
 commit: `docs: finalize submission and demo package`; release preparation should
 use a new post-G7 tag only after review and record any omitted physical validation.
+
+### R1 terminology/docs alignment — 2026-10-01
+
+Aligned current README, model setup, submission guide and application walkthrough
+wording; updated the current stage/task and supplemental roadmap to R1–R4.
+Recommended application tag: `dip-touchless-stem-v1.0`. Historical completion
+records and technical identifiers remain intact. R1 changes documentation only;
+Core, interaction behavior, sensitivity, UI architecture, evidence, experiments
+and G7 artifacts are unchanged. Validation: `git diff --check` passed.
+No stage, commit, push, tag, screenshot capture, physical smoke or later roadmap
+step was performed by this alignment task.

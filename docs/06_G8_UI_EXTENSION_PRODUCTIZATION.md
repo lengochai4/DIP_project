@@ -958,6 +958,10 @@ Record practical limitations honestly.
 
 ## 19. G8 implementation roadmap
 
+The U0–U10 plan below is retained as implementation history. G8 final desktop
+application and U10 packaging are complete. Remaining release work follows
+R1–R4 in Section 27 and the authoritative current task in `docs/05`.
+
 ### U0 — Baseline freeze
 
 ```text
@@ -1121,7 +1125,7 @@ Produce:
 
 ```text
 screenshots
-demo script
+application walkthrough
 architecture diagram
 extension-author guide
 known limitations
@@ -1259,7 +1263,7 @@ G8 is complete when:
 [ ] physical camera smoke passes
 
 [ ] extension architecture is documented
-[ ] presentation/demo script is documented
+[ ] application walkthrough is documented
 
 [ ] a new post-G7 release identity is created
 ```
@@ -1330,10 +1334,30 @@ and release remain pending. The setup/package entry point is
 capture checklist are in [`submission/DEMO_GUIDE.md`](../submission/DEMO_GUIDE.md).
 External model setup is in [`models/README.md`](../models/README.md).
 
-The delivery is a repository source package with demo/config/evidence paths
+The delivery is a repository source package with application/config/evidence paths
 preserved, not a standalone Core wheel. Model download is separate from a Git
 archive. Frozen artifacts, Core, legacy interaction, sensitivity and architecture
 are unchanged. G9 remains deferred/stashed. Executed checks and explicit NOT RUN
 physical status are recorded in `05_PROJECT_STATUS_AND_ROADMAP.md`.
+
+## 27. Final application release roadmap — 2026-10-01
+
+Current state: G7 research/Core frozen; G8 final desktop application complete;
+G9 Product V2 experimental interaction stashed/deferred; U10 packaging complete.
+Earlier implementation plans and execution records remain historical. Use
+“final application” / “application walkthrough” for the current product;
+preserve technical module names, dependency extras, run IDs and evidence labels.
+
+| Step | Status | Scope |
+| --- | --- | --- |
+| R1 — Terminology/docs alignment | COMPLETE | Align current guides and roadmap without implementation changes |
+| R2 — Final screenshots | COMPLETE (synthetic) | 15 curated 1600 × 900 images plus contact sheet/manifest in `submission/screenshots/`; no real webcam captures |
+| R3 — Final application smoke | PENDING; physical webcam NOT RUN | Record startup, unchanged interaction/navigation, shutdown and restart |
+| R4 — Final release/tag | PENDING | Review package/release notes and recommend `dip-touchless-stem-v1.0` |
+
+Advanced interaction backlog is after v1.0. Keep G9 stashed; no gestures,
+sensitivity changes or interaction redesign are prerequisites for this release.
+The new application tag must remain distinct from immutable `g7-final`.
+R1 does not start screenshots, smoke, release or backlog work.
 
 ---

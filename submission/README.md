@@ -1,4 +1,4 @@
-# Final submission and demo package
+# Final submission and application package
 
 This guide covers the final presentation application and its source package.
 The frozen scientific report is [FINAL_REPORT.md](../FINAL_REPORT.md); selected
@@ -34,7 +34,7 @@ The application loads `config/default.yaml` and the model relative to the
 repository, then writes local session output under `runs/`. Keep that location
 writable. Startup failures identify the affected component; dismiss the error
 and correct the model, camera, graphics or output-directory issue before retrying.
-These demo modules have no conventional `--help` CLI; use F1 in the app.
+These technical entry points have no conventional `--help` CLI; use F1 in the app.
 
 Optional renderer-only smoke (synthetic interaction, no webcam/model):
 
@@ -43,7 +43,7 @@ python -m extensions.stem3d.demo
 ```
 
 That smoke is not the submission application or physical tracking validation.
-See [DEMO_GUIDE.md](DEMO_GUIDE.md) for the flow, keyboard fallback and screenshots.
+See the [application walkthrough](DEMO_GUIDE.md) for keyboard fallback and screenshots.
 
 ## Source package contents
 
@@ -51,18 +51,18 @@ See [DEMO_GUIDE.md](DEMO_GUIDE.md) for the flow, keyboard fallback and screensho
 | --- | --- |
 | `README.md`, `pyproject.toml`, `AGENTS.md` | Entry instructions, dependencies and project rules |
 | `src/dip_touchless/` | DIP Core |
-| `extensions/stem3d/` | Integrated demo, scenes, renderer, read-only evidence UI |
+| `extensions/stem3d/` | Final application, scenes, renderer, read-only evidence UI |
 | `config/` | Runtime and experiment configuration |
 | `tests/` | Automated validation |
 | `docs/00` through `docs/06` | Canonical specifications and supplemental UI direction |
 | `FINAL_REPORT.md` | Frozen G7 report |
-| `submission/` | This guide, demo checklist and selected frozen evidence |
+| `submission/` | This guide, application walkthrough/checklist and selected frozen evidence |
 | `experiments/`, `analysis/` | Reproducible experiment/analysis tooling; frozen final plans under `experiments/final/` |
 | `models/README.md` | External model download and checksum instructions |
 
 Deliver the repository source archive. A wheel alone installs the Core under
 `src/`; it does not provide the Extension, config or evidence resources needed
-for this demo. Preserve paths when extracting. The ignored model binary is
+for the final application. Preserve paths when extracting. The ignored model binary is
 not in a Git source archive: download it before going offline, or supply a
 separate verified local model copy with the source package.
 
@@ -80,7 +80,7 @@ git status --short
 git archive --format=zip --prefix=DIP_project/ --output=../DIP_project-submission.zip HEAD
 ```
 
-Extract the ZIP elsewhere and repeat setup, model verification and the demo
+Extract the ZIP elsewhere and repeat setup, model verification and the application
 command before distributing it. A ZIP has no Git revision context; preserve
 the source commit in the handoff notes. Any optional model/screenshots are
 separate additions and are not automatically included by `git archive`.
@@ -97,12 +97,14 @@ a fresh environment is claimed; the existing Python 3.11 environment was checked
 - `python -m pip check`: no broken requirements.
 - Actual local MediaPipe model initialization and close: passed, without camera.
 - A local working-tree source preview with 173 files passed ZIP CRC/content
-  checks, extracted Core/demo imports and config/evidence path checks. It is
+  checks, extracted Core/application imports and config/evidence path checks. It is
   ignored under `runs/u10-preparation/`, not a final release archive.
 - Startup, cancellation, component failure, partial initialization and shutdown
   are covered by existing automated tests; this is not a physical camera smoke.
 - Physical webcam smoke for this final application: **NOT RUN**.
-- Final screenshot capture: pending; the checklist does not claim captures exist.
+- Final screenshot capture (R2): 15 synthetic 1600 × 900 presentation captures,
+  contact sheet and manifest in [screenshots/](screenshots/README.md).
+  Real webcam captures are not included; physical smoke remains NOT RUN.
 
 ## Provenance and known limitations
 
@@ -127,7 +129,13 @@ that release and from the current presentation revision.
 - Orbital motion is an educational deterministic visualization, not a physical
   simulator. No new performance or commercial-readiness claim is made.
 - G9 Product V2 remains deferred/stashed. No SPACE clutch or replacement gestures
-  belong to this final demo. Sensitivity and interaction semantics are unchanged.
+  belong to this final application. Sensitivity and interaction semantics are unchanged.
 
-Release/tag and physical validation remain pending. Use a new post-G7 identity
-after review; never move or rewrite `g7-final`.
+G8 final desktop application and U10 packaging are complete. The release roadmap
+is R1 terminology/docs alignment → R2 final screenshots → R3 final application
+smoke → R4 final release/tag. R2 synthetic presentation screenshots are complete;
+real webcam captures are not included and physical smoke remains pending;
+physical smoke is currently NOT RUN. Advanced interaction, including the deferred
+G9 Product V2 prototype, belongs to the backlog after v1.0 and is not required
+for this release. Recommend `dip-touchless-stem-v1.0` after review and release
+checks; never move or rewrite `g7-final`.

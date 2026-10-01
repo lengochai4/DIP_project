@@ -20,7 +20,7 @@ Main topics:
 - renderer-independent `InteractionState`;
 - reproducible comparison of Raw / Fixed / Adaptive processing.
 
-The 3D STEM application is an extension/demo layer. The DIP Core is the primary academic component.
+The final desktop STEM application is an Extension layer. The DIP Core is the primary academic component.
 
 ---
 
@@ -88,7 +88,7 @@ pytest
 
 ---
 
-### Final submission / demo
+### Final application / submission
 
 Download and verify `models/hand_landmarker.task` as described in
 [model setup](models/README.md). From the repository root, with the environment
@@ -105,10 +105,14 @@ not a live filter selector. For an optional synthetic renderer smoke without
 a camera or model, use `python -m extensions.stem3d.demo`.
 
 Use the [submission guide](submission/README.md) for package contents and
-validation, and the [demo flow and screenshot checklist](submission/DEMO_GUIDE.md)
+validation, and the [application walkthrough and screenshot checklist](submission/DEMO_GUIDE.md)
 for the presentation. Deliver the repository source tree, not just a wheel:
-the demo resources and Extension are outside the installed Core package.
+the application resources and Extension are outside the installed Core package.
 G9 remains deferred and is not part of the submission path.
+G8 and U10 packaging are complete. Remaining release work is R1 terminology/docs
+alignment, R2 final screenshots, R3 final application smoke and R4 final release.
+The recommended application tag is `dip-touchless-stem-v1.0`; `g7-final` remains
+the separate frozen research release. See the current roadmap in `docs/05`.
 
 ## 4. Project structure
 
