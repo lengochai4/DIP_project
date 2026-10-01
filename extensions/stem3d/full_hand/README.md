@@ -189,12 +189,13 @@ observation artifacts, never frozen G7 evidence or replacements for Core logs.
 The journal closes even after cancellation, provider/runtime errors or controller
 shutdown. No files are opened until the application is actually started.
 
-P1 is ready to execute, but has NOT RUN: use one hand at a time, show OPEN,
-POINT, PINCH and FIST, pause between poses, try comfortable in-plane rotations
-and both left/right hands separately, then withdraw/reacquire. Record visible
-candidate/stable states, ambiguity, false classifications and tracking drops
-honestly against run/profile identity. UNKNOWN/uncalibrated thresholds remain
-expected limitations; do not tune legacy sensitivity to make observation pass.
+P1 physical observation ran on 2026-10-01 with status **PARTIAL**. OPEN and POINT
+reached stable states; PINCH remained blocked by rearm and FIST was not classified.
+The operator confirmed the requested pose and environmental checklist. See
+[the P1 record](../../../docs/V11_P1_PHYSICAL_OBSERVATION.md) for run/profile
+identities, counts, limitations and recommendations that have not been implemented.
+Full-hand commands remain disabled; legacy sensitivity and the observation profile
+were unchanged. A labeled repeat is needed before promoting pose reliability.
 
 A5 change record: add observation/profile/journal modules and a separate entry
 point; add optional Extension-only factory/source/presentation hooks to the live
