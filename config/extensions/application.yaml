@@ -1,0 +1,23 @@
+# Extension-only engineering starters; physical usability validation pending.
+motion:
+  rotation_gain: 3.0
+  rotation_deadzone: 0.001
+  rotation_max_delta: 0.08
+  scale_gain: 2.0
+  scale_deadzone: 0.001
+  scale_max_delta: 0.04
+  max_gap_s: 0.5
+  manual_rotation: 0.06
+  manual_scale: 0.04
+sensitivity:
+  gentle: 0.6
+  standard: 1.0
+  responsive: 1.6
+two_hand:
+  association_max_distance: 0.25
+  association_margin: 0.04
+  acquire_dwell_s: 0.3
+  max_gap_s: 0.5
+  distance_deadzone: 0.003
+  scale_gain: 1.0
+  scale_max_delta: 0.04

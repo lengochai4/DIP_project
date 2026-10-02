@@ -1,0 +1,130 @@
+{
+  "scope": "local synthetic application QA, not webcam/research evidence",
+  "screenshots": [
+    {
+      "file": "01-workspace-geometry-synthetic.png",
+      "sha256": "1ad2bb07f148cd170483d89df0b213402586c07ae73d65c1d2e1c88ab6dfe9e0",
+      "source": "synthetic",
+      "scene_renderer": "actual OpenGL",
+      "size": [
+        1600,
+        900
+      ],
+      "not_research_evidence": true
+    },
+    {
+      "file": "02-workspace-molecule-synthetic.png",
+      "sha256": "a3b58dcba032a73fdb7ef93748d1e576250ac8cba162c45f3ddfd5f2d6216aad",
+      "source": "synthetic",
+      "scene_renderer": "actual OpenGL",
+      "size": [
+        1600,
+        900
+      ],
+      "not_research_evidence": true
+    },
+    {
+      "file": "03-workspace-orbital-synthetic.png",
+      "sha256": "6d7081504336e616b24cefe8902e981f83976658b0fa6b6cbeb01acecc9a2ca8",
+      "source": "synthetic",
+      "scene_renderer": "actual OpenGL",
+      "size": [
+        1600,
+        900
+      ],
+      "not_research_evidence": true
+    },
+    {
+      "file": "04-analysis-synthetic.png",
+      "sha256": "5410ab86c68be48593f21d0442d3ad0ee6035832ebba3476333d781235568beb",
+      "source": "synthetic",
+      "scene_renderer": "actual OpenGL",
+      "size": [
+        1600,
+        900
+      ],
+      "not_research_evidence": true
+    },
+    {
+      "file": "05-evidence-overview-synthetic.png",
+      "sha256": "48ba35e8acabde4e35c3676adef7c29905b9477d81d97f9b31dce6ab9e13b835",
+      "source": "synthetic",
+      "scene_renderer": "actual OpenGL",
+      "size": [
+        1600,
+        900
+      ],
+      "not_research_evidence": true
+    },
+    {
+      "file": "06-evidence-a1-synthetic.png",
+      "sha256": "631048f5e7085de18354b509ebc52c4715f5c73b7ec0def8c6a2fd548742e935",
+      "source": "synthetic",
+      "scene_renderer": "actual OpenGL",
+      "size": [
+        1600,
+        900
+      ],
+      "not_research_evidence": true
+    },
+    {
+      "file": "07-settings-synthetic.png",
+      "sha256": "b8b6ad25f877ca14b971616ee80e67ea4ce997f59e1e3b84a671607626c274ab",
+      "source": "synthetic",
+      "scene_renderer": "actual OpenGL",
+      "size": [
+        1600,
+        900
+      ],
+      "not_research_evidence": true
+    },
+    {
+      "file": "08-help-synthetic.png",
+      "sha256": "7ca803171ebf5b7dfc020e481809e643f2dbcf70654ae20a4b0f84f6c0fee9a6",
+      "source": "synthetic",
+      "scene_renderer": "actual OpenGL",
+      "size": [
+        1600,
+        900
+      ],
+      "not_research_evidence": true
+    },
+    {
+      "file": "09-control-space-synthetic.png",
+      "sha256": "377f3b710fc13eb80be6c5562f464d22bad6fe91e0ba72004cea5c3e08ec7681",
+      "source": "synthetic",
+      "scene_renderer": "actual OpenGL",
+      "size": [
+        1600,
+        900
+      ],
+      "not_research_evidence": true
+    },
+    {
+      "file": "10-no-hand-synthetic.png",
+      "sha256": "0b24b0724335419de651c94d642a18c0cd083db5e5b496232c697c7af949d0cc",
+      "source": "synthetic",
+      "scene_renderer": "actual OpenGL",
+      "size": [
+        1600,
+        900
+      ],
+      "not_research_evidence": true
+    }
+  ],
+  "cpu_timings": {
+    "DEMO": {
+      "iterations": 10,
+      "total_seconds": 0.037720799999078736
+    },
+    "ANALYSIS": {
+      "iterations": 10,
+      "total_seconds": 0.039707299998553935
+    },
+    "EVIDENCE": {
+      "iterations": 10,
+      "total_seconds": 0.02566379999916535
+    }
+  },
+  "performance_scope": "profiled CPU shell only; no camera/model/Core or FPS claim"
+}

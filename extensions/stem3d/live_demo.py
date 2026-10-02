@@ -307,7 +307,10 @@ def _build_runtime(
         raise
 
 
-def main(*, runtime_builder: Callable[..., RealtimeRuntime] | None = None) -> None:
+def main(*, runtime_builder: Callable[..., RealtimeRuntime] | None = None,
+         dashboard_factory: Callable[..., ProductDashboard] | None = None,
+         camera_index: int | None = None, run_id_factory=None,
+         raise_on_failure: bool = False) -> None:
     resolved = resolve_config(
         DEFAULT_CONFIG,
         overrides={
@@ -321,11 +324,12 @@ def main(*, runtime_builder: Callable[..., RealtimeRuntime] | None = None) -> No
                 "width": THEME.default_window_width,
                 "height": THEME.default_window_height,
             },
+            **({"camera": {"index": camera_index}} if camera_index is not None else {}),
         },
     )
     cfg = resolved.to_dict()
     renderer_cfg = cfg["renderer"]
-    run_id = _new_live_demo_run_id()
+    run_id = _new_live_demo_run_id() if run_id_factory is None else run_id_factory()
     metadata = build_run_metadata(
         resolved,
         run_id=run_id,
@@ -350,7 +354,7 @@ def main(*, runtime_builder: Callable[..., RealtimeRuntime] | None = None) -> No
     controller = Stem3DApplicationController(
         run_id=run_id,
         extension=extension,
-        dashboard=ProductDashboard(window_host=renderer),
+        dashboard=(ProductDashboard if dashboard_factory is None else dashboard_factory)(window_host=renderer),
         runtime_identity=build_runtime_identity(metadata),
     )
 
@@ -414,6 +418,8 @@ def main(*, runtime_builder: Callable[..., RealtimeRuntime] | None = None) -> No
         print("Live demo closed cleanly.")
     else:
         print("Live demo closed after the reported failure.")
+        if raise_on_failure:
+            raise failure
 
 
 if __name__ == "__main__":

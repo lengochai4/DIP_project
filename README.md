@@ -2,6 +2,13 @@
 
 **Real-Time Touchless 3D STEM Interaction Using Adaptive Image Preprocessing and Motion Signal Filtering with a Single RGB Camera**
 
+Current application continuation: [v1.1 setup and walkthrough](release/v1.1/README.md).
+Launch with `python -m extensions.stem3d.app`: one index finger rotates, an open
+palm navigates, two open palms scale. No PINCH calibration is required for this
+default SIMPLE mode. Legacy and experimental PINCH are selectable in Settings.
+Physical v1.1 acceptance is pending; the frozen v1.0 application remains
+available through `python -m extensions.stem3d.live_demo`.
+
 ## 1. Overview
 
 DIP Touchless STEM is a Digital Image Processing final-term project that uses a single RGB webcam for real-time touchless interaction with rendered 3D STEM objects.

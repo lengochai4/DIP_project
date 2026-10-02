@@ -41,6 +41,7 @@ class ApplicationShellRenderer(OpenGLStemRenderer):
         self._texture_size: tuple[int, int] | None = None
         self._canvas_size = (self._width, self._height)
         self._pointer_consumer: Callable[[int, int, bool], None] | None = None
+        self._navigation_consumer = None
 
     @property
     def window_size(self) -> tuple[int, int]:
@@ -48,6 +49,10 @@ class ApplicationShellRenderer(OpenGLStemRenderer):
 
     def set_pointer_consumer(self, consumer) -> None:
         self._pointer_consumer = consumer
+
+    def set_navigation_consumer(self, consumer) -> None:
+        """Optional application-only right-drag/wheel fallback; default is unchanged."""
+        self._navigation_consumer = consumer
 
     def render(self, frame: SceneFrame) -> None:
         # The presentation callback composites exactly once per runtime
@@ -81,6 +86,12 @@ class ApplicationShellRenderer(OpenGLStemRenderer):
                 if len(character) == 1 and self._key_consumer is not None:
                     self._key_consumer(character)
             elif event.type in {pygame.MOUSEMOTION, pygame.MOUSEBUTTONUP}:
+                if (event.type == pygame.MOUSEMOTION and self._navigation_consumer is not None
+                        and len(getattr(event, "buttons", ())) >= 3 and event.buttons[2]):
+                    x, y = event.pos
+                    self._navigation_consumer("drag", x*self._canvas_size[0]/self._width,
+                        y*self._canvas_size[1]/self._height,
+                        event.rel[0]/self._width, event.rel[1]/self._height)
                 clicked = event.type == pygame.MOUSEBUTTONUP
                 if clicked and event.button != 1:
                     continue
@@ -90,6 +101,10 @@ class ApplicationShellRenderer(OpenGLStemRenderer):
                         round(x * self._canvas_size[0] / self._width),
                         round(y * self._canvas_size[1] / self._height), clicked,
                     )
+            elif self._navigation_consumer is not None and event.type == pygame.MOUSEWHEEL:
+                x, y = pygame.mouse.get_pos()
+                self._navigation_consumer("wheel", x*self._canvas_size[0]/self._width,
+                    y*self._canvas_size[1]/self._height, 0., float(event.y))
         return False
 
     def present_shell(self, canvas, viewport=None, overlays=()) -> None:

@@ -1,0 +1,31 @@
+         31302 function calls in 0.102 seconds
+
+   Ordered by: cumulative time
+   List reduced from 87 to 25 due to restriction <25>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       30    0.000    0.000    0.103    0.003 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\product\dashboard.py:256(build_surface)
+       30    0.004    0.000    0.103    0.003 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\shell.py:250(build_surface)
+       20    0.000    0.000    0.030    0.002 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\product\dashboard.py:140(_vision)
+       20    0.000    0.000    0.023    0.001 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\shell.py:419(_vision)
+       30    0.000    0.000    0.023    0.001 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\product\dashboard.py:192(_new_canvas)
+       20    0.001    0.000    0.021    0.001 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\dashboard.py:1780(_draw_camera)
+       30    0.000    0.000    0.020    0.001 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\product\dashboard.py:123(_chrome)
+      440    0.002    0.000    0.019    0.000 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\shell.py:315(_box)
+      360    0.001    0.000    0.018    0.000 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\shell.py:327(_button)
+       30    0.001    0.000    0.018    0.001 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\shell.py:352(_chrome)
+       30    0.018    0.001    0.018    0.001 {method 'copy' of 'numpy.ndarray' objects}
+     1110    0.001    0.000    0.016    0.000 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\shell.py:292(_text)
+     1130    0.001    0.000    0.015    0.000 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\shell.py:301(_put_text)
+     1022    0.015    0.000    0.015    0.000 {rectangle}
+       20    0.015    0.001    0.015    0.001 {resize}
+     1131    0.014    0.000    0.014    0.000 {putText}
+       10    0.000    0.000    0.014    0.001 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\shell.py:619(_evidence)
+       20    0.000    0.000    0.007    0.000 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\shell.py:397(_stem)
+      300    0.006    0.000    0.007    0.000 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\icons.py:95(draw_icon)
+        1    0.005    0.005    0.005    0.005 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\.venv\Lib\site-packages\numpy\_core\numeric.py:323(full)
+     2220    0.005    0.000    0.005    0.000 {circle}
+       90    0.000    0.000    0.004    0.000 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\ui\shell.py:500(_paragraph)
+       40    0.000    0.000    0.003    0.000 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\product\dashboard.py:146(<lambda>)
+      880    0.000    0.000    0.003    0.000 D:\HocTap\7.Hoc_tren_lop\Nam3\DIP\DIP_project\extensions\stem3d\product\dashboard.py:146(<genexpr>)
+      880    0.002    0.000    0.003    0.000 C:\Users\DIABLO\AppData\Local\Programs\Python\Python311\Lib\dataclasses.py:1444(replace)

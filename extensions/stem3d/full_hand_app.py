@@ -27,11 +27,17 @@ def main(argv=None) -> None:
                         help="Opt-in local synchronized T/U images; requires --pinch-diagnostic")
     parser.add_argument("--pinch-calibration-markers", action="store_true",
                         help="Diagnostic labels: V=near NOT touching, B=medium separation")
+    parser.add_argument("--intent-pinch-observe", action="store_true",
+                        help="Opt-in relative-intention observation; K=calibrate apart, X=clear")
+    parser.add_argument("--intent-profile", type=Path,
+                        default=live_demo.PROJECT_ROOT / "config/extensions/intent_pinch_observe.yaml")
     args = parser.parse_args(argv)
     if args.pinch_visual and not args.pinch_diagnostic:
         parser.error("--pinch-visual requires --pinch-diagnostic")
     if args.pinch_calibration_markers and not args.pinch_diagnostic:
         parser.error("--pinch-calibration-markers requires --pinch-diagnostic")
+    if args.intent_pinch_observe and (args.mode == CompositionMode.LEGACY.value or args.pinch_diagnostic):
+        parser.error("intent observation requires OBSERVE_FULL_HAND and separate intention labels; no contact diagnostic")
     if args.mode == CompositionMode.LEGACY.value and args.profile.resolve() == CANDIDATE_PROFILE.resolve():
         parser.error("experimental PINCH candidate requires OBSERVE_FULL_HAND; legacy profile is unchanged")
     if args.pinch_diagnostic and args.mode == CompositionMode.LEGACY.value:
@@ -45,6 +51,18 @@ def main(argv=None) -> None:
           "application commands remain legacy-only")
     journals = []
     observers = []
+    intent_dashboards = []
+    intent_profile = None
+    if args.intent_pinch_observe:
+        from .full_hand.intent_session import load_intent_profile
+        intent_profile = load_intent_profile(args.intent_profile)
+        print(f"RELATIVE INTENT OBSERVE profile={intent_profile.sha256}; UNVALIDATED; no full-hand commands")
+
+    def intent_dashboard_factory(**kwargs):
+        from .full_hand.intent_presentation import IntentObservationDashboard
+        dashboard = IntentObservationDashboard(**kwargs)
+        intent_dashboards.append(dashboard)
+        return dashboard
     def build(*, cfg, run_id, controller, metadata):
         journal = SnapshotJournal(args.output_dir / run_id, profile, dict(metadata),
                                   webcam_images_stored=args.pinch_visual)
@@ -53,6 +71,22 @@ def main(argv=None) -> None:
         observers.append(observer)
         print(f"OBSERVE_FULL_HAND diagnostics: {journal.directory}")
         callback = observer.presentation_callback(controller.consume_presentation)
+        source_adapter = lambda source: GeometryCaptureSource(source, observer)
+        if intent_profile is not None:
+            from .full_hand.intent_pinch_contracts import ReferenceScope
+            from .full_hand.intent_session import IntentObservationSession
+            from .full_hand.intent_diagnostic import IntentDiagnosticJournal, IntentCaptureSource, intent_callback
+            scope = ReferenceScope(run_id, run_id, str(cfg["camera"]["index"]),
+                str(metadata.get("provider", {}).get("name", "configured-mediapipe")),
+                intent_profile.sha256, "full-frame-aspect-corrected-xy", "intent-epoch-0")
+            session = IntentObservationSession(intent_profile, scope)
+            intent = IntentDiagnosticJournal(journal.directory / "intent_pinch", session, dict(metadata),
+                live_demo._build_gesture_engine(cfg["gesture"]),
+                presentation_sink=intent_dashboards[-1].set_intent_snapshot if intent_dashboards else None)
+            journals.append(intent)
+            callback = intent_callback(observer, intent, controller.consume_presentation)
+            source_adapter = lambda source: IntentCaptureSource(source, observer, intent)
+            print("INTENT KEYS: K confirms apart calibration; X clears; T intended-close phase; U open; N non-intent.")
         if args.pinch_diagnostic:
             from .full_hand.pinch_diagnostic import PinchDiagnosticJournal, diagnostic_callback
             diagnostic = PinchDiagnosticJournal(journal.directory, profile, visual_capture=args.pinch_visual,
@@ -64,18 +98,29 @@ def main(argv=None) -> None:
                 print("CALIBRATION LABELS: V=very near, NOT touching; B=medium separation. Labels do not issue commands.")
         return live_demo._build_runtime(
             cfg=cfg, run_id=run_id, controller=controller,
-            source_adapter=lambda source: GeometryCaptureSource(source, observer),
+            source_adapter=source_adapter,
             presentation_consumer=callback,
         )
     try:
-        live_demo.main(runtime_builder=build)
+        if intent_profile is not None:
+            live_demo.main(runtime_builder=build, dashboard_factory=intent_dashboard_factory)
+        else:
+            live_demo.main(runtime_builder=build)
     finally:
         try:
             for observer in observers:
                 observer.reset()
         finally:
+            cleanup_errors = []
             for journal in journals:
-                journal.close()
+                try:
+                    journal.close()
+                except Exception as exc:
+                    cleanup_errors.append(exc)
+            if cleanup_errors:
+                for extra in cleanup_errors[1:]:
+                    cleanup_errors[0].add_note(f"Further diagnostic cleanup failed: {extra}")
+                raise cleanup_errors[0]
 
 
 if __name__ == "__main__":

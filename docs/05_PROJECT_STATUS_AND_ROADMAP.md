@@ -1,3 +1,26 @@
+## Active post-v1.0 application continuation — 2026-10-02
+
+Latest user direction: implement practical one-finger rotation, one-open-palm
+navigation and two-open-palm scale in the complete application, then physically
+test/fix. SIMPLE is now the product launch default, independent of experimental
+PINCH calibration. See [decision record](V11_SIMPLE_PRODUCT_DECISION.md).
+Prior gate restrictions below are historical; frozen release/evidence identities
+remain preserved. No Core optimization was needed for this product unit.
+
+The user has explicitly authorized the ordered v1.1 Extension/product continuation
+on `feat/v1.1-full-hand`. The user subsequently requested completing the application
+before the final physical test. The active task is **v1.1 application integration,
+automatic QA and release-candidate preparation**, with new commands explicitly
+experimental/opt-in until physical acceptance. See
+[`V11_PRODUCT_ROADMAP.md`](V11_PRODUCT_ROADMAP.md) for unit boundaries, the current
+final physical gate, engineering acceptance targets and remaining release work.
+
+`dip-touchless-stem-v1.0` now exists at
+`2bda0d35a6178c9161a8dcb5bf1de5fbe003adb2` and is an immutable rollback baseline.
+G7/Core/research contracts, artifacts and tag remain frozen; G9 remains stashed.
+The v1.0/R4 entries below are preserved as historical execution records, not the
+current v1.1 task. No commercial validation or production readiness is claimed.
+
 ## 2. Current implementation evidence
 
 As of 2026-09-29, the implementation repository has been verified

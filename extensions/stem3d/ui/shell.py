@@ -252,7 +252,7 @@ class ProductDashboard(LiveDashboard):
         w, h = self._window_size()
         layout = calculate_shell_layout(w if width is None else width,
                                         h if height is None else height, self.mode)
-        canvas = np.full((layout.height, layout.width, 3), THEME.background, np.uint8)
+        canvas = self._new_canvas(layout.height, layout.width)
         self._targets = {}
         self._chrome(canvas, layout, application, state)
         viewport = None
@@ -285,6 +285,9 @@ class ProductDashboard(LiveDashboard):
             overlays.append(details(canvas, layout.content, application))
         self._surface = ShellSurface(canvas, layout, viewport, tuple(overlays))
         return self._surface
+
+    def _new_canvas(self, height, width):
+        return np.full((height, width, 3), THEME.background, np.uint8)
 
     def _text(self, canvas, text, x, y, *, scale=None, color=None, width=None):
         self._put_text(canvas, text, x, y, scale=scale or THEME.font_body,

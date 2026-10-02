@@ -1,0 +1,24 @@
+# First relative-intention observation prototype. Unvalidated engineering starters.
+# Not derived/tuned from skin-contact or near-touch data. No command authority.
+reference:
+  min_samples: 12
+  min_duration_s: 1.0
+  max_sample_gap_s: 0.25
+  max_relative_mad: 0.04
+  max_relative_deviation: 0.10
+  max_palm_width_ratio: 1.25
+  noise_multiplier: 2.0
+closure:
+  enter: 0.60
+  exit: 0.25
+temporal:
+  enter_dwell_s: 0.20
+  release_dwell_s: 0.15
+  rearm_dwell_s: 0.25
+  reset_gap_s: 0.75
+  max_closing_age_s: 3.0
+  min_relative_progress: 0.15
+  progress_noise_multiplier: 2.0
+capture_duration_s: 1.5
+max_palm_shape_delta: 0.20
+max_palm_scale_ratio: 3.0
