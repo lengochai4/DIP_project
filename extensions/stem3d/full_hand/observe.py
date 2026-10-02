@@ -183,7 +183,8 @@ class GeometryCaptureSource:
 class SnapshotJournal:
     """Separate Extension JSONL, never writes Core/G7 logs or webcam images."""
 
-    def __init__(self, directory: Path, profile: ObserveProfile, metadata: dict) -> None:
+    def __init__(self, directory: Path, profile: ObserveProfile, metadata: dict,
+                 *, webcam_images_stored: bool = False) -> None:
         directory.mkdir(parents=True, exist_ok=False)
         self.directory = directory
         profile_data = asdict(profile)
@@ -193,7 +194,7 @@ class SnapshotJournal:
             "legacy_metadata": metadata, "profile": profile_data,
             "profile_sha256": hashlib.sha256(canonical.encode()).hexdigest(),
             "scope": "development observation; not G7 research evidence",
-            "commands": "legacy GestureEngine only", "webcam_images_stored": False,
+            "commands": "legacy GestureEngine only", "webcam_images_stored": webcam_images_stored,
         }
         (directory / "manifest.json").write_text(
             json.dumps(manifest, indent=2, allow_nan=False), encoding="utf-8")

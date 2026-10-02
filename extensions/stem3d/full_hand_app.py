@@ -20,7 +20,11 @@ def main(argv=None) -> None:
                         default=live_demo.PROJECT_ROOT / "runs/full-hand-observe")
     parser.add_argument("--pinch-diagnostic", action="store_true",
                         help="Observation-only geometry journal; T=touch, U=release, N=note")
+    parser.add_argument("--pinch-visual", action="store_true",
+                        help="Opt-in local synchronized T/U images; requires --pinch-diagnostic")
     args = parser.parse_args(argv)
+    if args.pinch_visual and not args.pinch_diagnostic:
+        parser.error("--pinch-visual requires --pinch-diagnostic")
     if args.pinch_diagnostic and args.mode == CompositionMode.LEGACY.value:
         parser.error("--pinch-diagnostic requires OBSERVE_FULL_HAND")
     if args.mode == CompositionMode.LEGACY.value:
@@ -30,7 +34,8 @@ def main(argv=None) -> None:
     journals = []
     observers = []
     def build(*, cfg, run_id, controller, metadata):
-        journal = SnapshotJournal(args.output_dir / run_id, profile, dict(metadata))
+        journal = SnapshotJournal(args.output_dir / run_id, profile, dict(metadata),
+                                  webcam_images_stored=args.pinch_visual)
         journals.append(journal)
         observer = FullHandObserver(profile, journal.consume)
         observers.append(observer)
@@ -38,7 +43,7 @@ def main(argv=None) -> None:
         callback = observer.presentation_callback(controller.consume_presentation)
         if args.pinch_diagnostic:
             from .full_hand.pinch_diagnostic import PinchDiagnosticJournal, diagnostic_callback
-            diagnostic = PinchDiagnosticJournal(journal.directory, profile)
+            diagnostic = PinchDiagnosticJournal(journal.directory, profile, visual_capture=args.pinch_visual)
             journals.append(diagnostic)
             callback = diagnostic_callback(observer, diagnostic, controller.consume_presentation)
             print("PHYSICAL MARKERS: hold T briefly at contact; U when apart; N optional note.")

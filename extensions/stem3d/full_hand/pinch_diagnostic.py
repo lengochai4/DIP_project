@@ -4,6 +4,7 @@ from dataclasses import asdict
 import hashlib
 import json
 import math
+import time
 from pathlib import Path
 import warnings
 
@@ -68,11 +69,15 @@ def poll_markers():
 
 
 class PinchDiagnosticJournal:
-    def __init__(self, directory, profile, poll=poll_markers):
+    def __init__(self, directory, profile, poll=poll_markers, *, visual_capture=False):
         self.poll, self.edges = poll, MarkerEdges()
         self.phase, self.marker_id, self.last_identity = "UNLABELED", 0, None
         self.enter = profile.pose.pinch_enter_distance_palm
         self.exit = profile.pose.pinch_exit_distance_palm
+        self.visual = None
+        if visual_capture:
+            from .pinch_visual import PinchVisualCapture
+            self.visual = PinchVisualCapture(directory)
         self.rows = (directory / "pinch_geometry.jsonl").open("x", encoding="utf-8")
         try:
             self.markers = (directory / "physical_markers.jsonl").open("x", encoding="utf-8")
@@ -85,13 +90,16 @@ class PinchDiagnosticJournal:
             "label_alignment": "operator key rising edge at current presentation frame; human timing uncertainty",
             "distance_units": "hypot(dx * frame_width/frame_height, dy) / MCP5--MCP17 width",
             "enter": self.enter, "exit": self.exit,
+            "visual_capture": visual_capture,
+            "visual_samples": "marker frame + >=0.5s held frame, capped at 24 samples" if visual_capture else None,
             "source_sha256": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in
-                              (Path(__file__), Path(__file__).parents[1] / "full_hand_app.py")},
+                              (Path(__file__), Path(__file__).with_name("pinch_visual.py"),
+                               Path(__file__).parents[1] / "full_hand_app.py")},
         }
         (directory / "pinch_diagnostic_manifest.json").write_text(
             json.dumps(manifest, indent=2), encoding="utf-8")
 
-    def consume(self, frame, snapshot):
+    def consume(self, frame, snapshot, packet=None):
         identity = (frame.run_id, frame.frame_id, frame.timestamp_s)
         if identity == self.last_identity:
             return
@@ -99,6 +107,8 @@ class PinchDiagnosticJournal:
             raise ValueError("diagnostic frame/snapshot identity mismatch")
         self.last_identity = identity
         pressed, focused = self.poll()
+        marker_poll_time = time.perf_counter()
+        events = []
         for event in self.edges.update(pressed, focused):
             self.marker_id += 1
             if event in ("PINCH_TOUCH", "PINCH_RELEASE"):
@@ -106,7 +116,9 @@ class PinchDiagnosticJournal:
             elif event == "CONFLICTING_MARKERS":
                 self.phase = "UNLABELED"
             marker = dict(run_id=frame.run_id, frame_id=frame.frame_id,
-                          timestamp_s=frame.timestamp_s, marker_id=self.marker_id, event=event)
+                          timestamp_s=frame.timestamp_s, marker_id=self.marker_id, event=event,
+                          poll_perf_counter_s=marker_poll_time)
+            events.append(marker)
             self.markers.write(json.dumps(marker) + "\n")
             self.markers.flush()
             print(f"[PHYSICAL MARKER {self.marker_id}] {event} frame={frame.frame_id}")
@@ -122,6 +134,8 @@ class PinchDiagnosticJournal:
                    temporal=asdict(snapshot.temporal), errors=snapshot.errors)
         self.rows.write(json.dumps(row, allow_nan=False) + "\n")
         self.rows.flush()
+        if self.visual is not None:
+            self.visual.consume(packet, frame, snapshot, row, events)
 
     def close(self):
         self.rows.close()
@@ -134,7 +148,7 @@ def diagnostic_callback(observer, journal, legacy_presentation):
     def consume(packet, frame, interaction):
         snapshot = observer.consume(packet, frame, interaction)
         try:
-            journal.consume(frame, snapshot)
+            journal.consume(frame, snapshot, packet)
         except Exception as exc:
             message = f"PINCH diagnostic unavailable: {exc}"
             if message not in reported:

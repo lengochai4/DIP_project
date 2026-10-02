@@ -356,8 +356,8 @@ def test_entrypoint_observe_factory_wires_hooks_and_closes_journal(monkeypatch, 
     built = []
     journals = []
     original_journal = full_hand_app.SnapshotJournal
-    def journal(*args):
-        result = original_journal(*args)
+    def journal(*args, **kwargs):
+        result = original_journal(*args, **kwargs)
         journals.append(result)
         return result
     monkeypatch.setattr(full_hand_app, "SnapshotJournal", journal)
@@ -382,8 +382,8 @@ def test_entrypoint_build_failure_closes_sidecar(monkeypatch, tmp_path):
     from extensions.stem3d import full_hand_app
     journals = []
     original = full_hand_app.SnapshotJournal
-    def journal(*args):
-        result = original(*args)
+    def journal(*args, **kwargs):
+        result = original(*args, **kwargs)
         journals.append(result)
         return result
     monkeypatch.setattr(full_hand_app, "SnapshotJournal", journal)
