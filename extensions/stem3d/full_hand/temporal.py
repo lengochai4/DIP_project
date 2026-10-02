@@ -36,12 +36,16 @@ class TemporalPoseTracker:
         self._pending = None
         self._since = None
 
-    def _neutralize(self, reasons) -> None:
+    def _release_pose(self, reasons) -> None:
+        """Cancel semantic action memory without erasing geometry-based rearm."""
         self._clear_pending(reasons)
         if self._stable is not HandPose.UNKNOWN:
             self._stable = HandPose.UNKNOWN
             self._transition_id += 1
             reasons.append(R.SAFE_RELEASE)
+
+    def _neutralize(self, reasons) -> None:
+        self._release_pose(reasons)
         self._armed = False
         self._rearm_since = None
 
@@ -69,21 +73,29 @@ class TemporalPoseTracker:
         return self._state(HandPose.UNKNOWN, reasons, reset=True)
 
     @staticmethod
-    def _valid_observation(observation):
+    def _valid_pinch_geometry(observation):
+        """Geometry validity, independent of semantic finger/pose states."""
         fingers = observation.fingers
         p = observation.pinch
-        if (observation.geometry_reasons or len(fingers) != 5
+        return not (observation.geometry_reasons or len(fingers) != 5
                 or {f.finger for f in fingers} != set(Finger)
-                or any(f.state is FingerState.UNKNOWN or f.geometry_reasons for f in fingers)
+                or any(f.geometry_reasons for f in fingers)
                 or p.distance_palm is None or not math.isfinite(p.distance_palm)
                 or p.distance_palm < 0
                 or any(type(v) is not bool for v in (p.enter, p.exit, p.boundary_band))
-                or sum((p.enter, p.exit, p.boundary_band)) != 1):
+                or sum((p.enter, p.exit, p.boundary_band)) != 1)
+
+    @classmethod
+    def _valid_observation(cls, observation):
+        if not cls._valid_pinch_geometry(observation):
             return False
+        fingers, p = observation.fingers, observation.pinch
         if observation.pose is HandPose.PINCH:
-            return p.enter and not observation.reasons
+            return (p.enter and not observation.reasons
+                    and all(f.state is not FingerState.UNKNOWN for f in fingers))
         if observation.pose is not HandPose.UNKNOWN:
-            return p.exit and not observation.reasons
+            return (p.exit and not observation.reasons
+                    and all(f.state is not FingerState.UNKNOWN for f in fingers))
         return True
 
     def update(
@@ -144,13 +156,16 @@ class TemporalPoseTracker:
             self._clear_pending(reasons)
             self._rearm_since = None
             reasons.append(R.PINCH_BAND_HOLD if self._armed else R.PINCH_BAND_WAIT)
+            if not self._armed:
+                reasons.append(R.REARM_PENDING)
             return self._state(observation.pose, reasons, observation.reasons)
         if observation.pose is HandPose.UNKNOWN:
-            self._neutralize(reasons)
+            # Semantic ambiguity always releases action memory, but the clutch
+            # observes valid pinch geometry independently of the pose label.
+            self._release_pose(reasons)
             reasons.append(R.UNKNOWN_INPUT)
-            return self._state(observation.pose, reasons, observation.reasons)
         if not self._armed:
-            released = observation.pose is not HandPose.PINCH and observation.pinch.exit
+            released = observation.pinch.exit
             if not released:
                 self._rearm_since = None
                 reasons.append(R.REARM_PENDING)
@@ -164,6 +179,8 @@ class TemporalPoseTracker:
                 else:
                     reasons.append(R.REARM_PENDING)
             # Even the frame completing rearm is neutral; pose dwell starts next.
+            return self._state(observation.pose, reasons, observation.reasons)
+        if observation.pose is HandPose.UNKNOWN:
             return self._state(observation.pose, reasons, observation.reasons)
         target = observation.pose
         if target is self._stable:

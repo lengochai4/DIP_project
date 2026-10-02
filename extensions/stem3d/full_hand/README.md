@@ -104,18 +104,23 @@ immediately, cancels pending dwell and disarms. Repeated continuous loss frames
 do not repeat reset events. Invalid samples never contribute to dwell.
 
 The initialization/reacquisition/reset frame itself cannot rearm. Subsequent
-continuous known non-PINCH poses with `pinch.exit=True` must satisfy rearm dwell.
+continuous valid normalized pinch geometry with `pinch.exit=True` must satisfy
+rearm dwell. It does not require an OPEN/POINT/FIST label, or a semantic finger
+state classification: the geometry and clutch evidence are separate from pose
+action permission. Geometric invalidity still neutralizes safely.
 The frame completing rearm is still neutral; pose entry dwell starts on the next
 frame. A hand that reappears pinched cannot reactivate until released evidence
-rearms it. UNKNOWN cancels rearm and pending transitions and safely releases
-the stable pose, regardless of configured exit dwell.
+rearms it. Semantic UNKNOWN cancels pending pose transitions and safely releases
+the stable pose, regardless of configured exit dwell; it does not erase an
+earned geometry-based arm or definite-release dwell.
 
 The sole UNKNOWN exception is A3's exact PINCH_BOUNDARY_BAND observation with
 usable geometry and known finger states. It preserves any already earned arm
 and existing stable memory/latch, cancelling pending entry/exit transitions.
 An unarmed tracker remains explicitly waiting for release (`PINCH_BAND_WAIT`).
 The band clears release-dwell progress: it never counts as release or rearm
-evidence. Only subsequent continuous known non-PINCH samples with strict
+evidence, and an unarmed band explicitly retains `REARM_PENDING`.
+Only subsequent continuous valid geometry samples with strict
 `distance > exit` can complete rearm; returning to PINCH cancels release dwell.
 **action_allowed remains false on every UNKNOWN band frame.** A later definite
 PINCH-enter sample may resume permission; definite released candidates must
@@ -207,6 +212,11 @@ were unchanged. A labeled repeat is needed before promoting pose reliability.
 A5.1 subsequently fixes only pre-entry band handling and FIST thumb compatibility.
 See [the A5.1 change record](../../../docs/V11_A51_TARGETED_FIXES.md). The original
 P1 findings remain historical; no new physical observation is claimed.
+
+A5.2 separates geometry-driven release/rearm from semantic pose labels; see
+[the A5.2 change record](../../../docs/V11_A52_GEOMETRY_REARM.md). Valid UNKNOWN
+release geometry can now earn the configured rearm dwell while remaining
+action-blocked. P1c physical validation of this change is NOT RUN.
 
 A5 change record: add observation/profile/journal modules and a separate entry
 point; add optional Extension-only factory/source/presentation hooks to the live

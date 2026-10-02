@@ -175,14 +175,14 @@ def test_band_never_finishes_an_unconfirmed_pinch_entry():
 
 
 @pytest.mark.parametrize("start", [HandPose.OPEN, HandPose.PINCH])
-def test_general_unknown_immediately_releases_and_requires_rearm(start):
+def test_semantic_unknown_releases_action_memory_without_disarming_geometry(start):
     tracker = _pinched() if start is HandPose.PINCH else _ready()
     unknown = _update(tracker, HandPose.UNKNOWN, 1.125)
-    assert unknown.stable_pose is HandPose.UNKNOWN and not unknown.armed
+    assert unknown.stable_pose is HandPose.UNKNOWN and unknown.armed
     assert not unknown.action_allowed and not unknown.pinch_latched
     assert R.UNKNOWN_INPUT in unknown.reasons and R.SAFE_RELEASE in unknown.reasons
     held = _update(tracker, HandPose.PINCH, 1.25)
-    assert not held.armed and held.rearm_since_s is None
+    assert held.armed and not held.action_allowed and held.candidate_since_s == 1.25
 
 
 def test_unknown_cancels_pending_and_dwell_cannot_bridge_the_gap():
@@ -190,11 +190,10 @@ def test_unknown_cancels_pending_and_dwell_cannot_bridge_the_gap():
     _update(tracker, HandPose.POINT, .75)
     unknown = _update(tracker, HandPose.UNKNOWN, .875)
     assert unknown.pending_pose is None and unknown.candidate_since_s is None
-    _update(tracker, HandPose.POINT, 1.)
-    armed = _update(tracker, HandPose.POINT, 1.125)
-    assert armed.armed and not armed.action_allowed
-    first = _update(tracker, HandPose.POINT, 1.25)
-    assert first.candidate_since_s == 1.25 and not first.action_allowed
+    first = _update(tracker, HandPose.POINT, 1.)
+    assert first.armed and first.candidate_since_s == 1. and not first.action_allowed
+    confirmed = _update(tracker, HandPose.POINT, 1.125)
+    assert confirmed.action_allowed and confirmed.stable_pose is HandPose.POINT
 
 
 @pytest.mark.parametrize("status", [TrackingStatus.NO_HAND, TrackingStatus.TEMPORARY_LOSS, TrackingStatus.INVALID])
@@ -375,13 +374,15 @@ def test_snapshot_contract_cannot_enable_actions_on_unknown_band():
         replace(state, reasons=list(state.reasons))
 
 
-def test_unknown_cannot_contribute_to_rearm_dwell():
+def test_unknown_with_definite_release_geometry_can_complete_rearm_dwell():
     tracker = TemporalPoseTracker(_config())
     _update(tracker, HandPose.OPEN, 0.)
     _update(tracker, HandPose.OPEN, .125)
-    _update(tracker, HandPose.UNKNOWN, .25)
+    released = _update(tracker, HandPose.UNKNOWN, .25)
+    assert released.armed and not released.action_allowed
+    assert R.REARMED in released.reasons
     state = _update(tracker, HandPose.OPEN, .375)
-    assert state.rearm_since_s == .375 and not state.armed
+    assert state.armed and state.candidate_since_s == .375 and not state.action_allowed
 
 
 @pytest.mark.parametrize("distance", [.2, .3, .35])

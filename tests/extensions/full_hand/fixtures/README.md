@@ -20,3 +20,10 @@ Mirror/rotation variants in tests are explicitly transformed regression inputs,
 not additional physical observations. Original recorded classifications are kept
 to document the pre-fix result; the operator's checklist does not provide precise
 frame-level intended-pose labels.
+
+`p1_rearm_sequences.json` adds contiguous pose/pinch/tracking/reset excerpts
+for A5.2: P1 run `g8-demo-20261001-221612` frames 74–349, and P1b run
+`g8-demo-20261001-225528` frames 228–258. Source sidecars and legacy frame CSVs
+are the same ignored development paths described above. Each run records its
+original revision and resolved profile. Distances/timestamps are unrounded;
+there are no images, altered source logs, or added physical accuracy labels.
