@@ -23,10 +23,11 @@ class PinchVisualCapture:
         self.pending = None
 
     def consume(self, packet, frame, snapshot, row, markers):
+        from .pinch_diagnostic import PHYSICAL_LABELS
         for marker in markers:
-            if marker["event"] in ("PINCH_TOUCH", "PINCH_RELEASE", "CONFLICTING_MARKERS"):
+            if marker["event"] in (*PHYSICAL_LABELS, "CONFLICTING_MARKERS"):
                 self.pending = None
-            if marker["event"] in ("PINCH_TOUCH", "PINCH_RELEASE"):
+            if marker["event"] in PHYSICAL_LABELS:
                 self._save(packet, frame, snapshot, row, marker, "MARKER")
                 self.pending = marker
         if self.pending and not markers and frame.timestamp_s >= self.pending["timestamp_s"] + .5:
