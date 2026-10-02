@@ -18,7 +18,11 @@ def main(argv=None) -> None:
                         default=live_demo.PROJECT_ROOT / "config/extensions/full_hand_observe.yaml")
     parser.add_argument("--output-dir", type=Path,
                         default=live_demo.PROJECT_ROOT / "runs/full-hand-observe")
+    parser.add_argument("--pinch-diagnostic", action="store_true",
+                        help="Observation-only geometry journal; T=touch, U=release, N=note")
     args = parser.parse_args(argv)
+    if args.pinch_diagnostic and args.mode == CompositionMode.LEGACY.value:
+        parser.error("--pinch-diagnostic requires OBSERVE_FULL_HAND")
     if args.mode == CompositionMode.LEGACY.value:
         live_demo.main()
         return
@@ -31,10 +35,17 @@ def main(argv=None) -> None:
         observer = FullHandObserver(profile, journal.consume)
         observers.append(observer)
         print(f"OBSERVE_FULL_HAND diagnostics: {journal.directory}")
+        callback = observer.presentation_callback(controller.consume_presentation)
+        if args.pinch_diagnostic:
+            from .full_hand.pinch_diagnostic import PinchDiagnosticJournal, diagnostic_callback
+            diagnostic = PinchDiagnosticJournal(journal.directory, profile)
+            journals.append(diagnostic)
+            callback = diagnostic_callback(observer, diagnostic, controller.consume_presentation)
+            print("PHYSICAL MARKERS: hold T briefly at contact; U when apart; N optional note.")
         return live_demo._build_runtime(
             cfg=cfg, run_id=run_id, controller=controller,
             source_adapter=lambda source: GeometryCaptureSource(source, observer),
-            presentation_consumer=observer.presentation_callback(controller.consume_presentation),
+            presentation_consumer=callback,
         )
     try:
         live_demo.main(runtime_builder=build)
