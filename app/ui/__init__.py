@@ -1,0 +1,1 @@
+"""Native Qt product frontend."""

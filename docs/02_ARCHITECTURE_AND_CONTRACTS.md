@@ -819,3 +819,27 @@ The architecture MAY expose clean seams for:
 - local diagnostic export.
 
 These interfaces do not justify implementing speculative product features in the course baseline.
+
+## 16. Approved post-v1.0 V2 product boundary
+
+The approved V2 continuation adds a separate product interaction layer in `app/`.
+Its immutable `GestureIntent` contract may be consumed by V2 learning extensions;
+these extensions MUST NOT receive landmarks, provider objects or mutable Core
+components. This is a new product-only API, not a change to `InteractionState`.
+The original 3D Extension and all research paths retain their existing contracts.
+
+A product hand adapter MAY read the copied presentation image and public
+TrackingFrame/legacy InteractionState. It may compose independent two-hand
+processing from public components, with separately versioned configuration/logs.
+It MUST NOT replace or mutate frozen Core processing, logs, baselines or evidence.
+Product role/pose/anchor metadata does not become research MeasurementQuality.
+Unknown/loss/reacquisition/discontinuity MUST neutralize all product commands.
+The product runtime MUST cancel before scene/view/profile/owner switches and
+require release/rearm after an interrupted clutch. Core MUST NOT depend on Qt
+or the product package. Detailed product behavior is supplemental in docs/07.
+
+Product intent control pointers use normalized window xy; presentation resolves
+them to viewport-local picking coordinates before learning extensions consume
+scene points. Source-image palm/skeleton coordinates remain separate. The additive
+product-only `input_source` field distinguishes GESTURE/MANUAL commit identities.
+Neither convention changes frozen Core coordinate spaces or serialized logs.

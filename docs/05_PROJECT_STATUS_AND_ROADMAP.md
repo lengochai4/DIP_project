@@ -1,3 +1,50 @@
+## Active V2 product rebuild — 2026-10-02
+
+The latest user instruction approves implementing the supplied V2 blueprint
+from end to end and defers physical testing. The active branch is
+`feat/v2-product-rebuild`, based on immutable application v1.0 commit
+`2bda0d35a6178c9161a8dcb5bf1de5fbe003adb2`. G7 remains unchanged at
+`f454c6b8325c85199c0122c0e822fe8e76c1526c`.
+
+Current task: implement and automatically verify the V2 product frontend,
+separate intent layer, hand anchor, two-hand adapter, educational extensions,
+fallbacks and source delivery. Physical usability acceptance is explicitly
+DEFERRED BY USER and must not be marked passed. The R4/current-task entries
+below are historical v1.0 records. Product scope/API approval is documented
+in `07_V2_PRODUCT_SPEC.md`, with the supplied blueprint in `V2_BLUEPRINT.md`.
+
+Actual validation and delivery status: `release/v2/QA_STATUS.md`.
+
+V2 source implementation and automatic verification are complete as a local
+`2.0.0rc1` delivery: 630 full-suite tests passed, 75 product tests passed, native
+OpenGL and software synthetic render QA executed, actual two-hand model blank
+inference/cleanup checked, CLI/compile/dependencies/whitespace verified, and
+the frozen Core/evidence tree and original tag commits unchanged. Physical
+usability and blueprint P9 percentages remain unmeasured/deferred by the user.
+The RC source archive and setup/launch/docs are separate from a production or
+physically accepted final release. No stage/commit/push/tag was performed.
+
+Continuation on 2026-10-03 hardened modal ownership, native editing shortcuts,
+mouse/gesture takeover, commit identity and continuous UI/scene pointer mapping.
+Fresh extracted-package setup, UI/model smoke, dependency consistency and all
+628 tests also passed in a newly created Python environment on this machine.
+For progress accounting, P0-P8 plus P9 automated checks are ten completed gates;
+the separate physical P9 gate remains deferred. Thus engineering scope is 10/10
+(100%), while the eleven equally counted gates are 10/11 (90.9%). This is a task
+checklist ratio, not a measured physical success rate or readiness guarantee.
+
+Camera bug correction on 2026-10-03: the V2 worker supplied an unsupported
+keyword to the frozen live-demo factory, so the original RC could fail before
+opening the camera despite its isolated tests passing. The worker now supplies
+the presentation callback through the factory's controller contract. New tests
+execute the real factory/runtime/logger with only device boundaries mocked in
+PRODUCT and LEGACY. The normal V2 Start/Stop buttons also opened physical camera
+0, delivered five sampled GUI frames and shut down cleanly in run
+`stem-v2-20261003-004440-362832`; all sampled frames had no detected hand.
+Camera integration is verified for that run. Physical gesture usability/HAND
+anchoring with real hands remains unverified; the earlier checklist percentage
+must not be interpreted as an assurance of defect-free execution.
+
 ## 2. Current implementation evidence
 
 As of 2026-09-29, the implementation repository has been verified

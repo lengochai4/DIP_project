@@ -1,5 +1,11 @@
 # DIP Touchless STEM
 
+**V2 product frontend:** new PySide6 application with semantic gestures and nine
+STEM labs. Run `.\setup_v2.ps1` then `.\launch_v2.ps1`. See
+[V2 setup and walkthrough](release/v2/README.md) and
+[product specification](docs/07_V2_PRODUCT_SPEC.md). Physical usability testing
+is deferred; the frozen G7 research and v1.0 fallback remain unchanged.
+
 **Real-Time Touchless 3D STEM Interaction Using Adaptive Image Preprocessing and Motion Signal Filtering with a Single RGB Camera**
 
 ## 1. Overview
