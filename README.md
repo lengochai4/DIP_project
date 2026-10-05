@@ -76,7 +76,7 @@ python -m pip install --upgrade pip
 Install the project and development dependencies:
 
 ```powershell
-python -m pip install -e ".[dev,demo3d]"
+pip install . 
 ```
 
 Verify the environment:
