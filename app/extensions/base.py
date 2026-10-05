@@ -5,6 +5,7 @@ from typing import Protocol
 import math
 import numpy as np
 from app.interaction.contracts import GestureIntent, IntentType, Phase
+from .live_geometry import build_live_shape, render_live
 
 
 @dataclass(frozen=True)
@@ -24,10 +25,19 @@ class Ball:
 
 
 @dataclass(frozen=True)
+class Face:
+    a: tuple
+    b: tuple
+    c: tuple
+    color: str = "#426f7a"
+
+
+@dataclass(frozen=True)
 class Geometry:
     lines: tuple[Line, ...] = ()
     balls: tuple[Ball, ...] = ()
     labels: tuple[tuple[tuple, str], ...] = ()
+    faces: tuple[Face, ...] = ()
 
 
 class StemExtension(Protocol):
@@ -47,6 +57,9 @@ class StemExtension(Protocol):
 
 class Lab:
     supports_hand_anchor = True
+    view_radius = 2.0
+    dimensionality = "3D scene"
+    live_surface_overlay = False
     tools = (
         "Inspect",
         "Distance",
@@ -55,6 +68,7 @@ class Lab:
         "Plane",
         "Triangle",
         "Rectangle",
+        "Quadrilateral",
         "Polygon",
     )
     presets = ("Default",)
@@ -62,6 +76,7 @@ class Lab:
     def __init__(self, config):
         self.config = config
         self.active = False
+        self.live_enabled = False
         self.preset = self.presets[0]
         self.reset()
 
@@ -71,6 +86,7 @@ class Lab:
     def deactivate(self):
         self.active = False
         self.dragging = False
+        self.live_shape = None
 
     def reset(self):
         self.yaw, self.pitch, self.scale = 0.35, 0.35, 1.0
@@ -85,6 +101,8 @@ class Lab:
         self.dragging = False
         self._scale_start = self.scale
         self._committed = set()
+        self.construction_error = ""
+        self.live_shape = None
         self.parameters = {
             "amplitude": 1.0,
             "frequency": 1.0,
@@ -112,18 +130,35 @@ class Lab:
             raise ValueError("unknown tool")
         self.tool = tool
         self.points = []
+        self.construction_error = ""
 
     def on_intent(self, intent):
         if not self.active:
             return
         t = intent.type
         if t in {IntentType.CANCEL, IntentType.RELEASE}:
+            self.live_shape = None
             self.dragging = False
             self.preview = self.hover = None
             self.pair_preview = ()
             self.reference_plane = None
             return
         if not intent.validity:
+            return
+        if intent.live_geometry:
+            self.live_shape = build_live_shape(
+                intent.points,
+                intent.vertex_tokens,
+                self.config.palm_epsilon,
+                self.config.construction_tolerance,
+                self.config.geometry_planarity_ratio,
+            )
+            self.dragging = False
+            self.preview = intent.points[
+                min(range(len(intent.points)), key=lambda i: intent.vertex_tokens[i])
+            ]
+            self.pair_preview = ()
+            self.hover = self.pick(self.preview)
             return
         self.reference_plane = intent.anchor_pose
         if t in {IntentType.POINT, IntentType.MEASURE_UPDATE, IntentType.TOOL_UPDATE}:
@@ -156,9 +191,14 @@ class Lab:
                 "Plane": 3,
                 "Triangle": 3,
                 "Rectangle": 4,
+                "Quadrilateral": 4,
                 "Polygon": 0,
             }.get(self.tool, 2)
             if count and len(self.points) >= count:
+                if self.tool == "Rectangle" and not self.is_rectangle(self.points[:4]):
+                    self.construction_error = "Rectangle unavailable: use four noncoincident corners in order, with right angles. Undo the last point to correct, or use Quadrilateral for arbitrary corners."
+                    return
+                self.construction_error = ""
                 self.constructions.append((self.tool, tuple(self.points[:count])))
                 self.points = self.points[count:]
         elif t in {IntentType.GRAB, IntentType.SELECT}:
@@ -180,6 +220,22 @@ class Lab:
             self.constructions.append((self.tool, tuple(self.points)))
             self.points = []
 
+    def is_rectangle(self, points):
+        p = np.asarray(points, dtype=float)
+        edges = np.roll(p, -1, axis=0) - p
+        lengths = np.linalg.norm(edges, axis=1)
+        tolerance = self.config.construction_tolerance
+        if np.any(lengths <= tolerance):
+            return False
+        unit = edges / lengths[:, None]
+        return bool(
+            np.all(
+                np.abs(np.sum(unit * np.roll(unit, -1, axis=0), axis=1)) <= tolerance
+            )
+            and np.linalg.norm(edges[0] + edges[2]) <= tolerance * max(lengths)
+            and np.linalg.norm(edges[1] + edges[3]) <= tolerance * max(lengths)
+        )
+
     def pick(self, point):
         if point is None:
             return None
@@ -187,7 +243,7 @@ class Lab:
 
     def measurements(self):
         values = []
-        for tool, pts in self.constructions:
+        for tool, pts in self.export_constructions():
             if len(pts) >= 2:
                 v = np.array(pts[1]) - pts[0]
                 values.append(
@@ -210,14 +266,32 @@ class Lab:
                 )
         return values
 
+    def export_constructions(self):
+        if self.live_enabled:
+            return (
+                []
+                if self.live_shape is None
+                else [(self.live_shape.kind, self.live_shape.points)]
+            )
+        return self.constructions
+
     def constructed(self):
+        if self.live_enabled:
+            return render_live(
+                self.live_shape,
+                self.config.palm_epsilon,
+                fill=self.live_surface_overlay,
+            )
         lines, balls = [], []
         for tool, pts in [*self.constructions, (self.tool, tuple(self.points))]:
             balls.extend(
                 Ball(p, 0.055, "#efca82", str(i + 1)) for i, p in enumerate(pts)
             )
             lines.extend(Line(a, b, "#efca82", 2.5) for a, b in zip(pts, pts[1:]))
-            if tool in {"Triangle", "Plane", "Rectangle", "Polygon"} and len(pts) >= 3:
+            if (
+                tool in {"Triangle", "Plane", "Rectangle", "Quadrilateral", "Polygon"}
+                and len(pts) >= 3
+            ):
                 lines.append(Line(pts[-1], pts[0], "#efca82", 2.5))
         if self.preview is not None and self.tool != "Inspect":
             balls.append(Ball(self.preview, 0.045, "#e7eef0", "preview"))
@@ -253,9 +327,43 @@ class Lab:
 
     def render(self, context=None):
         g, c = self.geometry(), self.constructed()
-        return Geometry(g.lines + c.lines, g.balls + c.balls, g.labels)
+        return Geometry(
+            g.lines + c.lines, g.balls + c.balls, g.labels, g.faces + c.faces
+        )
 
     def inspect(self):
+        if self.live_enabled:
+            shape = self.live_shape
+            return [
+                "Live fingertips: automatic geometry; no Add point or pinch required.",
+                (
+                    "No active vertices"
+                    if shape is None
+                    else f"{shape.kind}: {len(shape.points)} live vertices"
+                ),
+                *(
+                    []
+                    if shape is None
+                    else [
+                        f"{'Edge length' if shape.solid else 'Length' if len(shape.points) == 2 else 'Boundary length'}: {shape.perimeter:.3f} scene units",
+                        *(
+                            [
+                                f"Closed convex volume: {shape.volume:.3f} scene units cubed (visual scene only)"
+                            ]
+                            if shape.solid
+                            else []
+                        ),
+                    ]
+                ),
+                *(
+                    ["Shape unavailable: coincident/collinear vertices"]
+                    if shape and shape.degenerate
+                    else []
+                ),
+                "Scene units; model-relative depth is a visual cue, not physical camera depth.",
+                self.dimensionality,
+                *self.measurements(),
+            ]
         return [
             f"Tool: {self.tool}",
             f"Selection: {self.selection if self.selection is not None else 'none'}",
@@ -268,5 +376,20 @@ class Lab:
                 else []
             ),
             "Distances use scene units, not camera depth.",
+            *([self.construction_error] if self.construction_error else []),
             *self.measurements(),
         ]
+
+    def vertex_details(self):
+        shape = self.live_shape
+        return (
+            []
+            if shape is None
+            else [
+                "Live vertex XYZ (scene units):",
+                *(
+                    f"{label}: {tuple(round(v, 3) for v in p)}"
+                    for label, p in sorted(zip(shape.labels, shape.points))
+                ),
+            ]
+        )

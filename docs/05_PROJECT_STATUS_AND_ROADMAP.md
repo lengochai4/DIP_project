@@ -6,7 +6,13 @@ from end to end and defers physical testing. The active branch is
 `2bda0d35a6178c9161a8dcb5bf1de5fbe003adb2`. G7 remains unchanged at
 `f454c6b8325c85199c0122c0e822fe8e76c1526c`.
 
-Current task: implement and automatically verify the V2 product frontend,
+Current task (COMPLETE): implement the user-requested contextual lab guidance with hide/show
+and optional enlarged model workspace. Explain the nine labs' actual interactions,
+restore prior layout safely, and verify both renderers without physical hand tests.
+Retain automatic geometry that follows all fingertips directly. Preserve the
+previous full-fingertip correction,
+using every extended fingertip from one or two hands, following tips directly
+without manual point creation. Preserve the V2 product frontend,
 separate intent layer, hand anchor, two-hand adapter, educational extensions,
 fallbacks and source delivery. Physical usability acceptance is explicitly
 DEFERRED BY USER and must not be marked passed. The R4/current-task entries
@@ -15,8 +21,8 @@ in `07_V2_PRODUCT_SPEC.md`, with the supplied blueprint in `V2_BLUEPRINT.md`.
 
 Actual validation and delivery status: `release/v2/QA_STATUS.md`.
 
-V2 source implementation and automatic verification are complete as a local
-`2.0.0rc1` delivery: 630 full-suite tests passed, 75 product tests passed, native
+V2 source implementation is delivered with automatic verification as a local
+`2.0.0rc1` delivery: 909 full-suite tests passed, 354 product tests covered, native
 OpenGL and software synthetic render QA executed, actual two-hand model blank
 inference/cleanup checked, CLI/compile/dependencies/whitespace verified, and
 the frozen Core/evidence tree and original tag commits unchanged. Physical
@@ -45,7 +51,131 @@ Camera integration is verified for that run. Physical gesture usability/HAND
 anchoring with real hands remains unverified; the earlier checklist percentage
 must not be interpreted as an assurance of defect-free execution.
 
+User-approved 3D/UX/environment optimization on 2026-10-03 is implemented:
+perspective ray picking; GLSL sphere/bond/surface meshes with true depth testing;
+shared software fallback; contextual Tools/Inspector; explicit lighting/crowding
+guidance; default third-hand observation budget with at-most-two-hand acceptance.
+Product manifest schema is `product-v2-2`. Real framebuffer occlusion and synthetic
+third-hand rejection/reacquisition tests passed. Native/software QA each rendered
+66 surfaces. Camera 0 Start/Stop passed again in run
+`stem-v2-20261003-011005-330547`, still with no hand detected. Physical hand,
+low-light/crowding usability, optimal UX and enterprise readiness remain unproven.
+
+Full V2 UI audit requested on 2026-10-03 is complete for the inspected local
+implementation. Confirmed UI/state/logging and educational-math defects were
+fixed, and necessary Reset view, optional construction-plane grid snapping and
+measurement CSV export were added. Full regression passed 682 tests; GPU and
+software audit QA each captured 82 synthetic surfaces. Findings, coverage,
+remaining limitations and recommended later utilities are recorded in
+`release/v2/UI_AUDIT.md`. Physical hand usability remains deferred; this audit
+does not certify security, enterprise readiness or absence of future defects.
+
+The repeated audit request on 2026-10-03 prompted additional failure-path review.
+It reproduced and fixed manual HAND anchor/clutch loss, destructive partial CSV
+overwrite and noncanonical/reserved Windows archive member names. Presentation
+may be retained only during manual takeover of an observed anchor; actual loss,
+modal/context reset and source/reference changes still clear it. Full regression
+now passes 697 tests (142 V2). Details are appended to `release/v2/UI_AUDIT.md`;
+no physical hand test or new enterprise-readiness claim is implied.
+
+Spec-conformance review on 2026-10-03 confirmed the frozen research boundary,
+but identified an additional product-mode limitation: bimanual pinch scale works
+in WORLD, while HAND requires an OPEN_PALM anchor and cancels when both hands
+pinch. A synthetic public GUI/intent check reproduced this difference under
+`runs/docs-conformance-check`. The general two-hand scale description in docs/07
+does not explain this mode restriction adequately. Do not claim full V2 behavior
+conformance or treat this as physical validation. Resolving HAND scaling requires
+an explicit product interaction decision; no algorithm change was made by this
+read-only conformance review. Blueprint P9 physical acceptance remains deferred.
+
+User-reported finger/alignment failure on 2026-10-03 authorized correcting the
+HAND interaction decision above. HAND now acquires on OPEN_PALM and follows the
+same valid observed palm through POINT/pinch; loss/context changes still clear it.
+Camera-aligned source picking replaces window picking only for HAND scene input;
+explicit Control UI retains exclusive window navigation. Relative-3D finger bends,
+locked measurement snapshots and presentation-only automatic Inspector expansion
+are corrected. Public product changes are recorded in docs/02 section 16 and
+docs/07; frozen Core/G7 contracts and results remain unchanged.
+Full regression: 749 passed (194 product). Tests cover all nine labs, eight geometry
+tools, HAND scale/pair locking, actual classifier-to-GUI cursor pixels and HiDPI
+layout changes. Native QA captured 82 synthetic surfaces. Recorded user landmarks
+from `stem-v2-20261003-082757-256103` were inspected and replayed on blank synthetic
+images in both renderers; `runs/hand-fix-validation/report.json` records this
+diagnostic. No ground-truth physical accuracy or acceptance percentage is inferred.
+The former OPEN_PALM-every-frame HAND limitation above is now resolved in code and
+synthetic tests. Physical P9 acceptance remains deferred.
+
+Latest user correction on 2026-10-03 replaces the default index/pinch construction
+experience with PRODUCT/LIVE. Every extended fingertip from either/both associated
+hands is a live vertex (up to ten), with automatic point/segment/triangle/
+quadrilateral/polygon geometry across all nine labs. Shapes follow directly;
+there is no dwell-to-save or Add point requirement. Folded tips are inactive;
+loss, no active tips and owner/context changes clear live geometry. Initial
+OPEN and pinch calibration are unnecessary for LIVE. Control UI and RECORDED
+retain explicit exclusive navigation/legacy construction. Both view modes use
+camera-aligned vertices and bounded per-palm relative model-z visual relief,
+not physical/cross-hand camera depth. Public changes are recorded in docs/02
+section 16 and docs/07; product manifest schema is product-v2-4.
+
+Executed validation: 863 full-suite / 308 product tests passed. New tests cover
+all nonempty five-finger subsets in both roles, actual classifier-to-GUI counts
+one through ten in both modes, movement/folding, loss/UI/modal/context, depth
+projection, all nine labs, concave surface boundaries and immutable CSV export.
+Native OpenGL and software QA each captured 24 synthetic all-finger surfaces
+at two requested desktop sizes. No webcam or physical accuracy claim is involved.
+Physical acceptance remains deferred by the user. Engineering implementation and
+automatic verification of this correction are complete; delivery details are
+recorded in release/v2/QA_STATUS.md.
+
+LIVE correction delivery verified: 242 files in the rebuilt model-inclusive
+source archive; extracted UI/resources/actual blank-image model smoke and all
+863 tests passed with the separate previously installed dependency environment.
+Compilation, dependency/format/whitespace checks passed; protected Core/G7/evidence
+diff is empty and original release tag commits are unchanged. Current correction
+requires no further implementation or automatic check; physical acceptance stays
+deferred as requested. No staging, commit, push or tag was performed.
+
 ## 2. Current implementation evidence
+
+User-requested lab guidance and optional workspace expansion — 2026-10-03:
+implemented in product presentation only. Explore has Vietnamese per-lab guidance
+with purpose, mode-aware steps, expected output and limitations; lab, preset,
+WORLD/HAND and Control UI changes update it. Normal guide visibility is persisted
+with a backward-compatible `lab_guide` preference. Guide and Tools are exclusive.
+Phóng to hides navigation/library/side panels; Thu gọn/Esc restores prior layout
+without clearing recorded work or changing scale/orientation. Temporary guidance
+can open in the expanded workspace without changing the normal preference.
+G toggles guidance; Ctrl+Shift+F toggles expansion; F11 remains independent.
+Optics shows only preset-relevant controls, with parameter tooltips. Reading help
+keeps native scroll keys; layout changes cancel stale input and hidden lists
+cannot capture touchless hits. Core/G7 and automatic all-fingertip semantics remain
+unchanged. Recorded regression: 909 passed; physical acceptance stays deferred.
+Final synthetic QA: 270 OpenGL + 270 software captures, covering nine labs,
+WORLD/HAND and five guide/workspace states at 1040×680, 1280×720 and 1600×900.
+The model-inclusive source archive contains 246 verified files; extracted
+UI/resources/model blank-image smoke and all 909 tests passed. No remaining
+implementation/automated check for this request; no physical test requested.
+Latest visual/delivery evidence is in release/v2/QA_STATUS.md.
+
+Latest user-requested full extension/UI 3D audit — 2026-10-03: code corrections
+and automatic verification are complete. Noncoplanar live vertices now create
+closed convex geometry; nearly planar sets retain surfaces. Stable tokens feed
+LIVE vectors/probes/labels; hidden recorded data no longer drives LIVE math,
+and recorded-tool mode switches no longer block mouse orbit. Coordinate/Vector
+fill shapes; other labs keep wire overlays to preserve the actual STEM model.
+Inspector prioritizes lab data, with optional XYZ diagnostics. The viewport
+states renderer and dimensionality; NH3 uses the NIST 106.7-degree reference,
+while frozen H2O/CH4 geometry stays unchanged. Product schema is product-v2-5.
+Recorded checks: 886 full-suite tests passed (331 product cases), 23 focused
+audit tests passed, 232 final GPU and 232 final software all-preset captures,
+24 additional layout captures and 82 native page/RECORDED captures. Source
+review and limitations are in release/v2/EXTENSION_3D_REVIEW.md. Physical
+acceptance remains deferred; no commercial-readiness/physical-accuracy claim.
+Delivery: 244 verified files in the rebuilt model-inclusive source archive;
+extracted UI/resources/actual blank-image model smoke and all 886 tests passed
+using the separate existing dependency environment. Compilation/dependencies/
+format/whitespace passed; frozen Core/evidence diff and release tags unchanged.
+No webcam/staging/commit/push/tag action; no remaining code task for this audit.
 
 As of 2026-09-29, the implementation repository has been verified
 through Gate G7 and the G7 release is tagged.

@@ -43,6 +43,7 @@ class IntentEngine:
         ui=False,
         calibration=False,
         modal=False,
+        fingertip_geometry=False,
     ):
         run, frame, timestamp = identity
         old = self.last
@@ -77,6 +78,32 @@ class IntentEngine:
                 ),
             )
         self.last, self.context, self.hand_ids = identity, context, ids
+        if fingertip_geometry and not (ui or calibration or modal):
+            samples = tuple(
+                sample
+                for hand in sorted(hands, key=lambda h: h.track_id)
+                for sample in hand.tip_samples
+                if sample.extended
+            )
+            if (
+                any(not h.valid or len(h.tip_samples) != 5 for h in hands)
+                or any(not all(0 <= v <= 1 for v in s.xy) for s in samples)
+                or not samples
+            ):
+                return self.router.reset("FINGERTIPS_UNAVAILABLE")
+            return self.router.route(
+                Intent(
+                    Type.TOOL_UPDATE,
+                    owner=Owner.TOOL,
+                    live_geometry=True,
+                    source_points=tuple(s.xy for s in samples),
+                    source_depths=tuple(s.relative_z for s in samples),
+                    vertex_tokens=tuple(s.token for s in samples),
+                    reason="LIVE_FINGERTIPS",
+                    hand_role="ALL",
+                ),
+                tool=True,
+            )
         dominant = next((h for h in hands if h.role == "DOMINANT"), None)
         support = next((h for h in hands if h.role == "SUPPORT"), None)
         if dominant is None and support is not None and len(hands) == 1:
@@ -137,7 +164,14 @@ class IntentEngine:
 
         def emit(kind, phase=Phase.UPDATE, **kwargs):
             return self.router.route(
-                Intent(kind, phase, pointer_xy=pointer, cycle_id=dp.cycle_id, **kwargs),
+                Intent(
+                    kind,
+                    phase,
+                    pointer_xy=pointer,
+                    source_pointer_xy=dominant.pointer_xy,
+                    cycle_id=dp.cycle_id,
+                    **kwargs,
+                ),
                 ui=ui,
                 calibration=calibration,
                 modal=modal,
@@ -178,6 +212,24 @@ class IntentEngine:
             return emit(Type.SCALE, scale_factor=separation / self.scale_reference)
         if (
             not dp.active
+            and dp.state == "CLOSING"
+            and self.locked_pair is not None
+            and support is not None
+            and support.pose == "POINT"
+        ):
+            # Closing thumb/index naturally moves the tip. Keep the dwell-locked
+            # source pair through intentional closing instead of replacing it
+            # with that motion immediately before the commit.
+            return emit(
+                Type.MEASURE_UPDATE,
+                source_points=self.locked_pair,
+                points=tuple(
+                    (*self.pointer(p, settings), 0.0) for p in self.locked_pair
+                ),
+                reason="LOCKED",
+            )
+        if (
+            not dp.active
             and dominant.pose == "POINT"
             and support is not None
             and support.pose == "POINT"
@@ -197,6 +249,7 @@ class IntentEngine:
             pair = tuple(self.pointer(p, settings) for p in pair)
             return emit(
                 Type.MEASURE_UPDATE,
+                source_points=(support.pointer_xy, dominant.pointer_xy),
                 points=tuple((p[0], p[1], 0.0) for p in pair),
                 reason="LOCKED" if self.locked_pair else "PREVIEW",
             )
@@ -212,6 +265,7 @@ class IntentEngine:
                     return emit(
                         Type.MEASURE_COMMIT,
                         Phase.BEGIN,
+                        source_points=self.locked_pair or (),
                         points=tuple((*p, 0.0) for p in pair) if pair else (),
                     )
                 return emit(
@@ -272,7 +326,7 @@ class IntentEngine:
         return self.router.reset("NEUTRAL")
 
     def pointer(self, xy, settings):
-        """One mirror/gain/clamp mapping for both hands, UI and scene pointers."""
+        """Mirror/gain/clamp for WORLD and UI; HAND uses source coordinates."""
         if settings.mirror:
             xy = (1 - xy[0], xy[1])
         gain = settings.pointer_sensitivity * self.config.pointer_gain

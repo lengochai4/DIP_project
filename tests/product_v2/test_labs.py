@@ -103,6 +103,32 @@ def test_vector_math_and_snell_total_internal_reflection():
     )
 
 
+def test_zero_reference_vector_projection_is_explicitly_unavailable():
+    lab = ExtensionRegistry(ProductConfig()).select("vector")
+    lab.points = [(0, 0, 0), (1, 0, 0), (0, 0, 0), (0, 0, 0)]
+    assert "unavailable (zero reference vector)" in " ".join(lab.inspect())
+
+
+def test_idealized_electric_field_uses_full_three_dimensional_radius():
+    lab = ExtensionRegistry(ProductConfig()).select("vector-field")
+    lab.set_preset("Electric")
+    assert lab.field(0, 0, 2) == pytest.approx((0, 0, 0.25))
+    assert lab.field(2, 0, 0) == pytest.approx((0.25, 0, 0))
+
+
+@pytest.mark.parametrize(
+    "preset,count",
+    [("Simple cubic", 27), ("Body-centered cubic", 35), ("Face-centered cubic", 63)],
+)
+def test_crystal_cell_sites_are_unique_with_expected_shared_boundary_counts(
+    preset, count
+):
+    lab = ExtensionRegistry(ProductConfig()).select("crystal")
+    lab.set_preset(preset)
+    sites = [ball.center for ball in lab.geometry().balls]
+    assert len(sites) == len(set(sites)) == count
+
+
 def test_scale_is_relative_to_entry_and_bounded():
     lab = ExtensionRegistry(ProductConfig()).current
     lab.on_intent(Intent(Type.SCALE, Phase.BEGIN))
@@ -111,3 +137,94 @@ def test_scale_is_relative_to_entry_and_bounded():
     assert lab.scale == 2.0
     lab.on_intent(Intent(Type.SCALE, scale_factor=1e9))
     assert lab.scale == lab.config.max_scale
+
+
+@pytest.mark.parametrize(
+    "points,valid",
+    [
+        (((0, 0, 0), (2, 0, 0), (2, 1, 0), (0, 1, 0)), True),
+        (((0, 0, 0), (2, 0, 2), (2, 1, 2), (0, 1, 0)), True),
+        (((0, 0, 0), (2, 0, 0), (3, 1, 0), (0, 1, 0)), False),
+        (((0, 0, 0), (0, 0, 0), (2, 1, 0), (0, 1, 0)), False),
+        (((0, 0, 0), (2, 0, 0), (2, 1, 0), (0, 1, 1)), False),
+    ],
+)
+def test_rectangle_is_mathematically_valid_or_explicitly_unavailable(points, valid):
+    lab = ExtensionRegistry(ProductConfig()).select("coordinate")
+    lab.set_tool("Rectangle")
+    for cycle, point in enumerate(points):
+        lab.on_intent(
+            Intent(
+                Type.TOOL_COMMIT,
+                Phase.BEGIN,
+                world_or_scene_point=point,
+                cycle_id=cycle,
+            )
+        )
+    assert bool(lab.constructions) is valid
+    if not valid:
+        assert "Rectangle unavailable" in " ".join(lab.inspect())
+        lab.set_tool("Quadrilateral")
+        for cycle, point in enumerate(points, start=10):
+            lab.on_intent(
+                Intent(
+                    Type.TOOL_COMMIT,
+                    Phase.BEGIN,
+                    world_or_scene_point=point,
+                    cycle_id=cycle,
+                )
+            )
+        assert lab.constructions[-1][0] == "Quadrilateral"
+
+
+def test_optics_placement_duplicate_intent_and_inactive_lab_do_not_move_element():
+    lab = ExtensionRegistry(ProductConfig()).select("optics")
+    lab.set_tool("Place element")
+    intent = Intent(
+        Type.TOOL_COMMIT,
+        Phase.BEGIN,
+        world_or_scene_point=(1, 2, 0),
+        cycle_id=1,
+        tool_id="Place element",
+    )
+    lab.on_intent(intent)
+    lab.on_intent(replace(intent, world_or_scene_point=(3, 4, 0)))
+    assert lab.element == (1, 2, 0)
+    lab.deactivate()
+    lab.on_intent(replace(intent, cycle_id=2, world_or_scene_point=(3, 4, 0)))
+    assert lab.element == (1, 2, 0)
+
+
+@pytest.mark.parametrize("focal,distance", [(1.0, 2.0), (2.0, 1.0), (1.5, 3.0)])
+def test_lens_central_ray_is_straight_and_parallel_ray_passes_through_focus(
+    focal, distance
+):
+    lab = ExtensionRegistry(ProductConfig()).select("optics")
+    lab.set_preset("Lens")
+    lab.parameters["focal"] = focal
+    lab.element = (0.7, 0.2, 0)
+    lab.preview = (-distance + 0.7, 1.2, 0)
+    geometry = lab.geometry()
+    central = geometry.lines[-1]
+    parallel = next(
+        line
+        for line in geometry.lines
+        if line.color == "#bd9cce" and line.a[0] == pytest.approx(lab.element[0])
+    )
+    slope_c = (central.b[1] - central.a[1]) / (central.b[0] - central.a[0])
+    slope_p = (parallel.b[1] - parallel.a[1]) / (parallel.b[0] - parallel.a[0])
+    assert slope_c == pytest.approx(-1 / distance)
+    assert slope_p == pytest.approx(-1 / focal)
+    assert geometry.balls[0].center == pytest.approx(lab.preview)
+
+
+@pytest.mark.parametrize(
+    "key,parameter,value",
+    [("orbital", "radius", 6.0), ("wave", "amplitude", 6.0), ("optics", "focal", 6.0)],
+)
+def test_parameter_changes_expand_scene_framing_extent(key, parameter, value):
+    lab = ExtensionRegistry(ProductConfig()).select(key)
+    if key == "optics":
+        lab.set_preset("Lens")
+    lab.parameters[parameter] = value
+    assert lab.view_radius >= value

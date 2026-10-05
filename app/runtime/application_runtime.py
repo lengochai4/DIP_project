@@ -65,13 +65,13 @@ class RuntimeWorker(QThread):
             directory.mkdir(parents=True, exist_ok=False)
             output = (directory / "observations.jsonl").open("x", encoding="utf-8")
             manifest = {
-                "schema": "product-v2-1",
+                "schema": "product-v2-5",
                 "version": "2.0.0rc1",
                 "run_id": self.run_id,
                 "product_profile": asdict(self.config),
                 "core_metadata": metadata,
                 "product_pipeline": (
-                    "independent full-frame P1, mirrored MediaPipe VIDEO 2 hands, associated canonical F1"
+                    "independent full-frame P1, mirrored MediaPipe VIDEO extra-hand guard, at most 2 associated hands, canonical F1"
                     if self.engine == "PRODUCT"
                     else "not run; explicit legacy Core path only"
                 ),
@@ -80,6 +80,19 @@ class RuntimeWorker(QThread):
                 "quality": "unavailable",
                 "G7_results_invalidated": False,
                 "selected_engine": self.engine,
+                "product_interaction": (
+                    {
+                        "pose_geometry": "aspect-correct model-relative xyz joint bends; nonmetric",
+                        "pinch_geometry": "unchanged aspect-correct image xy / palm span",
+                        "HAND_pointer": "unmirrored source snapshot -> mirror/letterbox once; no gain",
+                        "HAND_anchor": "LIVE: any extended tip; RECORDED: open acquisition; same observed associated palm until loss/reset",
+                        "HAND_UI": "explicit exclusive window control",
+                        "LIVE_geometry": "all extended tips from either/both hands; automatic continuous vertices, per-palm relative z visual relief",
+                        "LIVE_topology": "point/segment/triangle; planar polygon or closed convex hull according to relative scene planarity; no physical depth reconstruction",
+                    }
+                    if self.engine == "PRODUCT"
+                    else None
+                ),
             }
             manifest["source_sha256"] = {
                 str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()

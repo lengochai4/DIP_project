@@ -1,12 +1,48 @@
 """Verify extracted source delivery with an existing or freshly installed environment."""
 
 import argparse
+import hashlib
+import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 import zipfile
 from app.config import ROOT
+
+WINDOWS_DEVICES = {"CON", "PRN", "AUX", "NUL"} | {
+    prefix + digit for prefix in ("COM", "LPT") for digit in "123456789¹²³"
+}
+
+
+def validate_archive(archive, directory):
+    """Check local package integrity before extracting/executing; not a signature."""
+    names = archive.namelist()
+    if len({n.casefold() for n in names}) != len(names):
+        raise ValueError("duplicate archive paths")
+    for name in names:
+        parts = name.split("/")
+        if any(
+            part in {"", ".", ".."}
+            or part.endswith((".", " "))
+            or part.partition(".")[0].rstrip().upper() in WINDOWS_DEVICES
+            or any(char in '<>:"\\|?*' or ord(char) < 32 for char in part)
+            for part in parts
+        ):
+            raise ValueError("unsafe archive path")
+        target = (directory / name).resolve()
+        if not target.is_relative_to(directory):
+            raise ValueError("archive path escapes verification directory")
+    if archive.testzip() is not None:
+        raise ValueError("corrupt archive")
+    manifest = json.loads(archive.read("PACKAGE_MANIFEST.json"))
+    files = manifest["files"]
+    if set(names) != set(files) | {"PACKAGE_MANIFEST.json"}:
+        raise ValueError("archive contents differ from manifest")
+    for name, expected in files.items():
+        if hashlib.sha256(archive.read(name)).hexdigest() != expected:
+            raise ValueError(f"package hash mismatch: {name}")
+
 
 SMOKE = """
 from pathlib import Path
@@ -65,12 +101,7 @@ def main(argv=None):
     directory = args.output.resolve()
     directory.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(args.archive) as archive:
-        for name in archive.namelist():
-            target = (directory / name).resolve()
-            if not target.is_relative_to(directory):
-                raise ValueError("archive path escapes verification directory")
-        if archive.testzip() is not None:
-            raise ValueError("corrupt archive")
+        validate_archive(archive, directory)
         archive.extractall(directory)
     env = dict(
         os.environ, PYTHONPATH=str(directory / "src") + os.pathsep + str(directory)

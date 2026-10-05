@@ -5,6 +5,7 @@ import html
 import json
 import math
 import time
+import numpy as np
 from PySide6.QtCore import Qt, QTimer, QPoint, Signal
 from PySide6.QtGui import QKeySequence, QShortcut, QPixmap
 from PySide6.QtWidgets import (
@@ -32,6 +33,8 @@ from PySide6.QtWidgets import (
     QAbstractSpinBox,
     QLineEdit,
     QTextEdit,
+    QFileDialog,
+    QMessageBox,
 )
 from app.config import ROOT, Settings
 from app.extensions.registry import ExtensionRegistry
@@ -48,6 +51,7 @@ from app.rendering.viewport import Viewport, SoftwareViewport, bgr_image
 from app.runtime.application_runtime import RuntimeWorker
 from .camera import CameraWidget
 from .theme import STYLE
+from .lab_guides import PARAMETER_HINTS, guide_text
 
 PAGES = ("Home", "Explore", "Analyze", "Evidence", "Calibrate", "Settings", "Help")
 
@@ -88,6 +92,8 @@ class ProductWindow(QMainWindow):
         )
         self.settings = settings or Settings.load(self.preferences_path)
         self.registry = ExtensionRegistry(config)
+        for lab in self.registry.extensions.values():
+            lab.live_enabled = self.live_mode()
         self.engine = IntentEngine(config)
         self.anchor = HandAnchor(config)
         self.worker = None
@@ -102,6 +108,8 @@ class ProductWindow(QMainWindow):
         self.calibration_checks = set()
         self._calibration_previous_active = False
         self._journal = None
+        self._journal_failed = False
+        self._journal_error = None
         self._manual_cycle = 0
         self._manual_active = False
         self._modal_blocked = False
@@ -111,6 +119,8 @@ class ProductWindow(QMainWindow):
         self._ui_hover = None
         self._pose_checks_since = {}
         self._last_tick = time.monotonic()
+        self._expanded = False
+        self._expanded_panels = None
         self.setWindowTitle("DIP Touchless STEM · V2")
         self.resize(1440, 900)
         self.setMinimumSize(1040, 680)
@@ -141,10 +151,12 @@ class ProductWindow(QMainWindow):
         self.navigation.addItems(PAGES)
         self.navigation.setMinimumWidth(145)
         self.navigation.setMaximumWidth(180)
-        nav_dock = QDockWidget("Navigation", self)
-        nav_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
-        nav_dock.setWidget(self.navigation)
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, nav_dock)
+        self.navigation_dock = QDockWidget("Navigation", self)
+        self.navigation_dock.setFeatures(
+            QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
+        )
+        self.navigation_dock.setWidget(self.navigation)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.navigation_dock)
         self.navigation.currentRowChanged.connect(
             lambda index: (
                 self.navigate(PAGES[index]) if 0 <= index < len(PAGES) else None
@@ -159,8 +171,11 @@ class ProductWindow(QMainWindow):
         self._settings()
         self._help()
         self._inspector()
+        self._lab_guide()
         self.feedback = QLabel(
-            "POINT: inspect   ·   PINCH: manipulate   ·   OPEN PALM: present   ·   V-SIGN: measure"
+            "LIVE: extend any fingertips on one or two hands to create geometry automatically."
+            if self.live_mode()
+            else "POINT: inspect   ·   PINCH: manipulate   ·   OPEN PALM: present   ·   V-SIGN: measure"
         )
         self.statusBar().addWidget(self.feedback, 1)
         self._shortcuts()
@@ -194,7 +209,7 @@ class ProductWindow(QMainWindow):
         button(row, "Continue exploring", lambda: self.navigate("Explore"))
         button(row, "Calibrate hands", lambda: self.navigate("Calibrate"))
         self.home_status = QLabel(
-            "Tracking: stopped   ·   Calibration: required for pinch   ·   Mouse controls: available"
+            "Tracking: stopped   ·   Live geometry: no pinch calibration needed   ·   Mouse controls: available"
         )
         self.home_status.setWordWrap(True)
         layout.addWidget(self.home_status)
@@ -213,11 +228,22 @@ class ProductWindow(QMainWindow):
 
     def _explore(self, software):
         widget, layout = page()
+        layout.setContentsMargins(16, 16, 16, 16)
         row = QHBoxLayout()
         layout.addLayout(row)
         self.lab_title = QLabel(self.registry.current.title)
         self.lab_title.setObjectName("Title")
+        self.lab_title.setWordWrap(True)
         row.addWidget(self.lab_title, 1)
+        self.guide_button = button(row, "Hướng dẫn", self.show_guide, checkable=True)
+        self.guide_button.setChecked(self.settings.lab_guide)
+        self.guide_button.setToolTip("Ẩn/hiện cách dùng lab đang mở (G)")
+        self.expand_button = button(row, "Phóng to", self.set_expanded, checkable=True)
+        self.expand_button.setToolTip(
+            "Mở rộng khung mô hình; thu các bảng phụ (Ctrl+Shift+F)"
+        )
+        row = QHBoxLayout()
+        layout.addLayout(row)
         self.world_button = button(
             row, "WORLD", lambda: self.set_mode("WORLD"), checkable=True
         )
@@ -225,6 +251,30 @@ class ProductWindow(QMainWindow):
             row, "HAND", lambda: self.set_mode("HAND"), checkable=True
         )
         self.world_button.setChecked(True)
+        self.hand_button.setEnabled(self.settings.engine == "PRODUCT")
+        self.ui_control_button = button(
+            row, "Control UI", self.set_ui_control, checkable=True
+        )
+        self.ui_control_button.setToolTip(
+            "HAND: switch between fingertip-aligned scene interaction and window UI control"
+        )
+        self.ui_control_button.setVisible(self.live_mode())
+        self.tools_button = button(row, "Tools", self.show_tools, checkable=True)
+        button(row, "Reset view", self.reset_view)
+        self.environment_notice = QLabel()
+        self.environment_notice.setWordWrap(True)
+        self.environment_notice.setStyleSheet(
+            "color: #efca82; padding: 8px; background: #243039;"
+        )
+        self.environment_notice.hide()
+        layout.addWidget(self.environment_notice)
+        self.interaction_hint = QLabel()
+        self.interaction_hint.setWordWrap(True)
+        self.interaction_hint.setVisible(self.live_mode())
+        self.interaction_hint.setText(
+            "Live geometry follows all extended fingertips on either hand. No Add point or pinch is needed."
+        )
+        layout.addWidget(self.interaction_hint)
         body = QHBoxLayout()
         layout.addLayout(body, 1)
         self.viewport_layout = body
@@ -399,21 +449,25 @@ class ProductWindow(QMainWindow):
         self.refresh_calibration()
 
     def begin_calibration(self):
+        if self.settings.engine != "PRODUCT":
+            self.feedback.setText("Select PRODUCT in Settings to calibrate hands.")
+            return
         self.cancel(clear_reference=True)
+        self.calibration_checks.clear()
+        self._pose_checks_since.clear()
+        self._calibration_previous_active = False
         roles = {h.role for h in self.current_hands}
-        if not roles:
-            self.feedback.setText("Start camera and position a visible hand first.")
+        if "DOMINANT" not in roles:
+            self.calibration_step = 0
+            self.refresh_calibration()
+            self.feedback.setText(
+                "Position the chosen dominant hand first; change its side in Settings if needed."
+            )
             return
         for role in roles:
             self.engine.pinches[role].calibrate()
         self.engine.last = self.latest_identity
-        self.engine.context = (
-            self.epoch,
-            self.page_name,
-            self.registry.current.id,
-            self.viewport.mode,
-            self.settings,
-        )
+        self.engine.context = self.interaction_context()
         self.engine.hand_ids = tuple(
             sorted((h.role, h.track_id) for h in self.current_hands)
         )
@@ -421,7 +475,11 @@ class ProductWindow(QMainWindow):
         self.refresh_calibration()
 
     def next_calibration(self):
+        if not self.calibration_next.isEnabled():
+            return
         self.cancel()
+        self._calibration_previous_active = False
+        self._pose_checks_since.clear()
         self.calibration_step = min(5, self.calibration_step + 1)
         self.refresh_calibration()
 
@@ -450,17 +508,20 @@ class ProductWindow(QMainWindow):
         )
         self.calibration_message.setText(descriptions[self.calibration_step])
         ready = (
-            bool(self.current_hands),
+            any(h.role == "DOMINANT" for h in self.current_hands),
             self.engine.pinches["DOMINANT"].reference is not None,
             "cycle" in self.calibration_checks,
             "point" in self.calibration_checks,
             "open" in self.calibration_checks,
             False,
         )[self.calibration_step]
-        self.calibration_next.setEnabled(ready)
-        self.capture_button.setEnabled(self.calibration_step in {0, 1})
+        self.calibration_next.setEnabled(ready and self.settings.engine == "PRODUCT")
+        self.capture_button.setEnabled(
+            self.calibration_step in {0, 1} and self.settings.engine == "PRODUCT"
+        )
 
     def _settings(self):
+        self.preference_controls = {}
         widget, layout = page()
         heading(
             layout,
@@ -478,12 +539,17 @@ class ProductWindow(QMainWindow):
                 "Interaction",
                 (
                     "dominant_hand",
+                    "geometry_mode",
                     "engine",
                     "pointer_sensitivity",
                     "manipulation_sensitivity",
+                    "construction_snap",
                 ),
             ),
-            ("Visual", ("skeleton", "gesture_labels", "grid", "object_labels")),
+            (
+                "Visual",
+                ("skeleton", "gesture_labels", "grid", "object_labels", "lab_guide"),
+            ),
             ("Camera", ("camera_index", "mirror")),
             (
                 "Accessibility",
@@ -507,12 +573,14 @@ class ProductWindow(QMainWindow):
                     control.toggled.connect(
                         lambda v, key=name: self.set_preference(key, v)
                     )
-                elif name in {"dominant_hand", "engine"}:
+                elif name in {"dominant_hand", "engine", "geometry_mode"}:
                     control = QComboBox()
                     control.addItems(
-                        ("Left", "Right")
-                        if name == "dominant_hand"
-                        else ("PRODUCT", "LEGACY")
+                        {
+                            "dominant_hand": ("Left", "Right"),
+                            "engine": ("PRODUCT", "LEGACY"),
+                            "geometry_mode": ("LIVE", "RECORDED"),
+                        }[name]
                     )
                     control.setCurrentText(value)
                     control.currentTextChanged.connect(
@@ -533,14 +601,48 @@ class ProductWindow(QMainWindow):
                     control.valueChanged.connect(
                         lambda v, key=name: self.set_preference(key, v)
                     )
-                form.addRow(name.replace("_", " ").capitalize(), control)
+                form.addRow(
+                    (
+                        "Hướng dẫn theo lab"
+                        if name == "lab_guide"
+                        else name.replace("_", " ").capitalize()
+                    ),
+                    control,
+                )
+                self.preference_controls[name] = control
         button(layout, "Recalibrate", lambda: self.navigate("Calibrate"))
         self._add("Settings", widget)
 
     def set_preference(self, key, value):
         self.cancel(clear_reference=key in {"dominant_hand", "camera_index", "engine"})
         self.settings = replace(self.settings, **{key: value})
+        control = self.preference_controls[key]
+        control.blockSignals(True)
+        if isinstance(control, QCheckBox):
+            control.setChecked(value)
+        elif isinstance(control, QComboBox):
+            control.setCurrentText(value)
+        else:
+            control.setValue(value)
+        control.blockSignals(False)
+        if key == "construction_snap" and hasattr(self, "snap_control"):
+            self.snap_control.blockSignals(True)
+            self.snap_control.setChecked(value)
+            self.snap_control.blockSignals(False)
         self.viewport.settings = self.settings
+        if key == "lab_guide":
+            self.reveal_guide(value)
+        self.ui_control_button.setVisible(
+            self.viewport.mode == "HAND" or self.live_mode()
+        )
+        self.interaction_hint.setVisible(
+            self.viewport.mode == "HAND" or self.live_mode()
+        )
+        for lab in self.registry.extensions.values():
+            lab.live_enabled = self.live_mode()
+        self.refresh_inspector(rebuild=True)
+        self.refresh_calibration()
+        self.refresh_guide()
         self.refresh_shortcuts()
         self.hand_button.setEnabled(self.settings.engine == "PRODUCT")
         if self.settings.engine == "LEGACY" and self.viewport.mode == "HAND":
@@ -566,17 +668,110 @@ class ProductWindow(QMainWindow):
         heading(
             layout,
             "Help",
-            "A small gesture vocabulary, with mouse and keyboard fallback.",
+            "Live fingertip geometry, with explicit menu control and recorded construction options.",
         )
         text = QTextBrowser()
         text.setPlainText(
+            "LIVE GEOMETRY (default) — extend any fingers on one or two hands. Every extended tip becomes a live vertex: 1 point, 2 segment/vector, 3 triangle. Four or more noncoplanar vertices form a closed tetrahedron/polyhedron; nearly coplanar sets remain a polygon. Move, extend or fold fingers to update the shape directly. No Add point, pinch commit, saved shape or preliminary calibration is needed. All nine labs share this geometry layer. Coordinate/Vector show filled shapes; other labs use a wire outline so the model stays visible. Vertex labels stay stable while the same tips remain active. Detailed XYZ is available through Settings > diagnostics or CSV export.\n\n"
+            "WORLD and HAND — vertices stay aligned with displayed fingertips. HAND also presents the lab on an observed palm, acquired with any extended fingertip. Loss, no extended tips or context changes remove the live shape.\n\n"
+            "CONTROL UI — switch explicitly to exclusive menu navigation using POINT and calibrated PINCH. Turn it off to resume live geometry. Pinch calibration is needed for menu selection and recorded interaction, not live vertices.\n\n"
+            "RECORDED (Settings > geometry_mode) — enables the earlier point-by-point tools and model manipulation described below. Those actions are separate from LIVE geometry.\n\n"
             "POINT — inspect and highlight. It never rotates the model.\n\nPINCH — after calibration and release/rearm, select or clutch. Hold and move to manipulate.\n\nOPEN PALM — present the active lab on your hand in HAND view. With two hands, the support palm provides the reference.\n\nV-SIGN — enter measure/create mode. POINT previews; PINCH commits. Both index fingers can preview a vector/distance; hold to lock, then pinch with the dominant hand to commit.\n\nTwo-hand scale — calibrate both hands, release/rearm, then pinch with both. Moving two open palms never scales.\n\nMouse — hover to inspect, drag to rotate, wheel to scale. In construction tools a click commits a point.\n\nKeyboard — 1–7 pages; H hand/world; M measure; Enter commit point; R reset; Esc cancel; arrows rotate; +/- scale; Space pause; F11 full screen.\n\nCamera/model errors — mouse and keyboard remain available. Check models/README.md and the selected camera source. Stop before reconnecting.\n\nLost/unknown tracking cancels immediately. Release before trying a new action. No metric camera depth or physical skin-contact detection is provided."
         )
         layout.addWidget(text, 1)
+        text.append(
+            "Explore: Hướng dẫn (G) shows or hides instructions for the selected lab and interaction mode. "
+            "Phóng to (Ctrl+Shift+F) expands the model workspace; Thu gọn or Esc restores the previous panels. "
+            "F11 toggles full screen independently. "
+            "Tools: Reset view (R) restores orientation/zoom and keeps your measurements. "
+            "Reset lab clears work after confirmation. Export measurements saves a CSV in scene units, without camera data. "
+            "In RECORDED, optional Snap free points helps construct right angles on the current plane; exact atom-centre picks remain unchanged. "
+            "Rectangle requires four right-angle corners in order; use Quadrilateral for arbitrary corners. "
+            "Scene shortcuts apply in Explore; buttons and list navigation keep their native keys. "
+            "RECORDED HAND: open palm once to anchor, then extend only the index finger to point; "
+            "calibrated pinch commits. The same live palm stays anchored through these gestures. "
+            "The cursor follows the camera tip. Control UI switches explicitly to window menus. "
+            "Without an open-palm anchor, choose WORLD for manual controls."
+        )
         self._add("Help", widget)
+
+    def _lab_guide(self):
+        self.guide_dock = QDockWidget("Cách dùng lab", self)
+        self.guide_dock.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
+        self.guide_dock.setMinimumWidth(260)
+        self.guide_dock.setMaximumWidth(310)
+        self.guide_text = QTextBrowser()
+        self.guide_text.setAccessibleName("Hướng dẫn lab đang mở")
+        self.guide_dock.setWidget(self.guide_text)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.guide_dock)
+        self.refresh_guide()
+
+    def refresh_guide(self):
+        if hasattr(self, "guide_text"):
+            self.guide_text.setPlainText(
+                guide_text(
+                    self.registry.current,
+                    live=self.live_mode(),
+                    engine=self.settings.engine,
+                    mode=self.viewport.mode,
+                    ui_control=self.ui_control_button.isChecked(),
+                )
+            )
+
+    def reveal_guide(self, visible):
+        self.guide_button.setChecked(visible)
+        if visible:
+            self.reveal_tools(False)
+        self.guide_dock.setVisible(visible and self.page_name == "Explore")
+
+    def show_guide(self, visible):
+        if self._expanded:
+            self.cancel(preserve_presentation=True)
+            self.reveal_guide(visible)
+            return
+        self.set_preference("lab_guide", visible)
+
+    def set_expanded(self, expanded):
+        """Change layout only; cancel input whose coordinate frame just changed."""
+        if expanded == self._expanded or self.page_name != "Explore":
+            return
+        self.cancel(preserve_presentation=True)
+        self._expanded = expanded
+        self.expand_button.setChecked(expanded)
+        self.expand_button.setText("Thu gọn" if expanded else "Phóng to")
+        self.expand_button.setToolTip(
+            "Khôi phục bố cục trước khi phóng to (Esc / Ctrl+Shift+F)"
+            if expanded
+            else "Mở rộng khung mô hình; thu các bảng phụ (Ctrl+Shift+F)"
+        )
+        self.navigation_dock.setVisible(not expanded)
+        self.library.setVisible(not expanded)
+        if expanded:
+            self._expanded_panels = (
+                self.guide_button.isChecked(),
+                self.tools_button.isChecked(),
+            )
+            self.reveal_guide(False)
+            self.reveal_tools(False)
+        else:
+            guide, tools = self._expanded_panels
+            self._expanded_panels = None
+            self.reveal_tools(tools)
+            self.reveal_guide(guide)
+        self.viewport.setFocus()
+        self.viewport.update()
+
+    def escape_explore(self):
+        if self._expanded:
+            self.set_expanded(False)
+        else:
+            self.cancel_tool()
 
     def _inspector(self):
         self.inspector_dock = QDockWidget("Inspector", self)
+        self.inspector_dock.setFeatures(
+            QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
+        )
         self.inspector_dock.setMinimumWidth(255)
         self.inspector_dock.setMaximumWidth(330)
         panel = QWidget()
@@ -587,20 +782,35 @@ class ProductWindow(QMainWindow):
         self.tool_select = QComboBox()
         self.tool_select.addItems(self.registry.current.tools)
         self.tool_select.currentTextChanged.connect(self.choose_tool)
+        self.snap_control = QCheckBox(
+            f"Snap free points: {self.config.construction_grid_step:g} scene units"
+        )
+        self.snap_control.setChecked(self.settings.construction_snap)
+        self.snap_control.toggled.connect(
+            lambda value: self.set_preference("construction_snap", value)
+        )
+        layout.addWidget(self.snap_control)
         layout.addWidget(self.tool_select)
+        self.tool_actions = QWidget()
+        actions_layout = QVBoxLayout(self.tool_actions)
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.tool_actions)
         row = QHBoxLayout()
-        layout.addLayout(row)
-        button(row, "Commit point", self.commit_point)
-        button(row, "Cancel", self.cancel_tool)
+        actions_layout.addLayout(row)
+        self.commit_button = button(row, "Add point", self.commit_point)
+        self.cancel_button = button(row, "Cancel", self.cancel_tool)
         row = QHBoxLayout()
-        layout.addLayout(row)
-        button(row, "Finish polygon", self.finish_polygon)
-        button(row, "Undo", self.undo)
+        actions_layout.addLayout(row)
+        self.polygon_button = button(row, "Finish polygon", self.finish_polygon)
+        self.undo_button = button(row, "Undo", self.undo)
         self.parameter_panel = QWidget()
         self.parameter_form = QFormLayout(self.parameter_panel)
         layout.addWidget(self.parameter_panel)
         self.pause_button = button(layout, "Pause / Resume", self.toggle_pause)
-        button(layout, "Reset lab", self.reset_lab)
+        self.export_button = button(
+            layout, "Export measurements…", self.export_measurements
+        )
+        button(layout, "Reset lab (clear work)…", self.confirm_reset_lab)
         self.inspector_text = QTextBrowser()
         layout.addWidget(self.inspector_text, 1)
         self.inspector_dock.setWidget(panel)
@@ -609,7 +819,23 @@ class ProductWindow(QMainWindow):
 
     def refresh_inspector(self, *, rebuild=False):
         lab = self.registry.current
-        self.inspector_text.setPlainText("\n\n".join(lab.inspect()))
+        live = self.live_mode()
+        self.tool_select.setVisible(not live)
+        self.snap_control.setVisible(not live)
+        self.tool_actions.setVisible(
+            not live and (lab.tool != "Inspect" or bool(lab.constructions))
+        )
+        self.commit_button.setVisible(lab.tool != "Inspect")
+        self.cancel_button.setVisible(lab.tool != "Inspect")
+        self.commit_button.setEnabled(lab.preview is not None)
+        self.polygon_button.setVisible(lab.tool == "Polygon")
+        self.polygon_button.setEnabled(len(lab.points) >= 3)
+        self.undo_button.setEnabled(bool(lab.points or lab.constructions))
+        self.export_button.setEnabled(bool(lab.export_constructions()))
+        values = lab.inspect()
+        if live and self.settings.diagnostics:
+            values += lab.vertex_details()
+        self.inspector_text.setPlainText("\n\n".join(values))
         if rebuild:
             self.preset_select.blockSignals(True)
             self.preset_select.clear()
@@ -623,27 +849,41 @@ class ProductWindow(QMainWindow):
             self.tool_select.blockSignals(False)
             while self.parameter_form.rowCount():
                 self.parameter_form.removeRow(0)
+            self.parameter_controls = {}
             names = {
                 "orbital": ("radius", "time_rate"),
                 "wave": ("amplitude", "frequency", "phase", "samples"),
                 "optics": ("index", "focal"),
             }.get(lab.id, ())
             for name in names:
-                control = QDoubleSpinBox()
+                control = QSpinBox() if name == "samples" else QDoubleSpinBox()
                 (
                     control.setRange(4, 128)
                     if name == "samples"
-                    else control.setRange(0.1, 6.0)
+                    else (
+                        control.setRange(0, 2 * math.pi)
+                        if name == "phase"
+                        else control.setRange(0.1, 6.0)
+                    )
                 )
                 control.setValue(
                     lab.time_rate if name == "time_rate" else lab.parameters[name]
                 )
-                control.setSingleStep(1.0 if name == "samples" else 0.1)
+                control.setSingleStep(1 if name == "samples" else 0.1)
+                control.setToolTip(PARAMETER_HINTS[name])
                 control.valueChanged.connect(
                     lambda v, key=name: self.set_parameter(key, v)
                 )
                 self.parameter_form.addRow(name.capitalize(), control)
+                self.parameter_controls[name] = control
             self.pause_button.setVisible(lab.id in {"orbital", "wave"})
+        if lab.id == "optics":
+            for name in self.parameter_controls:
+                self.parameter_form.setRowVisible(
+                    self.parameter_controls[name],
+                    (name == "index" and lab.preset == "Refraction")
+                    or (name == "focal" and lab.preset == "Lens"),
+                )
 
     def set_parameter(self, key, value):
         self.cancel()
@@ -651,6 +891,11 @@ class ProductWindow(QMainWindow):
             self.registry.current.time_rate = value
         else:
             self.registry.current.parameters[key] = value
+        control = self.parameter_controls.get(key)
+        if control is not None:
+            control.blockSignals(True)
+            control.setValue(value)
+            control.blockSignals(False)
         self.viewport.update()
         self.refresh_inspector()
 
@@ -658,29 +903,52 @@ class ProductWindow(QMainWindow):
         if text:
             self.cancel()
             self.registry.current.set_preset(text)
+            self.preset_select.blockSignals(True)
+            self.preset_select.setCurrentText(text)
+            self.preset_select.blockSignals(False)
             self.viewport.update()
             self.refresh_inspector()
+            self.refresh_guide()
 
     def choose_tool(self, text):
+        if self.live_mode():
+            return
         if text:
             self.cancel()
             self.registry.current.set_tool(text)
+            self.tool_select.blockSignals(True)
+            self.tool_select.setCurrentText(text)
+            self.tool_select.blockSignals(False)
+            if text != "Inspect" and not self.tools_button.isChecked():
+                self.show_tools(True)
             self.engine.measure = text != "Inspect"
             self.refresh_inspector()
 
-    def cancel(self, *, clear_reference=False):
+    def cancel(self, *, clear_reference=False, preserve_presentation=False):
+        if clear_reference:
+            self.calibration_step = 0
+            self.calibration_checks.clear()
+            self._pose_checks_since.clear()
+            self._calibration_previous_active = False
         self.epoch += 1
         self._manual_active = False
         self._legacy_rearm = True
         intent = self.engine.reset(clear_reference=clear_reference)
         self.registry.current.on_intent(intent)
-        self.anchor.reset()
-        self.viewport.anchor = self.viewport.pointer = None
-        self.viewport.reference_plane = None
+        if clear_reference or not preserve_presentation:
+            self.anchor.reset()
+            self.viewport.anchor = None
+            self.viewport.reference_plane = None
+        self.viewport.pointer = None
+        self.viewport.live_sources = ()
         self._dwell_target = self._dwell_since = None
         self._ui_cycle = None
         if hasattr(self, "touch_cursor"):
             self.touch_cursor.hide()
+        if clear_reference and hasattr(self, "calibration_next"):
+            self.refresh_calibration()
+        if hasattr(self, "inspector_text"):
+            self.refresh_inspector()
         return intent
 
     def cancel_tool(self):
@@ -693,25 +961,34 @@ class ProductWindow(QMainWindow):
     def navigate(self, name):
         if name not in self.pages:
             return
+        if name != "Explore" and self._expanded:
+            self.set_expanded(False)
         self.cancel()
         self.page_name = name
         self.stack.setCurrentWidget(self.pages[name])
-        self.inspector_dock.setVisible(name == "Explore")
+        self.inspector_dock.setVisible(
+            name == "Explore" and self.tools_button.isChecked()
+        )
+        self.guide_dock.setVisible(name == "Explore" and self.guide_button.isChecked())
         if name == "Explore":
             QTimer.singleShot(100, self.ensure_renderer)
         if self.navigation.currentRow() != PAGES.index(name):
             self.navigation.blockSignals(True)
             self.navigation.setCurrentRow(PAGES.index(name))
             self.navigation.blockSignals(False)
+        self.refresh_shortcuts()
 
     def ensure_renderer(self):
         if (
             self.page_name != "Explore"
             or not isinstance(self.viewport, Viewport)
             or self.viewport.isValid()
+            and not self.viewport.gpu_error
         ):
             return
         old = self.viewport
+        self.cancel()
+        old.close_renderer()
         fallback = SoftwareViewport(self.registry, self.config, self.settings)
         for name in (
             "mode",
@@ -735,9 +1012,25 @@ class ProductWindow(QMainWindow):
     def select_lab(self, key):
         self.cancel()
         lab = self.registry.select(key)
+        self.library.blockSignals(True)
+        self.library.setCurrentRow(tuple(self.registry.extensions).index(key))
+        self.library.blockSignals(False)
         self.lab_title.setText(lab.title)
         self.refresh_inspector(rebuild=True)
+        self.refresh_guide()
         self.viewport.update()
+
+    def show_tools(self, visible):
+        self.cancel()
+        self.reveal_tools(visible)
+
+    def reveal_tools(self, visible):
+        """Presentation-only inspector expansion after an already-routed tool intent."""
+        self.tools_button.setChecked(visible)
+        if visible and hasattr(self, "guide_dock"):
+            self.guide_button.setChecked(False)
+            self.guide_dock.hide()
+        self.inspector_dock.setVisible(visible and self.page_name == "Explore")
 
     def open_lab(self, key):
         self.library.setCurrentRow(tuple(self.registry.extensions).index(key))
@@ -753,24 +1046,85 @@ class ProductWindow(QMainWindow):
         self.viewport.mode = mode
         self.world_button.setChecked(mode == "WORLD")
         self.hand_button.setChecked(mode == "HAND")
+        self.ui_control_button.setChecked(False)
+        self.ui_control_button.setVisible(mode == "HAND" or self.live_mode())
+        self.interaction_hint.setVisible(mode == "HAND" or self.live_mode())
+        self.interaction_hint.setText(
+            "Open palm once to anchor. Only index finger extended: point; calibrated thumb/index pinch: commit. "
+            "Control UI: switch to menu navigation."
+        )
+        if self.live_mode():
+            self.interaction_hint.setText(
+                "Live geometry follows every extended fingertip on one or two hands; no point commit is needed."
+            )
+        self.refresh_guide()
+        self.viewport.update()
+
+    def set_ui_control(self, enabled):
+        self.cancel()
+        self.ui_control_button.setChecked(enabled)
+        self.refresh_guide()
         self.viewport.update()
 
     def reset_lab(self):
         self.cancel()
         self.registry.current.reset()
         self.refresh_inspector(rebuild=True)
+        self.refresh_guide()
         self.viewport.update()
+
+    def reset_view(self):
+        self.cancel()
+        lab = self.registry.current
+        lab.yaw, lab.pitch, lab.scale = 0.35, 0.35, 1.0
+        self.viewport.update()
+
+    def confirm_reset_lab(self):
+        self.cancel()
+        if (
+            QMessageBox.question(
+                self,
+                "Reset lab",
+                "Clear this lab's measurements and restore its parameters?",
+            )
+            == QMessageBox.StandardButton.Yes
+        ):
+            self.reset_lab()
+
+    def export_measurements(self):
+        from app.extensions.measurement_export import export_csv, snapshot
+
+        lab = snapshot(self.registry.current)
+        if not lab.export_constructions():
+            return
+        self.cancel()
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export measurements", f"{lab.id}-measurements.csv", "CSV (*.csv)"
+        )
+        if path:
+            try:
+                export_csv(lab, path)
+            except OSError as exc:
+                self.feedback.setText(f"Measurements could not be saved: {exc}")
+            else:
+                self.feedback.setText(
+                    "Measurements exported in scene units; camera data is excluded."
+                )
 
     def toggle_pause(self):
         self.registry.current.paused = not self.registry.current.paused
 
     def finish_polygon(self):
+        if self.live_mode():
+            return
         self.cancel()
         self.registry.current.finish_polygon()
         self.refresh_inspector()
         self.viewport.update()
 
     def undo(self):
+        if self.live_mode():
+            return
         self.cancel()
         lab = self.registry.current
         if lab.points:
@@ -781,14 +1135,22 @@ class ProductWindow(QMainWindow):
         self.viewport.update()
 
     def commit_point(self):
+        if self.live_mode():
+            self.feedback.setText(
+                "Live geometry follows all extended fingertips automatically; no point commit is needed."
+            )
+            return
         lab = self.registry.current
+        if lab.tool == "Inspect":
+            self.feedback.setText("Choose a measurement tool before adding points.")
+            return
         if lab.preview is None:
             self.feedback.setText(
                 "Point or move the mouse over the viewport before committing."
             )
             return
         point = lab.preview
-        self.cancel()
+        self.cancel(preserve_presentation=True)
         self._manual_cycle += 1
         self.deliver(
             Intent(
@@ -809,6 +1171,15 @@ class ProductWindow(QMainWindow):
         ):
             return
         lab = self.registry.current
+        if kind == "release":
+            self._manual_active = False
+            self.deliver(Intent(Type.RELEASE, Phase.END))
+            return
+        if self.viewport.mode == "HAND" and self.viewport.anchor is None:
+            self.feedback.setText(
+                "Choose WORLD for mouse controls, or open your palm for HAND."
+            )
+            return
         if kind == "point":
             if self.engine.active is not None:
                 return
@@ -819,9 +1190,9 @@ class ProductWindow(QMainWindow):
             )
         elif kind == "begin":
             point = self.viewport.pick_viewport(value)
-            self.cancel()
+            self.cancel(preserve_presentation=True)
             self._manual_active = True
-            if lab.tool != "Inspect":
+            if not self.live_mode() and lab.tool != "Inspect":
                 self._manual_cycle += 1
                 self.deliver(
                     Intent(
@@ -835,7 +1206,7 @@ class ProductWindow(QMainWindow):
                 )
             else:
                 self.deliver(Intent(Type.GRAB, Phase.BEGIN, world_or_scene_point=point))
-        elif kind == "drag" and lab.tool == "Inspect":
+        elif kind == "drag" and (self.live_mode() or lab.tool == "Inspect"):
             self.deliver(
                 Intent(
                     Type.DRAG,
@@ -844,11 +1215,8 @@ class ProductWindow(QMainWindow):
                     ),
                 )
             )
-        elif kind == "release":
-            self._manual_active = False
-            self.deliver(Intent(Type.RELEASE, Phase.END))
         elif kind == "scale":
-            self.cancel()
+            self.cancel(preserve_presentation=True)
             self.deliver(Intent(Type.SCALE, Phase.BEGIN))
             self.deliver(Intent(Type.SCALE, scale_factor=value[0]))
 
@@ -863,21 +1231,41 @@ class ProductWindow(QMainWindow):
 
     def record_intent(self, intent, source):
         if self._journal is not None:
-            self._journal.write(
-                json.dumps(
-                    {
-                        "identity": self.latest_identity,
-                        "source": source,
-                        "intent": asdict(intent),
-                        "scene": self.registry.current.id,
-                        "mode": self.viewport.mode,
-                        "settings": asdict(self.settings),
-                    },
-                    default=str,
-                    allow_nan=False,
+            try:
+                self._journal.write(
+                    json.dumps(
+                        {
+                            "identity": self.latest_identity,
+                            "source": source,
+                            "intent": asdict(intent),
+                            "scene": self.registry.current.id,
+                            "mode": self.viewport.mode,
+                            "settings": asdict(self.settings),
+                        },
+                        default=str,
+                        allow_nan=False,
+                    )
+                    + "\n"
                 )
-                + "\n"
-            )
+            except (OSError, ValueError) as exc:
+                self.journal_failure(exc)
+
+    def close_journal(self):
+        journal, self._journal = self._journal, None
+        if journal is not None:
+            try:
+                journal.close()
+            except OSError as exc:
+                self.journal_failure(exc)
+
+    def journal_failure(self, exc):
+        self._journal_failed = True
+        self._journal_error = (
+            f"Product intent log incomplete: {type(exc).__name__}: {exc}"
+        )
+        self.close_journal()
+        self.feedback.setText(self._journal_error)
+        self.diagnostics.setPlainText(self._journal_error)
 
     def ui_target(self, pointer):
         """Normalized presentation pointer -> native control hit, with one activation callback."""
@@ -888,6 +1276,8 @@ class ProductWindow(QMainWindow):
         if isinstance(target, QAbstractButton) and target.isEnabled():
             return target, target.click
         for control in (self.navigation, self.library):
+            if not control.isVisible():
+                continue
             local = control.viewport().mapFrom(self, pos)
             if control.viewport().rect().contains(local):
                 item = control.itemAt(local)
@@ -903,13 +1293,36 @@ class ProductWindow(QMainWindow):
     def viewport_pointer(self, pointer):
         """Window-normalized control pointer -> viewport-local normalized coordinates.
 
-        UI hits and scene picking share a continuous screen cursor in both modes.
-        Camera overlays and the palm anchor retain their source-image coordinates.
+        WORLD/UI use this mapping. HAND scene pointers use camera letterboxing.
         """
         origin = self.viewport.mapTo(self, QPoint(0, 0))
         return (
             (pointer[0] * self.width() - origin.x()) / self.viewport.width(),
             (pointer[1] * self.height() - origin.y()) / self.viewport.height(),
+        )
+
+    def scene_pointer(self, intent):
+        if self.viewport.mode == "HAND":
+            return self.viewport.source_pointer(intent.source_pointer_xy)
+        return (
+            None
+            if intent.pointer_xy is None
+            else self.viewport_pointer(intent.pointer_xy)
+        )
+
+    def interaction_context(self):
+        return (
+            self.epoch,
+            self.page_name,
+            self.registry.current.id,
+            self.viewport.mode,
+            self.ui_control_button.isChecked(),
+            self.settings,
+        )
+
+    def live_mode(self):
+        return (
+            self.settings.engine == "PRODUCT" and self.settings.geometry_mode == "LIVE"
         )
 
     def _shortcuts(self):
@@ -927,8 +1340,10 @@ class ProductWindow(QMainWindow):
                     ),
                 ),
                 ("M", lambda: self.tool_select.setCurrentText("Distance")),
-                ("R", self.reset_lab),
-                ("Esc", self.cancel_tool),
+                ("R", self.reset_view),
+                ("Esc", self.escape_explore),
+                ("G", lambda: self.show_guide(not self.guide_button.isChecked())),
+                ("Ctrl+Shift+F", lambda: self.set_expanded(not self._expanded)),
                 ("Return", self.commit_point),
                 ("Space", self.toggle_pause),
                 (
@@ -949,8 +1364,13 @@ class ProductWindow(QMainWindow):
         )
         for key, callback in commands:
             shortcut = QShortcut(QKeySequence(key), self)
+            shortcut.setProperty(
+                "exploreOnly", key not in {"1", "2", "3", "4", "5", "6", "7", "F11"}
+            )
             shortcut.activated.connect(
-                lambda cb=callback: cb() if self.shortcuts_allowed() else None
+                lambda cb=callback, s=shortcut: (
+                    cb() if self.shortcut_allowed(s) else None
+                )
             )
             self.shortcuts.append(shortcut)
         self.refresh_shortcuts()
@@ -967,20 +1387,45 @@ class ProductWindow(QMainWindow):
         )
 
     def refresh_shortcuts(self, *_):
-        enabled = self.shortcuts_allowed()
         for shortcut in self.shortcuts:
-            shortcut.setEnabled(enabled)
+            shortcut.setEnabled(self.shortcut_allowed(shortcut))
+
+    def shortcut_allowed(self, shortcut):
+        if not self.shortcuts_allowed():
+            return False
+        if shortcut.key().toString() in {"Return", "Space"} and isinstance(
+            QApplication.focusWidget(), QAbstractButton
+        ):
+            return False
+        if shortcut.property("exploreOnly"):
+            if isinstance(
+                QApplication.focusWidget(), QTextBrowser
+            ) and shortcut.key().toString() not in {
+                "G",
+                "Ctrl+Shift+F",
+                "Esc",
+            }:
+                return False
+            return self.page_name == "Explore" and QApplication.focusWidget() not in {
+                self.library,
+                self.navigation,
+            }
+        return True
 
     def keyboard_motion(self, x, y):
-        if self.page_name == "Explore":
-            self.cancel()
+        if self.page_name == "Explore" and (
+            self.viewport.mode == "WORLD" or self.viewport.anchor is not None
+        ):
+            self.cancel(preserve_presentation=True)
             self.deliver(Intent(Type.GRAB, Phase.BEGIN))
             self.deliver(Intent(Type.DRAG, delta_xy=(x, y)))
             self.deliver(Intent(Type.RELEASE, Phase.END))
 
     def keyboard_scale(self, factor):
-        if self.page_name == "Explore":
-            self.cancel()
+        if self.page_name == "Explore" and (
+            self.viewport.mode == "WORLD" or self.viewport.anchor is not None
+        ):
+            self.cancel(preserve_presentation=True)
             self.deliver(Intent(Type.SCALE, Phase.BEGIN))
             self.deliver(Intent(Type.SCALE, scale_factor=factor))
 
@@ -993,6 +1438,8 @@ class ProductWindow(QMainWindow):
             return
         self.cancel(clear_reference=True)
         self._camera_failure = None
+        self._journal_failed = False
+        self._journal_error = None
         self.worker = RuntimeWorker(
             self.config, self.settings.camera_index, self, engine=self.settings.engine
         )
@@ -1022,9 +1469,8 @@ class ProductWindow(QMainWindow):
         )
         self.start_button.setEnabled(True)
         self.stop_button.setEnabled(False)
-        if self._journal is not None:
-            self._journal.close()
-            self._journal = None
+        self.cancel(clear_reference=True)
+        self.close_journal()
 
     def stop_camera(self):
         self.cancel(clear_reference=True)
@@ -1036,9 +1482,12 @@ class ProductWindow(QMainWindow):
     def clear_tracking(self, message):
         self.cancel()
         self.current_hands = ()
+        self.last_tracking = self.latest_identity = None
         self.last_frame_time = None
         self.viewport.image = None
+        self.viewport.live_sources = ()
         self.viewport.landmarks = {}
+        self.environment_notice.hide()
         self.viewport.update()
         for camera in (self.analysis_camera, self.calibration_camera):
             camera.image = camera.frame = None
@@ -1046,8 +1495,15 @@ class ProductWindow(QMainWindow):
             camera.message = message
             camera.update()
         self.tracking_label.setText(message)
+        self.home_status.setText(
+            f"Tracking: {message}   ·   Gesture control paused; mouse controls remain available in WORLD."
+        )
+        if not self._camera_failure:
+            self.diagnostics.setPlainText(self._journal_error or message)
 
     def tick(self):
+        if isinstance(self.viewport, Viewport) and self.viewport.gpu_error:
+            self.ensure_renderer()
         modal = QApplication.activeModalWidget() is not None
         if modal != self._modal_blocked:
             self.cancel()
@@ -1080,14 +1536,20 @@ class ProductWindow(QMainWindow):
     def consume(self, packet, frame, legacy, filtered, valid, reason):
         self.last_frame_time = time.monotonic()
         self.last_tracking = frame
+        self.update_environment(frame, reason)
         self.latest_identity = frame.run_id, frame.frame_id, frame.timestamp_s
-        if self._journal is None:
-            directory = ROOT / "runs/product-v2" / frame.run_id
-            directory.mkdir(parents=True, exist_ok=True)
-            self._journal = (directory / "intents.jsonl").open("a", encoding="utf-8")
-            (directory / "settings.json").write_text(
-                json.dumps(asdict(self.settings), indent=2), encoding="utf-8"
-            )
+        if self._journal is None and not self._journal_failed:
+            try:
+                directory = ROOT / "runs/product-v2" / frame.run_id
+                directory.mkdir(parents=True, exist_ok=True)
+                self._journal = (directory / "intents.jsonl").open(
+                    "a", encoding="utf-8"
+                )
+                (directory / "settings.json").write_text(
+                    json.dumps(asdict(self.settings), indent=2), encoding="utf-8"
+                )
+            except OSError as exc:
+                self.journal_failure(exc)
         h, w = packet.image.shape[:2]
         hands = []
         for label, landmarks in filtered.items():
@@ -1110,14 +1572,11 @@ class ProductWindow(QMainWindow):
             self.cancel()
         dominant = next((v for v in hands if v.role == "DOMINANT"), None)
         support = next((v for v in hands if v.role == "SUPPORT"), None)
-        pose_hand = (
-            support
-            if support and support.pose == "OPEN_PALM"
-            else dominant if dominant and dominant.pose == "OPEN_PALM" else None
-        )
-        self.viewport.anchor = self.anchor.update(
-            pose_hand.palm if pose_hand and valid and focused and not modal else None,
-            frame.timestamp_s,
+        self.viewport.anchor = self.anchor.observe(
+            hands,
+            self.latest_identity,
+            valid=valid and focused and not modal,
+            allow_fingertips=self.live_mode() and self.page_name == "Explore",
         )
         self.viewport.reference_plane = (
             support.palm
@@ -1128,18 +1587,35 @@ class ProductWindow(QMainWindow):
             and not modal
             else None
         )
+        if (
+            self._manual_active
+            and self.viewport.mode == "HAND"
+            and self.viewport.anchor is None
+        ):
+            self.cancel()
         target = activation = None
-        if dominant:
+        hand_scene = (
+            self.page_name == "Explore"
+            and self.viewport.mode == "HAND"
+            and not self.ui_control_button.isChecked()
+        )
+        finger_scene = (
+            self.page_name == "Explore"
+            and self.live_mode()
+            and not self.ui_control_button.isChecked()
+        )
+        if dominant and not (hand_scene or finger_scene):
             px, py = self.engine.pointer(dominant.pointer_xy, self.settings)
             target, activation = self.ui_target((px, py))
-        ui = activation is not None or self.page_name != "Explore"
-        context = (
-            self.epoch,
-            self.page_name,
-            self.registry.current.id,
-            self.viewport.mode,
-            self.settings,
+        ui = (
+            activation is not None
+            or self.page_name != "Explore"
+            or (
+                (self.viewport.mode == "HAND" or self.live_mode())
+                and self.ui_control_button.isChecked()
+            )
         )
+        context = self.interaction_context()
         if self.settings.engine == "LEGACY":
             self.engine.reset()
             if (
@@ -1177,12 +1653,20 @@ class ProductWindow(QMainWindow):
                 ui=ui,
                 calibration=self.page_name == "Calibrate",
                 modal=modal,
+                fingertip_geometry=self.live_mode() and self.page_name == "Explore",
             )
-        self.viewport.pointer = (
-            None
-            if intent.pointer_xy is None
-            else self.viewport_pointer(intent.pointer_xy)
-        )
+        self.viewport.pointer = self.scene_pointer(intent)
+        self.viewport.live_sources = ()
+        if (
+            not self.live_mode()
+            and hand_scene
+            and dominant
+            and valid
+            and focused
+            and not modal
+        ):
+            # Observed fingertip remains visible even when its pose cannot command.
+            self.viewport.pointer_source = dominant.pointer_xy
         if (
             intent.owner is Owner.UI
             and intent.pointer_xy is not None
@@ -1199,8 +1683,10 @@ class ProductWindow(QMainWindow):
         else:
             self.touch_cursor.hide()
         if intent.type is Type.CANCEL:
+            self._dwell_target = self._dwell_since = None
             if not self._manual_active:
                 self.registry.current.on_intent(intent)
+                self.refresh_inspector()
         elif intent.owner is Owner.UI:
             if (
                 intent.type is Type.SELECT
@@ -1221,44 +1707,131 @@ class ProductWindow(QMainWindow):
                 and dominant.pose == "POINT"
                 and not self.registry.current.dragging,
             )
+        elif (
+            self.page_name == "Explore"
+            and intent.owner in {Owner.SCENE, Owner.TOOL}
+            and self.viewport.mode == "HAND"
+            and self.viewport.anchor is None
+        ):
+            intent = replace(self.engine.reset(), reason="HAND_ANCHOR_REQUIRED")
+            self.registry.current.on_intent(intent)
         elif self.page_name == "Explore" and intent.owner in {Owner.SCENE, Owner.TOOL}:
-            point = (
-                None
-                if intent.pointer_xy is None
-                else self.viewport.pick_point(self.viewport_pointer(intent.pointer_xy))
-            )
-            points = tuple(
-                self.viewport.scene_point(self.viewport_pointer(p[:2]))
-                for p in intent.points
-            )
-            if any(p is None for p in points):
-                # A two-point observation must never degrade into a one-point commit.
-                points = ()
-                point = None
-            plane_pose = intent.anchor_pose
-            if plane_pose is not None and self.viewport.mode == "HAND":
-                # The shared scene frame already follows the palm in HAND mode.
-                plane_pose = replace(plane_pose, pitch_rad=0.0, yaw_rad=0.0)
-            intent = replace(
-                intent,
-                world_or_scene_point=point,
-                points=points,
-                tool_id=self.registry.current.tool,
-                anchor_pose=plane_pose,
-            )
-            self.deliver(intent, record=False)
-            if (
-                intent.type is Type.MEASURE_BEGIN
-                or self.registry.current.tool != self.tool_select.currentText()
-            ):
-                self.tool_select.blockSignals(True)
-                self.tool_select.setCurrentText("Distance")
-                self.tool_select.blockSignals(False)
+            if intent.live_geometry:
+                mapped_points = tuple(
+                    self.viewport.fingertip_pointer(p) for p in intent.source_points
+                )
+                points = tuple(
+                    self.viewport.fingertip_point(p, z)
+                    for p, z in zip(intent.source_points, intent.source_depths)
+                )
+                if any(p is None for p in points):
+                    intent = replace(
+                        self.engine.reset(), reason="FINGERTIP_PROJECTION_UNAVAILABLE"
+                    )
+                    self.registry.current.on_intent(intent)
+                else:
+                    # Outline order follows displayed vertices, retaining all tips.
+                    centre = np.mean(points, axis=0)
+                    cx, cy = self.viewport.projection().project(centre)[:2]
+                    order = (
+                        sorted(
+                            range(len(points)),
+                            key=lambda i: math.atan2(
+                                mapped_points[i][1] * self.viewport.height() - cy,
+                                mapped_points[i][0] * self.viewport.width() - cx,
+                            ),
+                        )
+                        if len(points) >= 3
+                        else range(len(points))
+                    )
+                    order = tuple(order)
+                    intent = replace(
+                        intent,
+                        points=tuple(points[i] for i in order),
+                        vertex_tokens=tuple(intent.vertex_tokens[i] for i in order),
+                        source_points=tuple(intent.source_points[i] for i in order),
+                        source_depths=tuple(intent.source_depths[i] for i in order),
+                    )
+                    self.viewport.live_sources = intent.source_points
+                    self.deliver(intent, record=False)
+            else:
+                intent = self.consume_recorded_scene(intent)
+        self.finish_frame_feedback(
+            intent,
+            hands,
+            dominant,
+            support,
+            frame,
+            legacy,
+            valid,
+            focused,
+            modal,
+            reason,
+            hand_scene,
+        )
+        self.viewport.update()
+
+    def consume_recorded_scene(self, intent):
+        mapped = self.scene_pointer(intent)
+        point = None if mapped is None else self.viewport.pick_point(mapped)
+        mapped_points = (
+            tuple(self.viewport.source_pointer(p) for p in intent.source_points)
+            if self.viewport.mode == "HAND"
+            else tuple(self.viewport_pointer(p[:2]) for p in intent.points)
+        )
+        points = tuple(
+            None if p is None else self.viewport.scene_point(p) for p in mapped_points
+        )
+        if any(p is None for p in points):
+            points = ()
+            point = None
+        plane_pose = intent.anchor_pose
+        if plane_pose is not None and self.viewport.mode == "HAND":
+            plane_pose = replace(plane_pose, pitch_rad=0.0, yaw_rad=0.0)
+        intent = replace(
+            intent,
+            world_or_scene_point=point,
+            points=points,
+            tool_id=self.registry.current.tool,
+            anchor_pose=plane_pose,
+        )
+        self.deliver(intent, record=False)
+        if (
+            intent.type is Type.MEASURE_BEGIN
+            or self.registry.current.tool != self.tool_select.currentText()
+        ):
+            self.tool_select.blockSignals(True)
+            self.tool_select.setCurrentText("Distance")
+            self.tool_select.blockSignals(False)
+            if not self.tools_button.isChecked():
+                self.reveal_tools(True)
+        return intent
+
+    def finish_frame_feedback(
+        self,
+        intent,
+        hands,
+        dominant,
+        support,
+        frame,
+        legacy,
+        valid,
+        focused,
+        modal,
+        reason,
+        hand_scene,
+    ):
         dp = self.engine.pinches["DOMINANT"]
         self.record_intent(
             intent, "product" if self.settings.engine == "PRODUCT" else "legacy"
         )
         if self.page_name == "Calibrate":
+            if intent.type is Type.CANCEL:
+                self._calibration_previous_active = False
+                self._pose_checks_since.clear()
+            if self.calibration_step >= 2 and dp.reference is None:
+                self.calibration_step = 1
+                self.calibration_checks.clear()
             if dp.active:
                 self._calibration_previous_active = True
             if (
@@ -1285,7 +1858,7 @@ class ProductWindow(QMainWindow):
         tracking = (
             ("LEGACY_READY" if legacy_usable else frame.status.value)
             if self.settings.engine == "LEGACY"
-            else "READY" if valid else reason
+            else "TRACKING" if valid else reason
         )
         self.tracking_label.setText(tracking + f" · {len(hands)} hand(s)")
         gesture = (
@@ -1293,11 +1866,80 @@ class ProductWindow(QMainWindow):
             if self.settings.engine == "LEGACY"
             else dominant.pose if dominant else "LOST"
         )
-        self.feedback.setText(
-            f"{gesture}  ·  PINCH: {dp.state}  ·  {intent.type.value} / {intent.owner.value}  ·  {self.settings.dominant_hand}: dominant"
-        )
+        summary = f"{self.settings.dominant_hand}: dominant"
+        if self.settings.gesture_labels:
+            summary = f"{gesture}  ·  PINCH: {dp.state}  ·  " + summary
+        if self.settings.diagnostics:
+            summary += f"  ·  {intent.type.value} / {intent.owner.value}"
+        elif intent.type is Type.CANCEL and intent.reason:
+            summary += f"  ·  {intent.reason}"
+        if (
+            self.live_mode()
+            and self.page_name == "Explore"
+            and not self.ui_control_button.isChecked()
+        ):
+            count = len(self.viewport.live_sources)
+            summary = f"LIVE · {count} extended fingertips · both hands supported"
+        elif self.settings.engine == "PRODUCT" and valid:
+            if dominant is None and support is not None:
+                summary += f"  ·  Visible {support.track_id} hand is support; choose it as dominant in Settings"
+            elif dp.reference is None:
+                summary += "  ·  Calibrate hands to enable pinch commits"
+            if hand_scene and self.viewport.anchor is None:
+                summary += "  ·  Open palm once to anchor, then point/pinch"
+            elif hand_scene:
+                summary += "  ·  Fingertip controls scene; Control UI switches to menus"
+        if self._journal_error:
+            summary += "  ·  Intent log incomplete — see Analyze"
+        self.feedback.setText(summary)
+        if not valid or not focused or modal:
+            hint = "Hand control paused. Restore tracking/focus, then open palm to anchor again."
+        elif (
+            self.live_mode()
+            and self.page_name == "Explore"
+            and not self.ui_control_button.isChecked()
+        ):
+            shape = self.registry.current.live_shape
+            hint = (
+                "Show extended fingertips on either hand; geometry appears automatically."
+                if shape is None
+                else f"{len(shape.points)} live vertices · {shape.kind} · move any fingertip to reshape. No Add point/pinch needed."
+            )
+        elif dominant is None and support is not None:
+            hint = f"Visible {support.track_id} hand is support. Choose it as dominant in Settings to point or pinch."
+        elif self.ui_control_button.isChecked():
+            hint = "Menu control: POINT and calibrated PINCH select. Turn Control UI off to interact with the scene."
+        elif self.viewport.anchor is None:
+            hint = (
+                "Open palm once to anchor, then extend only the index finger to point."
+            )
+        elif (
+            dominant
+            and dominant.pose == "UNKNOWN"
+            and not dp.active
+            and dp.state != "CLOSING"
+        ):
+            hint = "Pose unclear. Extend only the index finger to point; release before a new pinch."
+        elif dominant and dominant.pose == "OPEN_PALM":
+            hint = "Scene anchored. Fold the other fingers and extend the index finger to point."
+        else:
+            hint = f"{gesture}: fingertip controls the scene. Control UI switches to menus."
+        if (
+            dominant
+            and valid
+            and dp.reference is None
+            and not (
+                self.live_mode()
+                and self.page_name == "Explore"
+                and not self.ui_control_button.isChecked()
+            )
+        ):
+            hint += " Calibrate hands to enable pinch commits."
+        self.interaction_hint.setText(hint)
         self.home_status.setText(
-            f"Tracking: {tracking}   ·   Pinch: {dp.state}   ·   Session: {frame.run_id}"
+            f"Tracking: {tracking}   ·   Live geometry: no pinch calibration needed   ·   Session: {frame.run_id}"
+            if self.live_mode()
+            else f"Tracking: {tracking}   ·   Pinch: {dp.state}   ·   Session: {frame.run_id}"
         )
         if self.page_name == "Analyze":
             diag = {
@@ -1309,14 +1951,45 @@ class ProductWindow(QMainWindow):
                     None if frame.illumination is None else asdict(frame.illumination)
                 ),
                 "Core timing": asdict(frame.timings),
-                "product filter": "canonical fixed 1-Euro / separate 2-hand pipeline",
+                "product filter": (
+                    "canonical fixed 1-Euro / separate 2-hand pipeline"
+                    if self.settings.engine == "PRODUCT"
+                    else "not run in LEGACY"
+                ),
                 "quality": "unavailable",
                 "product tracking": reason,
-                "intent": asdict(intent),
-                "pinch states": {k: v.state for k, v in self.engine.pinches.items()},
+                "intent log": self._journal_error or "recording",
             }
+            if self.settings.diagnostics:
+                diag.update(
+                    intent=asdict(intent),
+                    pinch_states={k: v.state for k, v in self.engine.pinches.items()},
+                )
             self.diagnostics.setPlainText(json.dumps(diag, indent=2, default=str))
         self.viewport.update()
+
+    def update_environment(self, frame, reason):
+        message = ""
+        if reason == "TOO_MANY_HANDS":
+            message = "More than two hands detected. Gesture control is paused; keep only your hands in view, then release to rearm."
+        elif reason in {
+            "AMBIGUOUS_OVERLAP",
+            "ASSOCIATION_AMBIGUOUS",
+            "ROLE_CHANGED",
+            "HANDEDNESS_UNAVAILABLE",
+        }:
+            message = "Hand roles are ambiguous. Separate the hands and release before continuing."
+        elif frame.illumination is not None and frame.illumination.state.value in {
+            "LOW_LIGHT",
+            "DIFFICULT",
+        }:
+            message = "Low light detected. Add light in front of your hands; contrast enhancement cannot restore missing image detail. Mouse controls remain available."
+        if self.page_name == "Explore" and bool(message) != (
+            not self.environment_notice.isHidden()
+        ):
+            self.cancel()  # The notice changes viewport height; never keep an old clutch across that layout.
+        self.environment_notice.setText(message)
+        self.environment_notice.setVisible(bool(message))
 
     def _dwell(self, target, activation, timestamp, valid):
         if not self.settings.dwell_select or not valid or activation is None:
@@ -1342,8 +2015,8 @@ class ProductWindow(QMainWindow):
                 self.timer.start(16)
                 QTimer.singleShot(1000, self.close)
                 return
-        if self._journal is not None:
-            self._journal.close()
-            self._journal = None
+        self.close_journal()
         self.registry.close()
+        if isinstance(self.viewport, Viewport):
+            self.viewport.close_renderer()
         event.accept()

@@ -23,7 +23,7 @@ class HandAssociation:
     def update(self, detections, aspect=1.0):
         if not 1 <= len(detections) <= 2:
             self.reset()
-            self.reason = "NO_HAND"
+            self.reason = "TOO_MANY_HANDS" if len(detections) > 2 else "NO_HAND"
             return {}
         centers = [
             tuple(
@@ -84,4 +84,5 @@ class HandAssociation:
             result = dict(zip(labels, detections))
             self.reason = "ACQUIRING"
         self.previous = {k: centers[detections.index(v)] for k, v in result.items()}
+        self.reason = "TRACKING" if len(keys) == len(detections) else "ACQUIRING"
         return result

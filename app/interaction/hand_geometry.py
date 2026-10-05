@@ -3,7 +3,7 @@
 import math
 import numpy as np
 from dip_touchless.core import CoordinateSpace
-from .contracts import AnchorPose, HandState
+from .contracts import AnchorPose, HandState, TipSample
 
 PALM = (0, 5, 9, 13, 17)
 CHAINS = (
@@ -45,9 +45,13 @@ def describe(landmarks, width, height, config, *, track_id="dominant", role="DOM
     span = float(np.linalg.norm(p[5] - p[17]))
     if span <= config.palm_epsilon:
         return None
+    # MediaPipe normalized z has roughly x's scale. Use relative model geometry
+    # for joint bends, including foreshortened fingers; this is not metric depth.
+    joints = np.array([(v.x * aspect, v.y, v.z * aspect) for v in lm])
+    joint_span = float(np.linalg.norm(joints[5] - joints[17]))
     fingers = []
     for chain in CHAINS:
-        q = p[list(chain)]
+        q = joints[list(chain)]
         lengths = np.linalg.norm(np.diff(q, axis=0), axis=1)
         if np.any(lengths <= config.palm_epsilon):
             return None
@@ -71,7 +75,8 @@ def describe(landmarks, width, height, config, *, track_id="dominant", role="DOM
             and min(angles) >= config.finger_angle_rad
         )
     fingers[0] = (
-        fingers[0] and np.linalg.norm(p[4] - p[5]) / span >= config.thumb_spread
+        fingers[0]
+        and np.linalg.norm(joints[4] - joints[5]) / joint_span >= config.thumb_spread
     )
     _, i, m, r, k = fingers
     pose = (
@@ -85,7 +90,7 @@ def describe(landmarks, width, height, config, *, track_id="dominant", role="DOM
     )
     center = tuple(float(v) for v in xy[list(PALM)].mean(axis=0))
     transverse = p[17] - p[5]
-    # z affects orientation cues only and is never used to measure distance.
+    # z supplies nonmetric bend/orientation cues, never scene distance.
     yaw = math.atan2(lm[17].z - lm[5].z, span)
     distal = float(np.linalg.norm(p[9] - p[0]))
     pitch = math.atan2(lm[9].z - lm[0].z, max(distal, config.palm_epsilon))
@@ -107,4 +112,13 @@ def describe(landmarks, width, height, config, *, track_id="dominant", role="DOM
         float(np.linalg.norm(p[4] - p[8]) / span),
         True,
         signature,
+        tuple(
+            TipSample(
+                f"vertex:{track_id}:{i}",
+                tuple(xy[index]),
+                lm[index].z - float(np.mean([lm[j].z for j in PALM])),
+                bool(fingers[i]),
+            )
+            for i, index in enumerate((4, 8, 12, 16, 20))
+        ),
     )

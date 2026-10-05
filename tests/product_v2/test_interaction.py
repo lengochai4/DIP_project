@@ -385,6 +385,187 @@ def detection(x, label):
     return Detection(points, label)
 
 
+@pytest.mark.parametrize("pose", ["POINT", "V_SIGN", "OPEN_PALM"])
+@pytest.mark.parametrize("aspect", [1.0, 4 / 3, 16 / 9])
+@pytest.mark.parametrize("mirror", [False, True])
+def test_relative_3d_finger_joints_survive_tilt(pose, aspect, mirror):
+    landmarks = geometry_fixture(pose)
+    # Rigid rotation of the model-relative hand, then conversion back to source
+    # normalization. Depth supplies bend cues; it is never a metric measurement.
+    xyz = np.array([(p.x * aspect, p.y, p.z * aspect) for p in landmarks])
+    xyz -= xyz[0].copy()
+    xyz = xyz @ rotation(0.65, 1.1).T
+    transformed = tuple(
+        replace(
+            p,
+            x=(0.55 - q[0] / aspect if mirror else 0.45 + q[0] / aspect),
+            y=0.7 + q[1],
+            z=q[2] / aspect,
+        )
+        for p, q in zip(landmarks, xyz)
+    )
+    result = describe(transformed, round(aspect * 900), 900, C)
+    assert result is not None and result.pose == pose
+
+
+def test_projected_straight_but_depth_folded_finger_is_not_extended():
+    landmarks = list(geometry_fixture("OPEN_PALM"))
+    # Middle finger projects to a straight image line, but its relative joints
+    # double back in z. The former 2D-only classifier marked it extended.
+    landmarks[10] = replace(landmarks[10], z=-0.3)
+    landmarks[11] = replace(landmarks[11], z=0.1)
+    result = describe(landmarks, 640, 480, C)
+    assert result is not None and not result.fingers[2]
+    assert result.pose == "UNKNOWN"
+
+
+def test_real_landmark_classifier_to_gui_keeps_index_tip_and_anchor(
+    tmp_path, monkeypatch
+):
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication
+    from dip_touchless.core import (
+        FramePacket,
+        ColorSpace,
+        TrackingFrame,
+        TrackingStatus,
+        MeasurementQuality,
+        FilterDiagnostics,
+        FilterMode,
+        StageTimings,
+    )
+    import app.ui.shell as shell
+
+    qt = QApplication.instance() or QApplication([])
+    monkeypatch.setattr(shell, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        QApplication, "applicationState", lambda: Qt.ApplicationState.ApplicationActive
+    )
+    window = shell.ProductWindow(
+        C,
+        Settings(geometry_mode="RECORDED"),
+        software=True,
+        preferences_path=tmp_path / "preferences.json",
+    )
+    window.show()
+    qt.applicationStateChanged.disconnect(window._application_state)
+    try:
+        window.navigate("Explore")
+        window.set_mode("HAND")
+        qt.processEvents()
+        # Actual describe() is used, not the semantic HandState seam.
+        for i, pose in enumerate(("OPEN_PALM", "OPEN_PALM", "POINT")):
+            ts = 1 + i * 0.1
+            packet = FramePacket(
+                "landmarks-ui",
+                i,
+                ts,
+                np.zeros((480, 640, 3), np.uint8),
+                ColorSpace.BGR,
+                "synthetic",
+            )
+            frame = TrackingFrame(
+                "landmarks-ui",
+                i,
+                ts,
+                TrackingStatus.VALID,
+                (),
+                (),
+                MeasurementQuality.unavailable(),
+                None,
+                None,
+                FilterDiagnostics(
+                    FilterMode.RAW, None, None, None, None, None, None, None, False
+                ),
+                StageTimings(0, 0, 0, 0, 0),
+                (),
+            )
+            window.consume(
+                packet, frame, None, {"Right": geometry_fixture(pose)}, True, "TRACKING"
+            )
+        assert window.current_hands[0].pose == "POINT"
+        assert (
+            window.viewport.anchor is not None
+            and window.registry.current.preview is not None
+        )
+        tip = geometry_fixture("POINT")[8]
+        x, y, w, h = window.viewport.image_rect()
+        expected = (
+            (x + (1 - tip.x) * w) / window.viewport.width(),
+            (y + tip.y * h) / window.viewport.height(),
+        )
+        assert window.viewport.pointer == pytest.approx(expected)
+        qt.processEvents()
+        # The wrapped live hint may resize the viewport after consume(). Both
+        # overlay and cursor must still use the new displayed camera rect.
+        x, y, w, h = window.viewport.image_rect()
+        expected = (
+            (x + (1 - tip.x) * w) / window.viewport.width(),
+            (y + tip.y * h) / window.viewport.height(),
+        )
+        assert window.viewport.pointer == pytest.approx(expected)
+        image = window.viewport.grab().toImage()
+        ratio = image.devicePixelRatio()
+        cx = round((expected[0] * window.viewport.width() + 9) * ratio)
+        cy = round(expected[1] * window.viewport.height() * ratio)
+        colors = [
+            image.pixelColor(cx + dx, cy + dy)
+            for dx in range(-2, 3)
+            for dy in range(-2, 3)
+        ]
+        assert any(c.red() > 180 and c.green() > 160 and c.blue() < 180 for c in colors)
+    finally:
+        window.close()
+        qt.processEvents()
+
+
+def test_hand_anchor_follows_same_live_palm_through_point_and_pinch_shapes():
+    anchor = HandAnchor(C)
+    opened = hand(pose="OPEN_PALM")
+    assert anchor.observe([opened], ("run", 0, 0)) is not None
+    for i, pose in enumerate(("POINT", "V_SIGN", "UNKNOWN"), 1):
+        observed = replace(hand(pose=pose), palm=AnchorPose((0.7, 0.5), 0.25, 0.1))
+        assert anchor.observe([observed], ("run", i, i * 0.1)) is not None
+    assert anchor.pose.center_xy[0] > opened.palm.center_xy[0]
+    assert anchor.observe([], ("run", 4, 0.4), valid=False) is None
+    assert anchor.observe([hand()], ("run", 5, 0.5)) is None
+    assert anchor.observe([opened], ("run", 6, 0.6)) is not None
+
+
+@pytest.mark.parametrize("change", ["run", "time", "track", "role"])
+def test_hand_anchor_identity_and_time_changes_require_open_acquisition(change):
+    anchor = HandAnchor(C)
+    anchor.observe([hand(pose="OPEN_PALM")], ("run", 0, 0))
+    observed = hand()
+    identity = ("run", 1, 0.1)
+    if change == "run":
+        identity = ("new", 1, 0.1)
+    elif change == "time":
+        identity = ("run", 1, 1.0)
+    elif change == "track":
+        observed = replace(observed, track_id="new")
+    else:
+        observed = replace(observed, role="SUPPORT")
+    assert anchor.observe([observed], identity) is None
+
+
+def test_bimanual_source_points_keep_locked_snapshot_without_gain_or_clamping():
+    d = hand(pointer=(0.9, 0.3))
+    s = hand(role="SUPPORT", pointer=(0.1, 0.7))
+    e = engine_ready([d, s])
+    settings = Settings(pointer_sensitivity=3.0)
+    for i in range(3, 12):
+        result = e.update([d, s], ("run", i, i * 0.2), settings=settings)
+    assert result.reason == "LOCKED"
+    assert result.source_points == (s.pointer_xy, d.pointer_xy)
+    closed = replace(d, pinch_ratio=0.3, pointer_xy=(0.8, 0.4))
+    e.update([closed, s], ("run", 12, 2.4), settings=settings)
+    commit = e.update([closed, s], ("run", 13, 2.7), settings=settings)
+    assert commit.type is IntentType.MEASURE_COMMIT
+    assert commit.source_points == (s.pointer_xy, d.pointer_xy)
+    assert commit.source_pointer_xy == closed.pointer_xy
+
+
 def test_association_survives_provider_order_and_rejects_crossing_overlap():
     association = HandAssociation(C)
     first = association.update([detection(0.2, "Left"), detection(0.7, "Right")])
@@ -392,6 +573,39 @@ def test_association_survives_provider_order_and_rejects_crossing_overlap():
     second = association.update([detection(0.71, "Right"), detection(0.21, "Left")])
     assert second["Left"].landmarks[0].x == pytest.approx(0.21)
     assert association.update([detection(0.5, "Right"), detection(0.51, "Left")]) == {}
+
+
+def test_extra_hands_cancel_association_then_reacquire_explicitly():
+    association = HandAssociation(C)
+    pair = [detection(0.2, "Left"), detection(0.7, "Right")]
+    association.update(pair)
+    association.update(pair)
+    assert association.reason == "TRACKING"
+    assert association.update([*pair, detection(0.5, "Right")]) == {}
+    assert association.reason == "TOO_MANY_HANDS" and association.previous == {}
+    assert set(association.update(pair)) == {"Left", "Right"}
+    assert association.reason == "ACQUIRING"
+
+
+@pytest.mark.parametrize("normal", [(0, 0, 1), (0.1, 0.2, 1)])
+def test_perspective_plane_roundtrip_and_gpu_clip_mapping(normal):
+    p = Projection(1200, 800, (610, 390), 110, rotation(0.4, 0.3, 0.2), 8.0)
+    point = (0.7, -0.3, -(normal[0] * 0.7 - normal[1] * 0.3) / normal[2])
+    x, y, _ = p.project(point)
+    assert p.plane_point((x / 1200, y / 800), normal) == pytest.approx(point)
+    clip = p.clip_matrix() @ np.array((*point, 1.0))
+    ndc = clip[:3] / clip[3]
+    assert ((ndc[0] + 1) * 600, (1 - ndc[1]) * 400) == pytest.approx((x, y), abs=1e-5)
+
+
+def test_perspective_foreshortening_and_clipping_are_explicit():
+    p = Projection(1200, 800, (600, 400), 100, np.eye(3), 8.0)
+    assert p.project((1, 0, 4))[0] - 600 == pytest.approx(
+        2 * (p.project((1, 0, 0))[0] - 600)
+    )
+    assert p.radius((0, 0, 4), 0.3) == pytest.approx(2 * p.radius((0, 0, 0), 0.3))
+    assert not p.visible((0, 0, 8)) and not p.visible((0, 0, 9))
+    assert p.plane_point((0.5, 0.5), (1, 0, 0)) is None
 
 
 @pytest.mark.parametrize(

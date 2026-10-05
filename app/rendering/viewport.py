@@ -1,13 +1,9 @@
-"""Qt OpenGL-backed 3D projection, depth-ordered painter geometry, shared HAND mode.
-
-QPainter owns GPU resources through Qt. The software surface uses the identical
-projection and scene, for platforms without a usable OpenGL context.
-"""
+"""Perspective GPU mesh/depth renderer with a shared software fallback and HAND frame."""
 
 import math
 import numpy as np
 from PySide6.QtCore import Qt, QPointF, QRectF, Signal
-from PySide6.QtGui import QPainter, QColor, QPen, QRadialGradient, QImage
+from PySide6.QtGui import QPainter, QColor, QPen, QRadialGradient, QImage, QPolygonF
 from PySide6.QtWidgets import QWidget
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from app.interaction.contracts import GestureIntent, IntentType, Phase
@@ -23,12 +19,27 @@ class SurfaceMixin:
         self.landmarks = {}
         self.anchor = None
         self.reference_plane = None
+        self.pointer_source = None
+        self.live_sources = ()
         self.pointer = None
         self.message = "Start camera, or explore using mouse and keyboard"
         self._mouse = None
         self.setMinimumSize(420, 320)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
+
+    @property
+    def pointer(self):
+        # Layout/HiDPI changes can occur after a frame callback (e.g. Inspector
+        # expansion). Resolve the camera tip against the current rect at paint.
+        if self.pointer_source is not None:
+            return self.source_pointer(self.pointer_source)
+        return self._pointer
+
+    @pointer.setter
+    def pointer(self, value):
+        self.pointer_source = None
+        self._pointer = value
 
     def image_rect(self):
         if self.image is None:
@@ -50,9 +61,21 @@ class SurfaceMixin:
             matrix = rotation(lab.yaw + a.yaw_rad, lab.pitch + a.pitch_rad, -roll)
         else:
             center = (self.width() / 2, self.height() / 2)
-            unit = min(self.width(), self.height()) * 0.18 * lab.scale
+            unit = (
+                min(self.width(), self.height())
+                * self.config.world_fit_fraction
+                / (2 * lab.view_radius)
+                * lab.scale
+            )
             matrix = rotation(lab.yaw, lab.pitch)
-        return Projection(self.width(), self.height(), center, max(unit, 1.0), matrix)
+        return Projection(
+            self.width(),
+            self.height(),
+            center,
+            max(unit, 1.0),
+            matrix,
+            self.config.camera_distance,
+        )
 
     def frame_pointer(self, xy):
         """Mirrored normalized source xy -> displayed camera rect -> viewport xy."""
@@ -61,11 +84,67 @@ class SurfaceMixin:
             return ((x + xy[0] * w) / self.width(), (y + xy[1] * h) / self.height())
         return xy
 
+    def source_pointer(self, xy):
+        """Unmirrored camera xy -> displayed camera rect, without control gain."""
+        if xy is None or not all(0 <= v <= 1 for v in xy):
+            return None
+        mirrored = (1 - xy[0] if self.settings.mirror else xy[0], xy[1])
+        return self.frame_pointer(mirrored)
+
+    def fingertip_pointer(self, xy):
+        """Camera-aligned fingertip data in either scene mode, no UI gain/clamp."""
+        if not all(0 <= v <= 1 for v in xy):
+            return None
+        x, y, w, h = self.image_rect()
+        return (
+            (x + (1 - xy[0] if self.settings.mirror else xy[0]) * w) / self.width(),
+            (y + xy[1] * h) / self.height(),
+        )
+
+    def fingertip_point(self, xy, relative_z):
+        if self.mode == "HAND" and self.anchor is None:
+            return None
+        mapped = self.fingertip_pointer(xy)
+        if mapped is None:
+            return None
+        projection = self.projection()
+        _, _, w, _ = self.image_rect()
+        depth = (
+            -relative_z
+            * w
+            * self.config.fingertip_depth_gain
+            / projection.pixels_per_unit
+        )
+        limit = min(
+            self.config.fingertip_depth_limit,
+            self.config.camera_distance - projection.near * 2,
+        )
+        return projection.point_at_view_depth(mapped, max(-limit, min(limit, depth)))
+
     def scene_point(self, xy):
         """Viewport-normalized control pointer -> scene construction plane."""
+        if self.mode == "HAND" and self.anchor is None:
+            return None
         if not all(0.0 <= v <= 1.0 for v in xy):
             return None
-        return self.projection().plane_point(xy, self.plane_normal())
+        point = self.projection().plane_point(xy, self.plane_normal())
+        if (
+            point is None
+            or not self.settings.construction_snap
+            or self.registry.current.tool == "Inspect"
+        ):
+            return point
+        normal = np.asarray(self.plane_normal(), dtype=float)
+        normal /= np.linalg.norm(normal)
+        axis = (1, 0, 0) if abs(normal[0]) < 0.9 else (0, 1, 0)
+        u = np.cross(normal, axis)
+        u /= np.linalg.norm(u)
+        v = np.cross(normal, u)
+        step = self.config.construction_grid_step
+        return tuple(
+            step
+            * (round(np.dot(point, u) / step) * u + round(np.dot(point, v) / step) * v)
+        )
 
     def plane_normal(self):
         a = self.reference_plane
@@ -82,19 +161,25 @@ class SurfaceMixin:
         return self.pick_viewport(xy)
 
     def pick_viewport(self, mapped):
+        if self.mode == "HAND" and self.anchor is None:
+            return None
         if not all(0.0 <= v <= 1.0 for v in mapped):
             return None
         projection = self.projection()
+        origin, direction = projection.ray(mapped)
         candidates = []
         for ball in self.registry.current.render().balls:
-            x, y, z = projection.project(ball.center)
-            d = math.hypot(mapped[0] * self.width() - x, mapped[1] * self.height() - y)
-            if d <= max(8.0, ball.radius * projection.pixels_per_unit):
-                candidates.append((z, ball.center))
+            offset = origin - ball.center
+            b = np.dot(offset, direction)
+            disc = b * b - np.dot(offset, offset) + ball.radius * ball.radius
+            if disc >= 0:
+                t = -b - math.sqrt(disc)
+                if t > 0 and projection.visible(origin + t * direction):
+                    candidates.append((t, ball.center))
         return (
-            max(candidates, key=lambda p: p[0])[1]
+            min(candidates, key=lambda p: p[0])[1]
             if candidates
-            else projection.plane_point(mapped, self.plane_normal())
+            else self.scene_point(mapped)
         )
 
     def paint_surface(self):
@@ -124,26 +209,81 @@ class SurfaceMixin:
                             if a in pts and b in pts:
                                 painter.drawLine(pts[a], pts[b])
             if self.anchor is None:
-                self._caption(painter, "Open your palm to present this lab", True)
+                self._draw_pointer(painter)
+                self._caption(
+                    painter,
+                    (
+                        "Show extended fingertips to create live geometry on your hand."
+                        if self.settings.geometry_mode == "LIVE"
+                        else "Open palm once to anchor, then point/pinch. WORLD: independent scene controls"
+                    ),
+                    True,
+                )
                 painter.end()
                 return
         projection = self.projection()
         geometry = self.registry.current.render()
+        gpu = getattr(self, "gpu_renderer", None)
+        hardware = False
+        if gpu is not None and not self.gpu_error:
+            painter.beginNativePainting()
+            try:
+                ratio = self.devicePixelRatioF()
+                gpu.draw(
+                    geometry,
+                    projection,
+                    (round(self.width() * ratio), round(self.height() * ratio)),
+                    self.settings.grid,
+                )
+                hardware = True
+            except Exception as exc:
+                self.gpu_error = str(exc)
+            finally:
+                painter.endNativePainting()
         objects = []
-        for line in geometry.lines:
+        for face in () if hardware else geometry.faces:
+            if not all(projection.visible(p) for p in (face.a, face.b, face.c)):
+                continue
+            points = [projection.project(p) for p in (face.a, face.b, face.c)]
+            objects.append((sum(p[2] for p in points) / 3, "face", face, points, None))
+        for line in () if hardware else geometry.lines:
+            if not all(projection.visible(p) for p in (line.a, line.b)):
+                continue
             a, b = projection.project(line.a), projection.project(line.b)
             if not self.settings.grid and line.color in {"#283d47", "#42545c"}:
                 continue
             objects.append(((a[2] + b[2]) / 2, "line", line, a, b))
-        for ball in geometry.balls:
+        for ball in () if hardware else geometry.balls:
+            if not projection.visible(ball.center):
+                continue
             p = projection.project(ball.center)
             objects.append((p[2], "ball", ball, p, None))
         for _, kind, obj, a, b in sorted(objects, key=lambda o: o[0]):
-            if kind == "line":
+            if kind == "face":
+                normal = np.cross(np.array(obj.b) - obj.a, np.array(obj.c) - obj.a)
+                norm = np.linalg.norm(normal)
+                light = np.array((-0.4, 0.7, 1.0))
+                brightness = 0.25 + 0.75 * abs(
+                    np.dot(
+                        projection.matrix @ (normal / max(norm, 1e-9)),
+                        light / np.linalg.norm(light),
+                    )
+                )
+                color = QColor(obj.color)
+                color.setRgbF(
+                    *(
+                        v * brightness
+                        for v in (color.redF(), color.greenF(), color.blueF())
+                    )
+                )
+                painter.setBrush(color)
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.drawPolygon(QPolygonF([QPointF(*p[:2]) for p in a]))
+            elif kind == "line":
                 painter.setPen(QPen(QColor(obj.color), obj.width))
                 painter.drawLine(QPointF(*a[:2]), QPointF(*b[:2]))
             else:
-                radius = max(2.0, obj.radius * projection.pixels_per_unit)
+                radius = max(2.0, projection.radius(obj.center, obj.radius))
                 gradient = QRadialGradient(
                     QPointF(a[0] - radius * 0.3, a[1] - radius * 0.3), radius * 1.5
                 )
@@ -157,18 +297,63 @@ class SurfaceMixin:
                 if obj.label and self.settings.object_labels:
                     painter.setPen(QColor("#e5eef1"))
                     painter.drawText(QPointF(a[0] + radius + 5, a[1]), obj.label)
+        if hardware and self.settings.object_labels:
+            for ball in geometry.balls:
+                if ball.label and projection.visible(ball.center):
+                    x, y, _ = projection.project(ball.center)
+                    painter.setPen(QColor("#e5eef1"))
+                    painter.drawText(
+                        QPointF(x + projection.radius(ball.center, ball.radius) + 5, y),
+                        ball.label,
+                    )
         if self.settings.object_labels:
             for point, label in geometry.labels:
+                if not projection.visible(point):
+                    continue
                 x, y, _ = projection.project(point)
                 painter.setPen(QColor("#e5eef1"))
                 painter.drawText(QPointF(x, y), label)
+        self._draw_pointer(painter)
+        renderer = "GPU / depth test" if hardware else "Software / approximate depth"
+        self._caption(
+            painter,
+            self.registry.current.title
+            + "  ·  "
+            + self.mode
+            + "\n"
+            + self.registry.current.dimensionality
+            + "  ·  "
+            + renderer,
+        )
+        origin = QPointF(48, self.height() - 46)
+        for axis, name, color in (
+            (0, "X", "#dd857c"),
+            (1, "Y", "#89b895"),
+            (2, "Z", "#839fc7"),
+        ):
+            tip = origin + QPointF(
+                projection.matrix[0, axis] * 28, -projection.matrix[1, axis] * 28
+            )
+            painter.setPen(QPen(QColor(color), 2))
+            painter.drawLine(origin, tip)
+            painter.drawText(tip + QPointF(4, 0), name)
+        painter.end()
+
+    def _draw_pointer(self, painter):
+        for source in self.live_sources:
+            mapped = self.fingertip_pointer(source)
+            if mapped is not None:
+                x, y = mapped
+                painter.setPen(QPen(QColor("#efca82"), 2.0))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.drawEllipse(
+                    QPointF(x * self.width(), y * self.height()), 8.0, 8.0
+                )
         if self.pointer is not None:
             x, y = self.pointer
             painter.setPen(QPen(QColor("#efca82"), 2.0))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawEllipse(QPointF(x * self.width(), y * self.height()), 9.0, 9.0)
-        self._caption(painter, self.registry.current.title + "  ·  " + self.mode)
-        painter.end()
 
     def _caption(self, painter, text, center=False):
         painter.setPen(QColor("#e5eef1"))
@@ -178,7 +363,8 @@ class SurfaceMixin:
                 Qt.AlignmentFlag.AlignCenter
                 if center
                 else Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-            ),
+            )
+            | Qt.TextFlag.TextWordWrap,
             text,
         )
 
@@ -219,7 +405,27 @@ class Viewport(SurfaceMixin, QOpenGLWidget):
 
     def __init__(self, registry, config, settings, parent=None):
         super().__init__(parent)
+        self.gpu_renderer = None
+        self.gpu_error = None
         self.setup(registry, config, settings)
+
+    def initializeGL(self):
+        from .gpu import MeshRenderer
+
+        try:
+            self.gpu_renderer = MeshRenderer()
+            self.context().aboutToBeDestroyed.connect(self.close_renderer)
+        except Exception as exc:
+            self.gpu_error = str(exc)
+
+    def close_renderer(self):
+        if self.gpu_renderer is not None and self.isValid():
+            self.makeCurrent()
+            try:
+                self.gpu_renderer.close()
+            finally:
+                self.gpu_renderer = None
+                self.doneCurrent()
 
     def paintGL(self):
         self.paint_surface()

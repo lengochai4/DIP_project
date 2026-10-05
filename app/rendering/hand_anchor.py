@@ -7,10 +7,61 @@ import math
 class HandAnchor:
     def __init__(self, config):
         self.config = config
-        self.pose = self.last = None
+        self.reset()
 
     def reset(self):
         self.pose = self.last = None
+        self.track = self.identity = self.hand_ids = None
+
+    def observe(self, hands, identity, *, valid=True, allow_fingertips=False):
+        """Acquire from OPEN, or an extended tip in LIVE, then follow that palm.
+
+        Presentation continuity is independent of command qualification. A closed
+        or pointing hand can still anchor. Navigation and LIVE geometry qualify
+        commands independently; a navigation UNKNOWN is not a geometry pose.
+        Loss/identity/time discontinuity never extrapolates a missing palm.
+        """
+        run, frame, timestamp = identity
+        ids = tuple(sorted((h.role, h.track_id) for h in hands))
+        old = self.identity
+        if (
+            not valid
+            or not hands
+            or not math.isfinite(timestamp)
+            or old is not None
+            and (
+                run != old[0]
+                or frame <= old[1]
+                or not 0 < timestamp - old[2] <= self.config.max_gap_s
+                or ids != self.hand_ids
+            )
+        ):
+            self.reset()
+        if not valid or not hands or not math.isfinite(timestamp):
+            return None
+        self.identity, self.hand_ids = identity, ids
+        hand = next(
+            (h for h in hands if (h.role, h.track_id) == self.track and h.valid), None
+        )
+        if hand is None:
+            hand = next(
+                (
+                    h
+                    for h in sorted(hands, key=lambda h: h.role == "DOMINANT")
+                    if h.valid
+                    and (
+                        h.pose == "OPEN_PALM"
+                        or allow_fingertips
+                        and any(s.extended for s in h.tip_samples)
+                    )
+                ),
+                None,
+            )
+            if hand is None:
+                self.reset()
+                return None
+            self.track = hand.role, hand.track_id
+        return self.update(hand.palm, timestamp)
 
     def update(self, pose, timestamp):
         if pose is None:

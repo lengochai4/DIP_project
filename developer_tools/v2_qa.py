@@ -20,7 +20,7 @@ def main(argv=None):
     app = QApplication.instance() or QApplication([])
     window = ProductWindow(
         ProductConfig.load(),
-        Settings(),
+        Settings(geometry_mode="RECORDED"),
         software=not args.opengl,
         preferences_path=args.output / "preferences.json",
     )
@@ -33,6 +33,8 @@ def main(argv=None):
             if (
                 not isinstance(window.viewport, Viewport)
                 or not window.viewport.isValid()
+                or window.viewport.gpu_renderer is None
+                or window.viewport.gpu_error
             ):
                 raise RuntimeError(
                     "OpenGL QA requires a valid QOpenGLWidget context; run software QA instead."
@@ -75,6 +77,46 @@ def main(argv=None):
                 window.navigate("Evidence")
                 window.evidence_select.setCurrentIndex(i)
                 capture(prefix + f"-evidence-{i}")
+            window.navigate("Explore")
+            window.set_mode("WORLD")
+            window.select_lab("coordinate")
+            window.choose_tool("Distance")
+            window.registry.current.constructions = [
+                ("Distance", ((0, 0, 0), (3, 4, 0)))
+            ]
+            window.refresh_inspector()
+            capture(prefix + "-tools-measurement-export")
+            window.select_lab("wave")
+            capture(prefix + "-tools-wave-controls")
+            window.set_parameter("amplitude", 6.0)
+            capture(prefix + "-wave-large-amplitude")
+            window.select_lab("optics")
+            window.choose_preset("Lens")
+            window.registry.current.preview = (-2, 1, 0)
+            capture(prefix + "-optics-lens-rays")
+            window.set_mode("HAND")
+            capture(prefix + "-hand-without-anchor")
+            window.set_mode("WORLD")
+            from types import SimpleNamespace
+            from dip_touchless.core import IlluminationState
+
+            window.update_environment(
+                SimpleNamespace(
+                    illumination=SimpleNamespace(state=IlluminationState.LOW_LIGHT)
+                ),
+                "NO_HAND",
+            )
+            capture(prefix + "-low-light-guidance")
+            window.update_environment(
+                SimpleNamespace(illumination=None), "TOO_MANY_HANDS"
+            )
+            capture(prefix + "-crowding-guidance")
+            window.update_environment(SimpleNamespace(illumination=None), "TRACKING")
+            window.navigate("Settings")
+            window.set_preference("engine", "LEGACY")
+            capture(prefix + "-settings-legacy")
+            window.set_preference("engine", "PRODUCT")
+            window.show_tools(False)
     finally:
         window.close()
         app.processEvents()
@@ -82,6 +124,7 @@ def main(argv=None):
         "validation": "synthetic only",
         "renderer": "QOpenGLWidget" if args.opengl else "software",
         "opengl_context_verified": args.opengl,
+        "gpu_mesh_depth_verified": args.opengl,
         "captures": rows,
     }
     (args.output / "manifest.json").write_text(

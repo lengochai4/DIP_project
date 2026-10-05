@@ -838,8 +838,28 @@ The product runtime MUST cancel before scene/view/profile/owner switches and
 require release/rearm after an interrupted clutch. Core MUST NOT depend on Qt
 or the product package. Detailed product behavior is supplemental in docs/07.
 
-Product intent control pointers use normalized window xy; presentation resolves
-them to viewport-local picking coordinates before learning extensions consume
-scene points. Source-image palm/skeleton coordinates remain separate. The additive
+Product intent `pointer_xy` and `points` retain normalized window xy for WORLD
+and explicit UI control. Additive `source_pointer_xy` and `source_points` carry
+unmirrored FRAME_NORMALIZED source-image observations (including locked pair
+snapshots). In HAND scene control, presentation applies mirror and camera
+letterboxing exactly once, without pointer gain, before viewport-local picking.
+HAND UI control is explicit and exclusive; its window pointer cannot also pick
+the scene. Learning extensions still consume scene points only. The additive
 product-only `input_source` field distinguishes GESTURE/MANUAL commit identities.
 Neither convention changes frozen Core coordinate spaces or serialized logs.
+
+The user-approved full-fingertip continuation adds immutable product observations
+for five tips per associated hand. A qualified LIVE geometry intent carries up
+to ten source snapshots, relative nonmetric depth cues and opaque vertex tokens;
+presentation resolves them into scene points before extensions consume them.
+Extensions must not interpret tokens anatomically or read provider landmarks.
+LIVE is exclusive with UI/calibration/legacy and recorded pinch construction.
+Unknown provider validity, tracking loss/reacquisition and identity/context changes
+still cancel. A recognized multi-fingertip geometry observation is not an UNKNOWN
+navigation gesture. Its vertices update automatically without Add point commands.
+
+V2 learning geometry MAY include immutable triangle faces. Perspective/GPU
+rendering and matching picking belong to product presentation only. The product
+detector MAY observe an extra hand to reject unsupported crowding; accepted
+interaction still has at most two roles, with no biometric/multi-user identity
+claim. These product changes do not alter frozen Core provider configuration.

@@ -58,7 +58,7 @@ class ProductHandRuntime:
             options = mp.tasks.vision.HandLandmarkerOptions(
                 base_options=mp.tasks.BaseOptions(model_asset_path=str(model_path)),
                 running_mode=mp.tasks.vision.RunningMode.VIDEO,
-                num_hands=2,
+                num_hands=config.provider_max_hands,
                 min_hand_detection_confidence=tracking["min_hand_detection_confidence"],
                 min_hand_presence_confidence=tracking["min_hand_presence_confidence"],
                 min_tracking_confidence=tracking["min_tracking_confidence"],

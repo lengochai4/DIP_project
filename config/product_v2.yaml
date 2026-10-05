@@ -1,6 +1,7 @@
 # V2 engineering defaults; neither research results nor physically validated optima.
 max_gap_s: 0.5
 pose_dwell_s: 0.18
+# Product finger bends use aspect-correct model-relative xyz, never metric depth.
 finger_straightness: 0.82
 finger_angle_rad: 2.35
 thumb_spread: 0.45
@@ -26,7 +27,20 @@ max_scale: 5.0
 motion_gain: 3.0
 max_delta: 0.12
 pointer_gain: 1.0
+# Window control gain only; HAND scene cursor stays aligned with camera tip.
 dwell_select_s: 1.2
 filter_min_cutoff_hz: 1.0
 filter_beta: 0.05
 filter_derivative_cutoff_hz: 1.0
+camera_distance: 8.0
+provider_max_hands: 3
+world_fit_fraction: 0.70
+construction_tolerance: 0.000001
+construction_grid_step: 0.25
+# Nonmetric visual relief only, scaled in scene units and bounded.
+fingertip_depth_gain: 1.0
+fingertip_depth_limit: 2.0
+# Product-only relative SVD threshold; engineering default, not physical accuracy.
+geometry_planarity_ratio: 0.03
+# Educational reference: NIST CCCBDB NH3 experimental H-N-H angle; scene lengths unscaled.
+molecule_nh3_angle_deg: 106.7

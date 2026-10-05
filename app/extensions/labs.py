@@ -2,7 +2,7 @@
 
 import math
 import numpy as np
-from .base import Lab, Geometry, Line, Ball
+from .base import Lab, Geometry, Line, Ball, Face
 
 
 def arrow(a, b, color="#72bfcc"):
@@ -26,6 +26,8 @@ def arrow(a, b, color="#72bfcc"):
 
 class CoordinateLab(Lab):
     id, title, category = "coordinate", "Coordinate Lab", "Mathematics"
+    dimensionality = "3D coordinates / live geometry"
+    live_surface_overlay = True
 
     def geometry(self):
         lines = []
@@ -51,7 +53,19 @@ class CoordinateLab(Lab):
 
 class MoleculeLab(Lab):
     id, title, category = "molecule", "Molecular Lab", "Chemistry"
-    presets = ("H2O", "CH4", "CO2", "NH3")
+    presets = ("CH4", "H2O", "CO2", "NH3")
+
+    @property
+    def dimensionality(self):
+        return (
+            "Planar molecule / 3D atom meshes"
+            if self.preset in {"H2O", "CO2"}
+            else "Spatial molecule / 3D atom meshes"
+        )
+
+    @property
+    def view_radius(self):
+        return max(np.linalg.norm(a.center) + a.radius for a in self.atoms()[0])
 
     def atoms(self):
         # Preserve existing H2O/CH4 preset definitions and geometry without editing them.
@@ -76,10 +90,13 @@ class MoleculeLab(Lab):
                 Ball((-1.2, 0, 0), 0.28, "#d48179", "O"),
                 Ball((1.2, 0, 0), 0.28, "#d48179", "O"),
             ), ((0, 1), (0, 2))
+        # NIST CCCBDB H-N-H reference angle. Length remains a scene unit, not a bond measurement.
+        cosine = math.cos(math.radians(self.config.molecule_nh3_angle_deg))
+        height = math.sqrt((cosine + 0.5) / (1 - cosine))
         return (
-            Ball((0, 0.3, 0), 0.3, "#839fc7", "N"),
+            Ball((0, height / 2, 0), 0.3, "#839fc7", "N"),
             *(
-                Ball((math.cos(a), -0.3, math.sin(a)), 0.17, "#dce8eb", "H")
+                Ball((math.cos(a), -height / 2, math.sin(a)), 0.17, "#dce8eb", "H")
                 for a in (0, 2 * math.pi / 3, 4 * math.pi / 3)
             ),
         ), ((0, 1), (0, 2), (0, 3))
@@ -125,7 +142,7 @@ class MoleculeLab(Lab):
 
     def inspect(self):
         atoms, bonds = self.atoms()
-        values = super().inspect() + [
+        values = [
             f"Preset: {self.preset}",
             "Idealized educational geometry; scene distances are not chemical bond lengths.",
         ]
@@ -152,11 +169,16 @@ class MoleculeLab(Lab):
                     )
                 )
                 values.append(f"Angle {a+1}-1-{b+1}: {angle:.2f} degrees")
-        return values
+        return values + super().inspect()
 
 
 class OrbitalLab(Lab):
     id, title, category = "orbital", "Orbital Lab", "Astronomy"
+    dimensionality = "Planar orbit / 3D bodies"
+
+    @property
+    def view_radius(self):
+        return max(0.4, self.parameters["radius"] + 0.2)
 
     def geometry(self):
         radius = self.parameters["radius"]
@@ -179,18 +201,30 @@ class OrbitalLab(Lab):
         )
 
     def inspect(self):
-        return super().inspect() + [
+        return [
             f"Radius: {self.parameters['radius']:.2f} scene units",
             f"Illustrative period: {2*math.pi/self.time_rate:.3f} scene seconds",
             f"Phase: {self.time%(2*math.pi):.2f} rad",
             "Kinematic illustration; not a gravitational simulation.",
-        ]
+        ] + super().inspect()
 
 
 class VectorLab(CoordinateLab):
     id, title, category = "vector", "Vector Lab", "Mathematics"
+    dimensionality = "3D vectors / sum / cross product"
 
     def vectors(self):
+        if self.live_enabled:
+            shape = self.live_shape
+            pts = (
+                []
+                if shape is None
+                else [p for _, p in sorted(zip(shape.tokens, shape.points))]
+            )
+            return (
+                np.array(pts[1]) - pts[0] if len(pts) >= 2 else None,
+                np.array(pts[3]) - pts[2] if len(pts) >= 4 else None,
+            )
         pts = [p for _, group in self.constructions for p in group] + self.points
         if len(pts) < 2:
             return np.array((1.0, 0.5, 0.0)), np.array((0.3, 1.0, 0.7))
@@ -201,31 +235,54 @@ class VectorLab(CoordinateLab):
     def geometry(self):
         g = super().geometry()
         u, v = self.vectors()
-        lines = (
-            arrow((0, 0, 0), u)
-            + arrow((0, 0, 0), v, "#d5ab77")
-            + arrow((0, 0, 0), u + v, "#a293c7")
-            + arrow((0, 0, 0), np.cross(u, v), "#89b895")
-        )
-        return Geometry(g.lines + lines, g.balls, g.labels)
+        labels = []
+        lines = arrow((0, 0, 0), u) if u is not None else ()
+        if v is not None:
+            lines += arrow((0, 0, 0), v, "#d5ab77")
+        if u is not None and v is not None:
+            lines += arrow((0, 0, 0), u + v, "#a293c7") + arrow(
+                (0, 0, 0), np.cross(u, v), "#89b895"
+            )
+        for point, label in ((u, "u"), (v, "v")):
+            if point is not None:
+                labels.append((tuple(point), label))
+        if u is not None and v is not None:
+            labels.extend(((tuple(u + v), "u + v"), (tuple(np.cross(u, v)), "u × v")))
+        return Geometry(g.lines + lines, g.balls, g.labels + tuple(labels))
 
     def inspect(self):
         u, v = self.vectors()
+        if u is None or v is None:
+            return [
+                "LIVE u: A → B; v: C → D. Extend four tips for both vectors.",
+                (
+                    "u: unavailable (show at least two tips)"
+                    if u is None
+                    else f"u: {np.round(u, 3)}"
+                ),
+                "v / sum / dot / cross / projection: unavailable (show at least four tips)",
+            ] + super().inspect()
         vv = np.dot(v, v)
-        proj = u * 0 if vv == 0 else np.dot(u, v) / vv * v
-        return super().inspect() + [
+        proj = None if vv <= self.config.palm_epsilon**2 else np.dot(u, v) / vv * v
+        return [
+            *(["LIVE u: A → B; v: C → D."] if self.live_enabled else []),
             f"u: {np.round(u,3)}",
             f"v: {np.round(v,3)}",
             f"u + v: {np.round(u+v,3)}",
             f"Dot: {np.dot(u,v):.3f}",
             f"Cross: {np.round(np.cross(u,v),3)}",
-            f"Projection on v: {np.round(proj,3)}",
-        ]
+            (
+                "Projection on v: unavailable (zero reference vector)"
+                if proj is None
+                else f"Projection on v: {np.round(proj,3)}"
+            ),
+        ] + super().inspect()
 
 
 class SurfaceLab(Lab):
     id, title, category = "surface", "Function Surface Lab", "Mathematics"
     presets = ("Plane", "Paraboloid", "Saddle", "Wave surface", "Gaussian")
+    dimensionality = "Analytic function surface / XYZ"
 
     def value(self, x, y):
         return {
@@ -251,6 +308,14 @@ class SurfaceLab(Lab):
     def geometry(self):
         samples = np.linspace(-2, 2, 25)
         lines = []
+        faces = []
+        for x1, x2 in zip(samples, samples[1:]):
+            for y1, y2 in zip(samples, samples[1:]):
+                a, b, c, d = [
+                    (x, y, self.value(x, y))
+                    for x, y in ((x1, y1), (x2, y1), (x2, y2), (x1, y2))
+                ]
+                faces.extend((Face(a, b, c), Face(a, c, d)))
         for fixed in samples:
             a = [(fixed, t, self.value(fixed, t)) for t in samples]
             b = [(t, fixed, self.value(t, fixed)) for t in samples]
@@ -289,20 +354,25 @@ class SurfaceLab(Lab):
                 Line(a, b, "#e9b589", 2.5) for a, b in zip(section, section[1:])
             )
             balls = (Ball((x, y, z), 0.07, "#efca82", "Probe"),)
-        return Geometry(tuple(lines), balls)
+        return Geometry(tuple(lines), balls, faces=tuple(faces))
 
     def inspect(self):
         p = self.preview or (0, 0, 0)
-        return super().inspect() + [
+        return [
             f"z = {self.value(*p[:2]):.4f}",
             f"Gradient: {self.gradient(*p[:2])}",
             "Contour levels: -0.5, 0, 0.5, 1; section follows probe y.",
-        ]
+        ] + super().inspect()
 
 
 class WaveLab(Lab):
     id, title, category = "wave", "Wave & Signal Lab", "Signals"
     presets = ("Sine", "Square", "Standing wave", "Sampling", "Filter response")
+    dimensionality = "Planar signal graph / XY in a 3D workspace"
+
+    @property
+    def view_radius(self):
+        return max(math.pi, self.parameters["amplitude"]) + 0.1
 
     def on_intent(self, intent):
         from app.interaction.contracts import IntentType
@@ -358,24 +428,26 @@ class WaveLab(Lab):
 
     def inspect(self):
         x = (self.preview or (0, 0, 0))[0]
-        return super().inspect() + [
+        return [
             f"Probe x: {x:.3f}; signal: {self.signal(x):.3f}",
             f"Amplitude: {self.parameters['amplitude']}; frequency: {self.parameters['frequency']} rad/unit",
             f"Samples: {int(self.parameters['samples'])}",
             "Filter response: analytic first-order low-pass, cutoff 1 rad/unit; unrelated to Core filtering.",
-        ]
+        ] + super().inspect()
 
 
 class FieldLab(Lab):
     id, title, category = "vector-field", "Vector Field Lab", "Physics"
     presets = ("Radial", "Rotational", "Electric", "Magnetic", "Fluid-like")
+    dimensionality = "3D vector field / illustrative streamline"
 
     def field(self, x, y, z=0.0):
         r = max(0.2, math.hypot(x, y))
         return {
             "Radial": lambda: np.array((x, y, z)),
             "Rotational": lambda: np.array((-y, x, 0.0)),
-            "Electric": lambda: np.array((x, y, z)) / r**3,
+            "Electric": lambda: np.array((x, y, z))
+            / max(0.2, math.sqrt(x * x + y * y + z * z)) ** 3,
             "Magnetic": lambda: np.array((-y, x, 0.0)) / r**2,
             "Fluid-like": lambda: np.array(
                 (math.sin(y), math.cos(x), 0.2 * math.sin(z))
@@ -402,17 +474,24 @@ class FieldLab(Lab):
 
     def inspect(self):
         v = self.field(*(self.preview or (0, 0, 0)))
-        return super().inspect() + [
+        return [
             f"Field: {np.round(v,3)}",
             f"Magnitude: {np.linalg.norm(v):.4f}",
             "Idealized fields in scene units; singularities regularized near origin.",
-        ]
+        ] + super().inspect()
 
 
 class OpticsLab(Lab):
     id, title, category = "optics", "Optics Lab", "Physics"
     presets = ("Reflection", "Refraction", "Lens", "Mirror")
     tools = Lab.tools + ("Place element",)
+    dimensionality = "Planar ray diagram / XY in a 3D workspace"
+
+    @property
+    def view_radius(self):
+        return (
+            max(2.0, self.parameters["focal"] + 0.1) if self.preset == "Lens" else 2.0
+        )
 
     def reset(self):
         super().reset()
@@ -423,10 +502,16 @@ class OpticsLab(Lab):
 
         if (
             self.tool == "Place element"
+            and self.active
+            and intent.validity
             and intent.type in {IntentType.TOOL_COMMIT, IntentType.MEASURE_COMMIT}
             and intent.phase is Phase.BEGIN
             and intent.world_or_scene_point is not None
         ):
+            key = (intent.input_source, intent.tool_id, intent.cycle_id)
+            if key in self._committed:
+                return
+            self._committed.add(key)
             self.element = intent.world_or_scene_point
             return
         super().on_intent(intent)
@@ -437,7 +522,12 @@ class OpticsLab(Lab):
         return None if abs(sine) > 1 else math.asin(sine)
 
     def geometry(self):
-        source = self.preview or (-1.7, 1.0, 0.0)
+        shift = np.array(self.element)
+        source = (
+            tuple(np.asarray(self.preview) - shift)
+            if self.preview is not None
+            else (-1.7, 1.0, 0.0)
+        )
         source = (min(-0.1, source[0]), source[1], 0.0)
         lines = [
             Line((0, -2, 0), (0, 2, 0), "#a3b7bd", 3.0),
@@ -455,15 +545,22 @@ class OpticsLab(Lab):
             )
         else:
             focal = self.parameters["focal"]
-            end = (2.0, -2 * source[1] / focal, 0.0)
+            # Central paraxial ray passes through the optical centre unchanged.
+            end = (2.0, -2 * source[1] / abs(source[0]), 0.0)
             lines.extend(
                 (
                     Line((-2, 0, 0), (2, 0, 0), "#42545c"),
                     Line((focal, -0.1, 0), (focal, 0.1, 0), "#72bfcc"),
+                    Line(source, (0, source[1], 0), "#bd9cce", 3.0),
+                    Line(
+                        (0, source[1], 0),
+                        (2, source[1] * (1 - 2 / focal), 0),
+                        "#bd9cce",
+                        3.0,
+                    ),
                 )
             )
         lines.append(Line((0, 0, 0), end, "#72bfcc", 3.0))
-        shift = np.array(self.element)
         return Geometry(
             tuple(
                 Line(
@@ -478,16 +575,17 @@ class OpticsLab(Lab):
         )
 
     def inspect(self):
-        return super().inspect() + [
+        return [
             f"Refractive index n2: {self.parameters['index']}",
             f"Focal length: {self.parameters['focal']} scene units",
             "Snell law for refraction; thin-lens/paraxial illustration; no wave optics.",
-        ]
+        ] + super().inspect()
 
 
 class CrystalLab(Lab):
     id, title, category = "crystal", "Crystal Lattice Lab", "Materials"
     presets = ("Simple cubic", "Body-centered cubic", "Face-centered cubic")
+    dimensionality = "3D lattice / reference plane z=0"
 
     def geometry(self):
         balls, lines = [], []
@@ -528,7 +626,7 @@ class CrystalLab(Lab):
         return Geometry(tuple(lines), tuple(balls))
 
     def inspect(self):
-        return super().inspect() + [
+        return [
             "Unit cell repeated 2 × 2 × 2; plane z=0.",
             "Illustrative lattice geometry; no material-specific atomic dimensions.",
-        ]
+        ] + super().inspect()

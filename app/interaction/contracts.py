@@ -48,6 +48,24 @@ class AnchorPose:
 
 
 @dataclass(frozen=True)
+class TipSample:
+    token: str
+    xy: tuple[float, float]
+    relative_z: float
+    extended: bool
+
+    def __post_init__(self):
+        if (
+            not self.token
+            or len(self.xy) != 2
+            or not all(math.isfinite(v) for v in (*self.xy, self.relative_z))
+        ):
+            raise ValueError("finite fingertip sample required")
+        if type(self.extended) is not bool:
+            raise ValueError("typed finger state required")
+
+
+@dataclass(frozen=True)
 class GestureIntent:
     type: IntentType
     phase: Phase = Phase.UPDATE
@@ -64,6 +82,12 @@ class GestureIntent:
     owner: Owner = Owner.SCENE
     points: tuple[tuple[float, float, float], ...] = ()
     input_source: str = "GESTURE"
+    # Unmirrored FRAME_NORMALIZED source coordinates for camera-aligned HAND.
+    source_pointer_xy: tuple[float, float] | None = None
+    source_points: tuple[tuple[float, float], ...] = ()
+    source_depths: tuple[float, ...] = ()
+    vertex_tokens: tuple[str, ...] = ()
+    live_geometry: bool = False
 
     def __post_init__(self):
         if (
@@ -75,6 +99,18 @@ class GestureIntent:
         numbers = [*self.delta_xy, self.scale_factor]
         if self.pointer_xy is not None:
             numbers.extend(self.pointer_xy)
+        if self.source_pointer_xy is not None:
+            numbers.extend(self.source_pointer_xy)
+        numbers.extend(v for p in self.source_points for v in p)
+        numbers.extend(self.source_depths)
+        if self.live_geometry and (
+            self.type is not IntentType.TOOL_UPDATE
+            or not 1 <= len(self.source_points) <= 10
+            or len(self.source_depths) != len(self.source_points)
+            or len(self.vertex_tokens) != len(self.source_points)
+            or len(set(self.vertex_tokens)) != len(self.vertex_tokens)
+        ):
+            raise ValueError("live geometry requires complete unique vertex snapshots")
         if self.world_or_scene_point is not None:
             numbers.extend(self.world_or_scene_point)
         numbers.extend(v for p in self.points for v in p)
@@ -101,3 +137,4 @@ class HandState:
     pinch_ratio: float
     valid: bool = True
     palm_signature: tuple[float, ...] = ()
+    tip_samples: tuple[TipSample, ...] = ()

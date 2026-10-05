@@ -42,6 +42,15 @@ class ProductConfig:
     filter_min_cutoff_hz: float = 1.0
     filter_beta: float = 0.05
     filter_derivative_cutoff_hz: float = 1.0
+    camera_distance: float = 8.0
+    provider_max_hands: int = 3
+    world_fit_fraction: float = 0.70
+    construction_tolerance: float = 0.000001
+    construction_grid_step: float = 0.25
+    fingertip_depth_gain: float = 1.0
+    fingertip_depth_limit: float = 2.0
+    geometry_planarity_ratio: float = 0.03
+    molecule_nh3_angle_deg: float = 106.7
 
     def __post_init__(self):
         for f in fields(self):
@@ -59,6 +68,19 @@ class ProductConfig:
             raise ValueError("invalid finger geometry policies")
         if type(self.release_min_samples) is not int or self.release_min_samples < 2:
             raise ValueError("reference requires at least two samples")
+        if (
+            type(self.provider_max_hands) is not int
+            or not 3 <= self.provider_max_hands <= 4
+        ):
+            raise ValueError("extra-hand guard requires a detector budget of 3 or 4")
+        if self.camera_distance <= 3:
+            raise ValueError("scene camera distance must exceed default scene extent")
+        if not 0.2 <= self.world_fit_fraction <= 0.9:
+            raise ValueError("world fit fraction must be in [.2, .9]")
+        if self.geometry_planarity_ratio >= 1:
+            raise ValueError("relative planarity ratio must be below one")
+        if not 90 < self.molecule_nh3_angle_deg < 120:
+            raise ValueError("NH3 illustration angle must preserve a trigonal pyramid")
         if (
             self.min_scale >= self.max_scale
             or self.closing_timeout_s <= self.pinch_dwell_s
@@ -91,9 +113,14 @@ class Settings:
     dwell_select: bool = False
     reduced_motion: bool = False
     diagnostics: bool = False
+    construction_snap: bool = False
     camera_index: int = 0
+    geometry_mode: str = "LIVE"
+    lab_guide: bool = True
 
     def __post_init__(self):
+        if self.geometry_mode not in {"LIVE", "RECORDED"}:
+            raise ValueError("geometry mode must be LIVE or RECORDED")
         if self.dominant_hand not in {"Left", "Right"} or self.engine not in {
             "PRODUCT",
             "LEGACY",
@@ -121,6 +148,8 @@ class Settings:
             "dwell_select",
             "reduced_motion",
             "diagnostics",
+            "construction_snap",
+            "lab_guide",
         ):
             if type(getattr(self, name)) is not bool:
                 raise ValueError(f"{name} must be boolean")
