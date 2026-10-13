@@ -66,23 +66,49 @@ class HandAssociation:
                 self.reason = "ASSOCIATION_AMBIGUOUS"
                 return {}
             result = {k: detections[perm[j]] for j, k in enumerate(keys)}
-            # Contrary labels are an explicit domain break, never a silent hand switch.
-            if any(
-                d.label in {"Left", "Right"} and d.label != k for k, d in result.items()
-            ):
-                self.reset()
-                self.reason = "ROLE_CHANGED"
-                return {}
-        else:
-            labels = [d.label for d in detections]
-            if any(l not in {"Left", "Right"} for l in labels) or len(
-                set(labels)
-            ) != len(labels):
-                self.reset()
-                self.reason = "HANDEDNESS_UNAVAILABLE"
-                return {}
-            result = dict(zip(labels, detections))
+        elif len(keys) == 1 and len(detections) == 2:
+            prev_k = keys[0]
+            other_k = "Left" if prev_k == "Right" else "Right"
+            d0 = distance(self.previous[prev_k], centers[0], aspect)
+            d1 = distance(self.previous[prev_k], centers[1], aspect)
+            if d0 <= self.config.association_distance and d0 <= d1:
+                result = {prev_k: detections[0], other_k: detections[1]}
+            elif d1 <= self.config.association_distance and d1 < d0:
+                result = {prev_k: detections[1], other_k: detections[0]}
+            else:
+                if centers[0][0] <= centers[1][0]:
+                    result = {"Left": detections[0], "Right": detections[1]}
+                else:
+                    result = {"Right": detections[0], "Left": detections[1]}
             self.reason = "ACQUIRING"
+        elif len(keys) == 2 and len(detections) == 1:
+            d_left = distance(self.previous.get("Left", (999.0, 999.0)), centers[0], aspect)
+            d_right = distance(self.previous.get("Right", (999.0, 999.0)), centers[0], aspect)
+            if d_left < d_right and d_left <= self.config.association_distance:
+                result = {"Left": detections[0]}
+            elif d_right <= d_left and d_right <= self.config.association_distance:
+                result = {"Right": detections[0]}
+            else:
+                label = detections[0].label if detections[0].label in {"Left", "Right"} else "Right"
+                result = {label: detections[0]}
+            self.reason = "ACQUIRING"
+        else:
+            if len(detections) == 2:
+                labels = [d.label for d in detections]
+                if set(labels) == {"Left", "Right"}:
+                    result = dict(zip(labels, detections))
+                else:
+                    if centers[0][0] <= centers[1][0]:
+                        result = {"Left": detections[0], "Right": detections[1]}
+                    else:
+                        result = {"Right": detections[0], "Left": detections[1]}
+                self.reason = "ACQUIRING"
+            else:
+                label = detections[0].label
+                if label not in {"Left", "Right"}:
+                    label = "Right"
+                result = {label: detections[0]}
+                self.reason = "ACQUIRING"
         self.previous = {k: centers[detections.index(v)] for k, v in result.items()}
         self.reason = "TRACKING" if len(keys) == len(detections) else "ACQUIRING"
         return result

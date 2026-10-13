@@ -34,7 +34,11 @@ def main(argv=None):
     window = ProductWindow(
         config, settings, software=args.software, preferences_path=args.preferences
     )
-    window.show()
+    window.showMaximized()
+    window.navigate("Explore")
+    window.select_lab("coordinate")
+    window.reveal_guide(False)
+    window.start_camera()
     return application.exec()
 
 

@@ -208,3 +208,82 @@ def test_worker_uses_real_legacy_factory_and_public_presentation_callback(
         .splitlines()
     )
     assert len(records) == 1 and json.loads(records[0])["frame_id"] == 0
+
+
+def test_worker_consume_with_detected_hand_serializes_landmarks(tmp_path, monkeypatch):
+    import json
+    import numpy as np
+    from dip_touchless.core import (
+        CoordinateSpace,
+        FramePacket,
+        ColorSpace,
+        Landmark,
+        TrackingStatus,
+        LandmarkObservation,
+        MeasurementQuality,
+    )
+    from app.config import ROOT, ProductConfig
+    import app.runtime.application_runtime as application_runtime
+    from extensions.stem3d import live_demo
+    from app.runtime.application_runtime import RuntimeWorker
+
+    class Camera:
+        def __init__(self, run_id, **kwargs):
+            self.run_id = run_id
+            self.done = False
+        def open(self):
+            pass
+        def read(self):
+            if self.done:
+                return None
+            self.done = True
+            return FramePacket(
+                self.run_id, 0, 1.0, np.zeros((48, 64, 3), np.uint8), ColorSpace.BGR, "synthetic"
+            )
+        def close(self):
+            pass
+
+    class CoreProvider:
+        def __init__(self, **kwargs):
+            pass
+        def process(self, packet):
+            lm = tuple(Landmark(i, 0.5, 0.5, 0.0, CoordinateSpace.FRAME_NORMALIZED) for i in range(21))
+            return LandmarkObservation(
+                packet.frame_id, packet.timestamp_s, TrackingStatus.VALID,
+                lm, "Right", None, MeasurementQuality.unavailable(), None, "provider"
+            )
+        def close(self):
+            pass
+
+    class Product:
+        def __init__(self, *args):
+            pass
+        def process(self, packet):
+            lm = tuple(Landmark(i, 0.5, 0.5, 0.0, CoordinateSpace.FRAME_NORMALIZED) for i in range(21))
+            return {"Right": lm}, True, "TRACKING"
+        def close(self):
+            pass
+
+    monkeypatch.setattr(application_runtime, "ROOT", tmp_path)
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config/default.yaml").write_bytes((ROOT / "config/default.yaml").read_bytes())
+    monkeypatch.setattr(live_demo, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(live_demo, "OpenCVCameraSource", Camera)
+    monkeypatch.setattr(live_demo, "MediaPipeHandLandmarkerProvider", CoreProvider)
+    monkeypatch.setattr(application_runtime, "ProductHandRuntime", Product)
+
+    worker = RuntimeWorker(ProductConfig(), engine="PRODUCT")
+    errors = []
+    worker.failure.connect(errors.append)
+    worker.run()
+
+    assert errors == [] and worker.last_failure is None
+    latest = worker.take_latest()
+    assert latest is not None
+    assert "Right" in latest[3]
+    records = (tmp_path / "runs/product-v2" / worker.run_id / "observations.jsonl").read_text().splitlines()
+    assert len(records) == 1
+    data = json.loads(records[0])
+    assert "Right" in data["hands"]
+    assert len(data["hands"]["Right"]) == 21
+

@@ -67,6 +67,13 @@ class _GuardedCameraSource:
     def open(self) -> None:
         try:
             self._source.open()
+            capture = getattr(self._source, "_capture", None)
+            if capture is not None:
+                try:
+                    import cv2
+                    capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                except Exception:
+                    pass
         except Exception as exc:
             raise LiveComponentFailure(
                 "camera",

@@ -30,25 +30,19 @@ class CoordinateLab(Lab):
     live_surface_overlay = True
 
     def geometry(self):
-        lines = []
-        for i in np.linspace(-2, 2, 9):
-            lines.extend(
-                (
-                    Line((-2, i, 0), (2, i, 0), "#283d47"),
-                    Line((i, -2, 0), (i, 2, 0), "#283d47"),
-                )
-            )
-        for end, color in (
-            ((2.0, 0, 0), "#dd857c"),
-            ((0, 2.0, 0), "#89b895"),
-            ((0, 0, 2.0), "#839fc7"),
-        ):
-            lines.extend(arrow((0, 0, 0), end, color))
+        fg = self.frozen_geometry()
+        origin_ball = (Ball((0, 0, 0), 0.04, "#efca82"),)
         return Geometry(
-            tuple(lines),
-            (Ball((0, 0, 0), 0.07, "#efca82"),),
-            (((2.1, 0, 0), "X"), ((0, 2.1, 0), "Y"), ((0, 0, 2.1), "Z")),
+            fg.lines,
+            origin_ball + fg.balls,
+            fg.labels,
+            fg.faces,
         )
+
+    def on_intent(self, intent):
+        if getattr(intent.type, "name", None) == "SCALE" or getattr(intent.type, "value", None) == "SCALE":
+            return
+        super().on_intent(intent)
 
 
 class MoleculeLab(Lab):

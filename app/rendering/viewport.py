@@ -50,6 +50,20 @@ class SurfaceMixin:
 
     def projection(self):
         lab = self.registry.current
+        is_coord = getattr(lab, "id", "") == "coordinate"
+        if is_coord and self.image is not None:
+            x, y, w, h = self.image_rect()
+            center = (x + w / 2, y + h / 2)
+            unit = h / 2
+            matrix = np.eye(3)
+            return Projection(
+                self.width(),
+                self.height(),
+                center,
+                max(unit, 1.0),
+                matrix,
+                None,
+            )
         if self.mode == "HAND" and self.anchor is not None:
             a = self.anchor
             x, y, w, h = self.image_rect()
@@ -186,28 +200,31 @@ class SurfaceMixin:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.fillRect(self.rect(), QColor("#101a22"))
-        if self.mode == "HAND":
-            if self.image is not None:
-                img = (
-                    self.image.mirrored(True, False)
-                    if self.settings.mirror
-                    else self.image
-                )
-                painter.drawImage(QRectF(*self.image_rect()), img)
-                if self.settings.skeleton:
-                    x, y, w, h = self.image_rect()
-                    for landmarks in self.landmarks.values():
-                        pts = {
-                            p.index: QPointF(
-                                x + (1 - p.x if self.settings.mirror else p.x) * w,
-                                y + p.y * h,
-                            )
-                            for p in landmarks
-                        }
-                        painter.setPen(QPen(QColor("#72bfcc"), 2.0))
-                        for a, b in EDGES:
-                            if a in pts and b in pts:
-                                painter.drawLine(pts[a], pts[b])
+        lab = self.registry.current
+        is_coord = getattr(lab, "id", "") == "coordinate"
+        show_camera = (self.mode == "HAND" or (is_coord and self.image is not None))
+        if show_camera and self.image is not None:
+            img = (
+                self.image.mirrored(True, False)
+                if self.settings.mirror
+                else self.image
+            )
+            painter.drawImage(QRectF(*self.image_rect()), img)
+            if self.settings.skeleton:
+                x, y, w, h = self.image_rect()
+                for landmarks in self.landmarks.values():
+                    pts = {
+                        p.index: QPointF(
+                            x + (1 - p.x if self.settings.mirror else p.x) * w,
+                            y + p.y * h,
+                        )
+                        for p in landmarks
+                    }
+                    painter.setPen(QPen(QColor("#72bfcc"), 2.0))
+                    for a, b in EDGES:
+                        if a in pts and b in pts:
+                            painter.drawLine(pts[a], pts[b])
+        if self.mode == "HAND" and not is_coord:
             if self.anchor is None:
                 self._draw_pointer(painter)
                 self._caption(
@@ -307,36 +324,40 @@ class SurfaceMixin:
                         ball.label,
                     )
         if self.settings.object_labels:
+            label_col = getattr(self, "label_color", QColor("#e5eef1"))
+            is_light = label_col.lightness() > 128
+            outline_col = QColor(0, 0, 0, 220) if is_light else QColor(255, 255, 255, 220)
+
+            font = painter.font()
+            font.setBold(True)
+            font.setPointSize(max(10, font.pointSize()))
+            painter.setFont(font)
+
             for point, label in geometry.labels:
                 if not projection.visible(point):
                     continue
                 x, y, _ = projection.project(point)
-                painter.setPen(QColor("#e5eef1"))
+                # 1px stroke outline for legible contrast against any background
+                painter.setPen(outline_col)
+                for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    painter.drawText(QPointF(x + dx, y + dy), label)
+                painter.setPen(label_col)
                 painter.drawText(QPointF(x, y), label)
         self._draw_pointer(painter)
-        renderer = "GPU / depth test" if hardware else "Software / approximate depth"
-        self._caption(
-            painter,
-            self.registry.current.title
-            + "  ·  "
-            + self.mode
-            + "\n"
-            + self.registry.current.dimensionality
-            + "  ·  "
-            + renderer,
-        )
-        origin = QPointF(48, self.height() - 46)
-        for axis, name, color in (
-            (0, "X", "#dd857c"),
-            (1, "Y", "#89b895"),
-            (2, "Z", "#839fc7"),
-        ):
-            tip = origin + QPointF(
-                projection.matrix[0, axis] * 28, -projection.matrix[1, axis] * 28
-            )
-            painter.setPen(QPen(QColor(color), 2))
-            painter.drawLine(origin, tip)
-            painter.drawText(tip + QPointF(4, 0), name)
+        # Overlay caption removed per user request (Item 3)
+        if not is_coord:
+            origin = QPointF(48, self.height() - 46)
+            for axis, name, color in (
+                (0, "X", "#dd857c"),
+                (1, "Y", "#89b895"),
+                (2, "Z", "#839fc7"),
+            ):
+                tip = origin + QPointF(
+                    projection.matrix[0, axis] * 28, -projection.matrix[1, axis] * 28
+                )
+                painter.setPen(QPen(QColor(color), 2))
+                painter.drawLine(origin, tip)
+                painter.drawText(tip + QPointF(4, 0), name)
         painter.end()
 
     def _draw_pointer(self, painter):
@@ -396,6 +417,9 @@ class SurfaceMixin:
         self.manual.emit("release", ())
 
     def wheelEvent(self, event):
+        lab = self.registry.current
+        if getattr(lab, "id", "") == "coordinate":
+            return
         if self.settings.mouse_fallback:
             self.manual.emit("scale", (math.exp(event.angleDelta().y() / 120 * 0.1),))
 

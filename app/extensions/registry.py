@@ -18,7 +18,6 @@ class ExtensionRegistry:
         self.extensions = {
             cls.id: cls(config)
             for cls in (
-                CoordinateLab,
                 MoleculeLab,
                 OrbitalLab,
                 VectorLab,
@@ -27,6 +26,7 @@ class ExtensionRegistry:
                 FieldLab,
                 OpticsLab,
                 CrystalLab,
+                CoordinateLab,
             )
         }
         self.current = self.extensions["molecule"]
