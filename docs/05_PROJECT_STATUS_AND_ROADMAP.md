@@ -9,10 +9,30 @@ remain untouched. The approved UI direction focuses on 3D geometric objects,
 live fingertip attachment, optional camera view, hideable guidance and few
 controls; additional STEM labs are deferred.
 
-Active work: prepare and collect ROUND2 using
-`experiments/round2/PLAN.md` and the guided session tool. Keep canonical
-v1.2 primary metrics and profiles. No new ROUND2 experimental outcome is
-claimed yet. A real hand/camera session is required for new recorded evidence.
+ROUND2 collection: six planned normal-light sources were completed, along
+with two intended challenging-light sources. The operator then confirmed
+that ambient illumination could not be reduced. Those two sources remain
+retained, but their physical challenging-light condition is unverified.
+The guided session was interrupted before the ninth source.
+
+The user explicitly authorized simulated input dimming. Active work is a
+separately identified study under `experiments/round2/SIMULATED_PLAN.md`:
+three fixed-gain (0.35) derivatives of the three static normal sources,
+with the same canonical v1.2 primary metrics/profiles and fixed window.
+No synthetic attenuation result is described as real environmental
+low-light robustness. No new metric outcome is claimed before analysis.
+
+Change: supplemental source-condition protocol, authorized 2026-10-14.
+Reason: physical lighting control unavailable.
+Canonical impact: no algorithm/interface/baseline/metric changes; this
+is an explicitly documented supplemental image-domain condition under
+the experiment evidence/disclosure rules of docs/00 and docs/03.
+Code: experiments/round2/simulated_study.py and its tests.
+Experimental impact: new simulated-source identities and hashes; separate
+from G7 and from the interrupted real-lighting session.
+Compatibility impact: Core and old logs unchanged.
+Existing results invalidated: no; old evidence is retained with its actual
+limits, and no physical low-light claim is inferred from simulated data.
 
 The old `.venv` references a missing Python 3.11 executable. A separate
 Python 3.12 research environment was installed; its actual package versions
