@@ -31,6 +31,7 @@ class HandView:
     landmarks: tuple
     interaction: object
     label: str | None
+    generation: int = 0
 
 @dataclass(frozen=True)
 class Snapshot:
@@ -112,7 +113,11 @@ class CaptureWorker:
             model = ROOT / 'models/hand_landmarker.task'
             if not model.is_file():
                 raise FileNotFoundError('Thiếu models/hand_landmarker.task. Xem models/README.md.')
-            cfg = resolve_config(ROOT / 'config/default.yaml', profile_path=ROOT / 'config/experiments/f2.yaml').to_dict()
+            cfg = resolve_config(ROOT / 'config/default.yaml',
+                profile_path=ROOT / 'config/experiments/f2.yaml',
+                overrides={'filter':self.settings['filter_overrides'],
+                    'runtime':{'mode':'replay' if self.replay else 'realtime','replay_source':str(self.replay) if self.replay else None},
+                    'experiment':{'condition':'UI_INTERACTION'}}).to_dict()
             filters = [build_landmark_filter(cfg) for _ in range(2)]
             gestures = [DeterministicGestureEngine(**cfg['gesture']) for _ in range(2)]
             manager = ROIManager(**cfg['roi'])
@@ -145,13 +150,15 @@ class CaptureWorker:
             except OSError:
                 revision=None
             (folder/'metadata.json').write_text(json.dumps({'kind':'submission_presentation_only',
+                'presentation_schema':'2',
                 'run_id':self.run_id,'core_config':cfg,'ui_settings':self.settings,'camera_index':self.camera_index,
                 'code_revision':revision,
                 'source':str(self.replay) if self.replay else 'camera',
                 'model_sha256':hashlib.sha256(model.read_bytes()).hexdigest(),
                 'research_compatible':False,'raw_video_saved':False},ensure_ascii=False,indent=2),encoding='utf-8')
             log = (folder/'frames.jsonl').open('w',encoding='utf-8')
-            previous = {}; bbox = None; validator = MeasurementValidator(); last_ms = -1
+            previous = {}; last_seen = {}; generations = [0,0]
+            bbox = None; validator = MeasurementValidator(); last_ms = -1
             # Public TrackingFrame is used only at the composition root for
             # canonical gesture mapping, never leaked into renderer internals.
             from dip_touchless.core import TrackingFrame, StageTimings
@@ -174,12 +181,18 @@ class CaptureWorker:
                 observations = [validator.validate(o) for o in convert_result(result,packet)]
                 observations = [o for o in observations if o.status is TrackingStatus.VALID]
                 tracking_end=time.perf_counter()
+                previous={s:c for s,c in previous.items() if packet.timestamp_s-last_seen[s] <= self.settings['association_retention_s']}
                 assignments, resets, centers = associate(previous,observations,self.settings['association_max_distance'],self.settings['association_ambiguity_margin'])
                 hands = []
                 for s in range(2):
                     if s not in assignments:
-                        filters[s].reset(); gestures[s].reset(); continue
+                        missing=LandmarkObservation(packet.frame_id,packet.timestamp_s,TrackingStatus.NO_HAND,(),None,None,
+                            MeasurementQuality.unavailable(),None,'submission_mediapipe_two_hand')
+                        filters[s].update(missing)
+                        gestures[s].reset()
+                        continue
                     if s in resets:
+                        generations[s]+=1
                         filters[s].reset(); gestures[s].reset()
                     observation = observations[assignments[s]]
                     filter_start=time.perf_counter()
@@ -195,8 +208,9 @@ class CaptureWorker:
                         timings=StageTimings(preprocess_ms,tracking_ms,filtering_ms,0,
                                             preprocess_ms+tracking_ms+filtering_ms),events=diagnostics.events)
                     interaction = gestures[s].update(frame)
-                    hands.append(HandView(s,filtered,interaction,observation.handedness_label))
-                previous = centers
+                    hands.append(HandView(s,filtered,interaction,observation.handedness_label,generations[s]))
+                previous.update(centers)
+                for s in centers: last_seen[s]=packet.timestamp_s
                 if observations:
                     # Union of previous hands is presentation-only ROI selection.
                     all_points = [l for o in observations for l in o.landmarks]
@@ -209,9 +223,13 @@ class CaptureWorker:
                     bbox=None
                 image = packet.image.copy(); image.setflags(write=False)
                 self.latest = Snapshot(packet.frame_id,packet.timestamp_s,time.monotonic(),image,tuple(hands),processed.illumination,roi)
+                from .manipulation import pinch_ratio
                 log.write(json.dumps({'frame_id':packet.frame_id,'timestamp_s':packet.timestamp_s,
                     'hands':len(hands),'illumination':processed.illumination.state.value,
                     'clahe_active':processed.illumination.enhancement_active,'neutral_slots':sorted(resets),
+                    'hand_states':[{'slot':hand.slot,'generation':hand.generation,
+                        'ui_pinch_ratio':pinch_ratio(hand,w/h),'canonical_pinch_active':hand.interaction.pinch_active,
+                        'canonical_interaction_valid':hand.interaction.interaction_valid} for hand in hands],
                     'compute_ms':(time.perf_counter()-compute_start)*1000})+'\n')
                 if self.replay:
                     self.stop_event.wait(1/30)

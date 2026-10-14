@@ -23,7 +23,14 @@ def palm(x=.5,y=.5):
 
 def hand(slot=0,x=.5,y=.5,pinch=True,valid=True):
     state=InteractionState('test',1,1.,valid,(x,y),.2,pinch,(0.,0.),0.)
-    return HandView(slot,palm(x,y),state,None)
+    points=list(palm(x,y))
+    if pinch:
+        points[4]=replace(points[4],x=points[8].x+.02,y=points[8].y)
+    return HandView(slot,tuple(points),state,None)
+
+def attach(c,hands,t=1.):
+    c.update(hands,t,4/3)
+    c.update(hands,t+.05,4/3)
 
 def test_all_five_extended_fingers_and_folded_finger_release():
     selection=FingerSelection(SETTINGS)
@@ -81,9 +88,10 @@ def test_provider_conversion_never_invents_quality_and_rejects_nonfinite():
 
 def test_grab_attaches_without_snap_and_releases_without_motion():
     c=GrabController(SETTINGS)
-    c.update([hand()],1.,4/3)
+    attach(c,[hand()])
     np.testing.assert_allclose(c.pose.position,0)
     c.update([hand(x=.6)],1.1,4/3)
+    c.advance(1/60)
     assert c.pose.position[0]<0
     before=c.pose.position.copy()
     c.update([],1.2,4/3)
@@ -92,8 +100,9 @@ def test_grab_attaches_without_snap_and_releases_without_motion():
 
 def test_two_hand_grab_scales_and_neutralizes_on_single_hand_transition():
     c=GrabController(SETTINGS)
-    c.update([hand(0,.4),hand(1,.6)],1.,4/3)
+    attach(c,[hand(0,.4),hand(1,.6)])
     c.update([hand(1,.7),hand(0,.3)],1.1,4/3)
+    c.advance(1/60)
     assert 1<c.pose.scale<=SETTINGS['grab_max_scale']
     before=replace(c.pose,position=c.pose.position.copy(),rotation=c.pose.rotation.copy())
     c.update([hand(1,.7)],1.2,4/3)
@@ -112,8 +121,9 @@ def test_all_ten_fingertips_are_supported_without_adding_points():
 
 def test_two_hand_twist_rotates_and_retains_orthogonal_matrix():
     c=GrabController(SETTINGS)
-    c.update([hand(0,.3,.5),hand(1,.7,.5)],1.,4/3)
+    attach(c,[hand(0,.3,.5),hand(1,.7,.5)])
     c.update([hand(0,.5,.3),hand(1,.5,.7)],1.1,4/3)
+    c.advance(1/60)
     assert not np.allclose(c.pose.rotation,np.eye(3))
     np.testing.assert_allclose(c.pose.rotation.T@c.pose.rotation,np.eye(3),atol=1e-10)
 

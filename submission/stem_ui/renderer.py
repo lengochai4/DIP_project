@@ -42,6 +42,10 @@ class SubmissionRenderer:
         self.dragging = False
         self.grab = GrabController(settings)
         self.capture_path = None
+        self.last_draw_at = None
+        self.live_points = {}
+        self.fit_center = None
+        self.fit_scale = 1.0
 
     def open(self):
         pygame.init()
@@ -119,6 +123,8 @@ class SubmissionRenderer:
                     self.camera_visible=not self.camera_visible
                 elif key == pygame.K_r:
                     self.reset()
+                elif key == pygame.K_s:
+                    self.cycle_scale_mode()
                 elif key == pygame.K_TAB:
                     self.mode='tips' if self.mode=='solid' else 'solid'
                 elif pygame.K_1 <= key <= pygame.K_4:
@@ -140,6 +146,8 @@ class SubmissionRenderer:
                         self.toggle_fullscreen()
                     elif action=='reset':
                         self.reset()
+                    elif action=='scale_mode':
+                        self.cycle_scale_mode()
                     elif action=='menu':
                         self.menu=not self.menu
                     else:
@@ -156,6 +164,10 @@ class SubmissionRenderer:
         self.fullscreen=not self.fullscreen
         self.size=pygame.display.get_desktop_sizes()[0] if self.fullscreen else self.windowed
         self._set_display()
+
+    def cycle_scale_mode(self):
+        modes=('uniform','stretch','distance')
+        self.grab.set_scale_mode(modes[(modes.index(self.grab.scale_mode)+1)%3])
 
     @lru_cache(maxsize=256)
     def _label(self,text,size,color):
@@ -190,6 +202,13 @@ class SubmissionRenderer:
         panel_width=340 if self.camera_visible else 0
         view=(24,145,w-48-panel_width-(18 if panel_width else 0),h-219)
         vx,vy,vw,vh=view
+        now=time.monotonic()
+        draw_dt=0 if self.last_draw_at is None else now-self.last_draw_at
+        self.last_draw_at=now
+        px=math.radians(self.pitch); yx=math.radians(self.yaw)
+        rx=np.array(((1,0,0),(0,math.cos(px),-math.sin(px)),(0,math.sin(px),math.cos(px))))
+        ry=np.array(((math.cos(yx),0,math.sin(yx)),(0,1,0),(-math.sin(yx),0,math.cos(yx))))
+        view_rotation=rx@ry
         gl.glViewport(0,0,w,h)
         gl.glClearColor(*(c/255 for c in BG),1)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
@@ -222,23 +241,30 @@ class SubmissionRenderer:
                 if not hand.interaction.interaction_valid:
                     self.selectors[hand.slot].reset()
                 self.selectors[hand.slot].update(hand.landmarks)
-            if self.mode=='solid' and hands:
-                self.grab.update(hands,snapshot.timestamp_s,snapshot.image.shape[1]/snapshot.image.shape[0])
-        if not hands or self.mode!='solid':
+            if self.mode=='solid' and fresh:
+                self.grab.update(hands,snapshot.timestamp_s,snapshot.image.shape[1]/snapshot.image.shape[0],view_rotation)
+        if not fresh or self.mode!='solid':
             self.grab.release()
+        self.grab.advance(draw_dt)
         self.last_identity=identity; self.last_slots=present
         for hand in hands:
             aspect=snapshot.image.shape[1]/snapshot.image.shape[0]
             for l in hand.landmarks:
                 if l.index in self.selectors[hand.slot].active:
                     tips.append(Tip(hand.slot,l.index,world_position(l,aspect,self.settings)))
+        generation={hand.slot:hand.generation for hand in hands}
+        targets={(tip.hand,generation[tip.hand],tip.index):np.array(tip.position) for tip in tips}
+        alpha=1-math.exp(-math.tau*self.settings['live_response_hz']*max(0,draw_dt))
+        self.live_points={key:self.live_points.get(key,value)+alpha*(value-self.live_points.get(key,value))
+                          for key,value in targets.items()}
+        tips=[Tip(key[0],key[2],tuple(value)) for key,value in self.live_points.items()]
         world_labels=[]
         if self.mode=='solid':
             pose=self.grab.pose
             gl.glPushMatrix(); gl.glTranslatef(*pose.position)
             matrix=np.eye(4); matrix[:3,:3]=pose.rotation
             gl.glMultMatrixf(matrix.T.astype(np.float32))
-            gl.glScalef(pose.scale,pose.scale,pose.scale)
+            gl.glScalef(*(pose.scale*pose.stretch))
             gl.glCallList(self.solid_lists[self.kind]); gl.glPopMatrix()
         else:
             gl.glPushMatrix()
@@ -248,7 +274,15 @@ class SubmissionRenderer:
                 center=(positions.min(axis=0)+positions.max(axis=0))/2
                 span=max(float(np.ptp(positions[:,0])),float(np.ptp(positions[:,1])),.5)
                 fit=min(5.0,self.settings['live_fit_width']/span)
-                gl.glScalef(fit,fit,fit); gl.glTranslatef(*(-center))
+                if self.fit_center is None:
+                    self.fit_center=center; self.fit_scale=fit
+                else:
+                    self.fit_center+=alpha*(center-self.fit_center)
+                    self.fit_scale+=alpha*(fit-self.fit_scale)
+                fit=self.fit_scale
+                gl.glScalef(fit,fit,fit); gl.glTranslatef(*(-self.fit_center))
+            else:
+                self.fit_center=None
             mesh=live_mesh(tips,self.settings['display_thickness'])
             self._mesh(mesh)
             if len(tips)==2:
@@ -275,13 +309,17 @@ class SubmissionRenderer:
         self._button(overlay,'Dừng camera' if active else 'Mở camera',(x,23,132,42),'toggle',active)
         self._button(overlay,'Camera',(x+144,23,88,42),'camera',self.camera_visible)
         self._button(overlay,'Hướng dẫn',(x+244,23,104,42),'help',self.help_visible)
-        self._button(overlay,'Thu nhỏ' if self.fullscreen else 'Phóng to',(x+360,23,124,42),'fullscreen',self.fullscreen)
+        self._button(overlay,'Thu khung' if self.fullscreen else 'Toàn màn',(x+360,23,124,42),'fullscreen',self.fullscreen)
         self._button(overlay,'Khối 3D',(24,99,116,35),'solid',self.mode=='solid')
         self._button(overlay,'Đầu ngón',(148,99,116,35),'tips',self.mode=='tips')
         if self.mode=='solid':
             self._button(overlay,NAMES[KINDS.index(self.kind)]+'  v',(280,99,150,35),'menu')
-        self._button(overlay,'Đặt lại góc nhìn',(vw-122,99,146,35),'reset')
+            label={'uniform':'2 tay: cỡ đều','stretch':'2 tay: kéo dãn','distance':'1 tay: đổi cỡ'}[self.grab.scale_mode]
+            self._button(overlay,label,(442,99,142,35),'scale_mode',self.grab.scale_mode!='uniform')
+        self._button(overlay,'Đặt lại góc nhìn',(w-170,99,146,35),'reset')
         self._text(overlay,f'{len(hands)} tay • {len(tips)} đầu ngón duỗi' if fresh else status,(vx+12,vy+12),15,ACCENT if hands else MUTED)
+        if self.mode=='solid' and fresh:
+            self._text(overlay,self.grab.feedback,(vx+12,vy+38),15,ACCENT if self.grab.slots else MUTED)
         for label,pos in world_labels:
             self._text(overlay,label,pos,13,INK)
         if self.mode=='tips' and not tips:
@@ -306,11 +344,21 @@ class SubmissionRenderer:
                             pygame.draw.lines(overlay,color,False,[positions[i] for i in chain],2)
                         for tip in self.selectors[hand.slot].active:
                             pygame.draw.circle(overlay,color,positions[tip],6,2)
+                        grip=self.grab.grips.get(hand.slot)
+                        grabbing=grip is not None and grip.held and self.mode=='solid'
+                        pygame.draw.circle(overlay,(255,203,96) if grabbing else color,positions[8],10,3)
+                        self._text(overlay,f'Tay {hand.slot+1}: '+('GIỮ' if grabbing else 'chưa giữ'),
+                                   (rect[0]+8,rect[1]+8+hand.slot*22),13,(255,203,96) if grabbing else INK)
                 ill=snapshot.illumination
                 self._text(overlay,'Đang nhận tay' if hands else 'Chưa thấy tay',(px+18,py+311),20,ACCENT if hands else MUTED)
                 light='Ánh sáng thường' if ill.state.value=='NORMAL' else 'Ánh sáng / tương phản yếu'
                 self._text(overlay,light,(px+18,py+349),15,MUTED)
                 self._text(overlay,'CLAHE: '+('đang bật' if ill.enhancement_active else 'bỏ qua'),(px+18,py+375),15,MUTED)
+                if self.mode=='solid':
+                    pose=self.grab.pose
+                    size_label=(f'Kéo dãn: {pose.stretch[0]:.2f} / {pose.stretch[1]:.2f} / {pose.stretch[2]:.2f}'
+                                if self.grab.scale_mode=='stretch' else f'Kích thước khối: {pose.scale:.2f}x')
+                    self._text(overlay,size_label,(px+18,py+400),15,ACCENT)
             else:
                 self._wrap(overlay,'Bấm Mở camera để bắt đầu. Hình từ camera chỉ xử lý trên máy.',(px+20,py+90),290,20)
             self._wrap(overlay,'Đưa 1–2 tay vào khung, tách hai lòng bàn tay và tránh che đầu ngón.',(px+18,py+421),300,15)
@@ -322,19 +370,19 @@ class SubmissionRenderer:
             hw=min(390,vw-36); hx=vx+18; hy=vy+58
             pygame.draw.rect(overlay,(22,33,47,240),(hx,hy,hw,170),border_radius=14)
             self._text(overlay,'Thử trong 3 bước',(hx+16,hy+13),20,ACCENT)
-            instructions=('1. Chụm cái–trỏ để giữ, thả để buông.\n2. Khi giữ: di chuyển, xoay lòng bàn tay.\n3. Hai tay chụm: tách/khép để đổi cỡ, vặn để xoay.' if self.mode=='solid' else
+            instructions=('1. Chụm cái–trỏ; vòng vàng báo đã giữ.\n2. Một tay dời/xoay; hai tay giữ để đổi cỡ.\n3. S đổi: cỡ đều / kéo dãn / một tay đổi cỡ.' if self.mode=='solid' else
                 '1. Duỗi các ngón để tạo các đỉnh sống.\n2. Một hoặc hai tay đều tự tạo hình.\n3. Gập ngón để bỏ đỉnh; kéo chuột để xem chiều sâu.')
             y=hy+48
             for line in instructions.split('\n'):
                 y=self._wrap(overlay,line,(hx+16,y),hw-32,15,INK)
-            self._text(overlay,'H: ẩn/hiện • C: camera • F11: phóng to',(hx+16,hy+143),13,MUTED)
+            self._text(overlay,'Mở ngón để buông • S đổi thao tác • H ẩn hướng dẫn',(hx+16,hy+143),13,MUTED)
         if self.menu and self.mode=='solid':
             for i,name in enumerate(NAMES):
                 self._button(overlay,name,(280,139+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
         if error and not self.camera_visible:
             pygame.draw.rect(overlay,(62,35,37,245),(vx+12,h-127,vw-24,68),border_radius=12)
             self._wrap(overlay,error,(vx+24,h-118),vw-48,15,(246,165,134))
-        self._text(overlay,'Kéo chuột: đổi góc nhìn   •   Cuộn: thu/phóng   •   R: đặt lại',(24,h-48),15,MUTED)
+        self._text(overlay,'Kéo chuột: đổi góc nhìn   •   Cuộn: góc nhìn gần/xa   •   R: đặt lại',(24,h-48),15,MUTED)
         detail='Z tương đối của mô hình • độ dày khối là minh họa' if self.mode=='tips' else 'Cảnh 3D có chiếu phối cảnh • thao tác tay được lọc F2'
         self._text(overlay,detail,(24,h-25),13,MUTED)
         if replay:

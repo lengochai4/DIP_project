@@ -2,6 +2,33 @@
 
 ## Current task update — 2026-10-14
 
+Active refinement: the user reported intermittent grab and failed size
+changes, requested XR references and functional smoothing fixes. Inspection
+found immediate slot/filter resets on any missing frame, frame-source-only
+pose advancement, no anisotropic stretch, and unclear two-grip feedback.
+Change: bounded presentation-only loss/grip state, target/render smoothing
+separation, uniform/apparent-size/axis-stretch manipulation and live feedback.
+Canonical owner: 02 section 5 presentation refinement; baseline 03 untouched.
+Code: submission/stem_ui only plus its tests/docs. No research algorithm,
+profile, replay, metric or old result changes; no existing result invalidation.
+Executed refinement checks: 33 submission tests and full suite 487 passed.
+Synthetic renderer acceptance drove 205 frames through OpenGL, asserting
+uniform enlargement/shrinkage, axis stretch and short-loss pose freezing.
+Recorded dynamic one-hand source smoke observed 60 frames / up to 5 extended
+tips (ui-20261014-152637-862737); mirrored two-hand source smoke observed
+60 frames / 2 hands / up to 10 tips (ui-20261014-153038-147730). Both closed
+cleanly. All four solid types, help/camera visibility and fullscreen restore
+were exercised again. These are synthetic/recorded-source checks, not new
+simultaneous physical two-hand manipulation validation.
+
+UI_INTERACTION resolves presentation filter overrides from settings.yaml:
+adaptive base/minimum cutoff 2.5 Hz, beta_base 0.6, beta_max 4,
+velocity_gain 1.2 and final maximum cutoff 15 Hz. Public filter equations are
+unchanged. These are engineering UI defaults, not claimed measured optima;
+the frozen F2 experiment profile and report measurements remain unchanged.
+UI schema 2 logs per-hand generation/pinch ratio and application grip/pose
+states so future reported failures can be inspected without raw recording.
+
 Core/report source was committed as c79abbc and pushed on
 feat/submission-round2. The user now authorized the final clean UI task on
 feat/submission-ui-clean. Existing UI branches remain untouched. Direction:

@@ -169,6 +169,36 @@ Consumes `InteractionState` only. It MAY manage renderer/scene/application behav
 
 ### Additive submission presentation boundary — 2026-10-14
 
+#### Interaction continuity refinement — 2026-10-14
+
+The user requested fixing intermittent grab, scaling and stretching.
+Presentation slots may retain association and public filter state for a
+bounded short observation gap, while the snapshot still exposes no missing
+hand geometry. An identity generation increments on a new/reset/ambiguous
+assignment; no grab may transfer between generations. A UI-only pinch
+recognizer may apply palm-normalized hysteresis and timed press/release
+confirmation to validated filtered landmarks. It does not replace the
+canonical GestureEngine or its recorded InteractionState semantics.
+
+Short loss freezes the current object pose during a bounded grip grace
+period; it never extrapolates absent hands. Recovery rebases from the held
+pose. Expiry, identity replacement, stop and stale input terminate the hold.
+Input updates set target pose; each renderer frame independently advances
+the display pose with timestamp-derived smoothing and quaternion rotation.
+Explicit release freezes immediately, preventing post-release drift.
+
+Presentation scaling includes uniform two-hand span scaling, bounded
+one-hand apparent-palm-size scaling, and an explicit two-hand stretch mode.
+Stretch acts along the dominant object-local axis selected at attach time;
+this is display deformation, not a measured physical distance. Screen-plane
+translation and twist map through the inverse view rotation. Model-relative
+z is used only for within-hand illustrative orientation and visualization.
+UI-owned temporal-filter parameter overrides may be resolved and captured
+under condition UI_INTERACTION. They reuse the unchanged public bounded
+adaptive filter implementation, are not the F2 research parameter profile,
+and may not be mixed into G7/ROUND2 results. Their values are engineering
+defaults, not measured optima. Baseline configuration files remain unchanged.
+
 The new submission composition root may reuse public Core components
 in a separate application runtime with a provider configured for up to
 two hands of one operator. Existing RealtimeRuntime, ReplayRuntime,

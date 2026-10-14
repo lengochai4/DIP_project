@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import time
 import yaml
-from .runtime import CaptureWorker
+from .runtime import CaptureWorker, ROOT
 from .renderer import SubmissionRenderer
 
 def main():
@@ -19,6 +19,7 @@ def main():
     renderer=SubmissionRenderer(settings); renderer.mode=args.mode
     worker=None; active=False; error=None; camera_index=args.camera
     frame_count=0; seen=set(); max_hands=max_tips=0; start=time.monotonic()
+    interaction_log=None; log_run=None; logged_frame=None
     def toggle():
         nonlocal worker,active,error
         if active:
@@ -47,6 +48,17 @@ def main():
                 active=False; status='Đã kết thúc phát lại' if args.replay else 'Camera đã dừng'
             hands,tips=renderer.draw(snapshot,status,active=active,error=error,
                 run_id=worker.run_id if worker else '',camera_index=camera_index,replay=bool(args.replay))
+            if active and snapshot and (log_run!=worker.run_id or logged_frame!=snapshot.frame_id):
+                if log_run!=worker.run_id:
+                    if interaction_log: interaction_log.close()
+                    interaction_log=(ROOT/'runs/ui'/worker.run_id/'interactions.jsonl').open('w',encoding='utf-8')
+                    log_run=worker.run_id
+                grip=renderer.grab
+                interaction_log.write(json.dumps({'frame_id':snapshot.frame_id,'timestamp_s':snapshot.timestamp_s,
+                    'held_slots':list(grip.slots),'suspended':grip.suspended,'scale_mode':grip.scale_mode,
+                    'scale':grip.pose.scale,'stretch':grip.pose.stretch.tolist(),
+                    'position':grip.pose.position.tolist(),'feedback':grip.feedback},ensure_ascii=False)+'\n')
+                logged_frame=snapshot.frame_id
             max_hands=max(max_hands,hands); max_tips=max(max_tips,tips)
             if snapshot: seen.add(snapshot.frame_id)
             frame_count+=1
@@ -59,6 +71,7 @@ def main():
             renderer.draw(snapshot,status,active=active,error=error,
                 run_id=worker.run_id if worker else '',camera_index=camera_index,replay=bool(args.replay))
     finally:
+        if interaction_log: interaction_log.close()
         if worker:
             worker.stop()
             if worker.thread: worker.thread.join(timeout=5)

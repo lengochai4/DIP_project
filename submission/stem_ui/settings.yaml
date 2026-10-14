@@ -11,11 +11,35 @@ thumb_exit_angle: 120
 thumb_enter_spread: 0.45
 thumb_exit_spread: 0.35
 live_fit_width: 3.0
+live_response_hz: 6.0
 world_width: 5.0
 relative_z_gain: 4.0
 display_thickness: 0.65
-pose_response_hz: 8.0
-grab_min_scale: 0.45
-grab_max_scale: 2.0
+pose_response_hz: 5.0
+rotation_response_hz: 4.0
+scale_response_hz: 5.0
+grip_press_ratio: 0.55
+grip_release_ratio: 0.85
+grip_press_s: 0.04
+grip_release_s: 0.10
+grip_loss_grace_s: 0.20
+association_retention_s: 0.25
+orientation_max_jump_deg: 80.0
+grab_min_scale: 0.20
+grab_max_scale: 4.0
+stretch_min: 0.25
+stretch_max: 4.0
+one_hand_scale_enabled: true
 grab_min_span: 0.10
 mirror: true
+# Presentation defaults for faster response; not the F2 research profile.
+filter_overrides:
+  adaptive:
+    base_cutoff_hz: 2.5
+    beta_min: 0.0
+    beta_base: 0.6
+    beta_max: 4.0
+    velocity_gain: 1.2
+    velocity_max: 10.0
+    final_cutoff_min_hz: 2.5
+    final_cutoff_max_hz: 15.0
