@@ -173,6 +173,12 @@ A successful final project is not defined by a preselected FPS, accuracy, or per
 
 ## 13. Future research/product boundary
 
+The user approved the post-v1.0 V2 product continuation on 2026-10-02, described
+in `07_V2_PRODUCT_SPEC.md` and the supplied `V2_BLUEPRINT.md`. It promotes a native
+frontend, separate semantic product intents, two-hand presentation and educational
+extensions into product scope only. It does not expand or reinterpret the frozen
+course evaluation, RQ1–RQ3, metric depth, cloud/backend or physics-engine scope.
+
 After course completion, the same architecture may support stronger datasets, more sessions/users, stronger calibration, alternate providers, device compatibility work, packaging, UX, accessibility, privacy/security hardening, and product validation.
 
 Those items are FUTURE unless `05_PROJECT_STATUS_AND_ROADMAP.md` promotes them into a later phase. They are not required to answer RQ1–RQ3.

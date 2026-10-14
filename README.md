@@ -1,5 +1,11 @@
 # DIP Touchless STEM
 
+**V2 product frontend:** new PySide6 application with semantic gestures and nine
+STEM labs. Run `.\setup_v2.ps1` then `.\launch_v2.ps1`. See
+[V2 setup and walkthrough](release/v2/README.md) and
+[product specification](docs/07_V2_PRODUCT_SPEC.md). Physical usability testing
+is deferred; the frozen G7 research and v1.0 fallback remain unchanged.
+
 **Real-Time Touchless 3D STEM Interaction Using Adaptive Image Preprocessing and Motion Signal Filtering with a Single RGB Camera**
 
 ## 1. Overview
@@ -20,7 +26,7 @@ Main topics:
 - renderer-independent `InteractionState`;
 - reproducible comparison of Raw / Fixed / Adaptive processing.
 
-The 3D STEM application is an extension/demo layer. The DIP Core is the primary academic component.
+The final desktop STEM application is an Extension layer. The DIP Core is the primary academic component.
 
 ---
 
@@ -70,7 +76,7 @@ python -m pip install --upgrade pip
 Install the project and development dependencies:
 
 ```powershell
-python -m pip install -e ".[dev]"
+pip install . 
 ```
 
 Verify the environment:
@@ -87,6 +93,38 @@ pytest
 ```
 
 ---
+
+### Final application / submission
+
+Download and verify `models/hand_landmarker.task` as described in
+[model setup](models/README.md). From the repository root, with the environment
+above activated, run:
+
+```powershell
+python -m extensions.stem3d.live_demo
+```
+
+Use the source tree from the final reviewed application commit. After publication,
+select tag `dip-touchless-stem-v1.0` or its source archive; cloning the default
+branch alone does not identify this release. The tag is not yet created.
+
+Press S or Enter to start; Q or Escape to exit. This is the integrated
+Workspace / Analysis / Evidence application on the legacy interaction path.
+The live entry point uses Raw (F0); frozen F1/F2 comparisons are evidence,
+not a live filter selector. For an optional synthetic renderer smoke without
+a camera or model, use `python -m extensions.stem3d.demo`.
+
+Use the [submission guide](submission/README.md) for package contents and
+validation, and the [application walkthrough and screenshot checklist](submission/DEMO_GUIDE.md)
+for the presentation. Deliver the repository source tree, not just a wheel:
+the application resources and Extension are outside the installed Core package.
+G9 remains deferred and is not part of the submission path.
+G8, U10 and R1–R3 are complete. R2 images are labelled synthetic; R3 physical
+smoke passed with documented orientation/sensitivity limitations. R4 review is
+READY TO RELEASE; commit/tag publication remains pending. Read the
+[v1.0 release notes](submission/RELEASE_NOTES_v1.0.md).
+The recommended application tag is `dip-touchless-stem-v1.0`; `g7-final` remains
+the separate frozen research release. See the current roadmap in `docs/05`.
 
 ## 4. Project structure
 
