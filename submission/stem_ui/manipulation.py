@@ -285,3 +285,27 @@ class GrabController:
         self.pose.scale=math.exp(math.log(self.pose.scale)+az*math.log(self.target.scale/self.pose.scale))
         self.pose.stretch=np.exp(np.log(self.pose.stretch)+az*np.log(self.target.stretch/self.pose.stretch))
         return self.pose
+
+
+class PinchGate(GrabController):
+    """Discrete UI pinch state only; no unused pose/orientation calculations.
+
+    Uses exactly the shared raw ratio, hysteresis, confirmation/loss durations
+    and generation handling. Actual held-object pose uses GrabController.
+    """
+    def update(self,hands,timestamp_s,aspect,view_rotation=None):
+        if self.previous_time is not None and timestamp_s<=self.previous_time:
+            self.release(); return self.pose
+        self.previous_time=timestamp_s
+        available={h.slot:h for h in hands if len(h.landmarks)==21 and
+                   all(math.isfinite(v) for l in h.landmarks for v in (l.x,l.y,l.z))}
+        for hand in available.values(): self._recognize(hand,timestamp_s,aspect)
+        for slot,grip in list(self.grips.items()):
+            if slot not in available and timestamp_s-grip.last_seen>self.settings['grip_loss_grace_s']:
+                del self.grips[slot]
+        held=tuple(sorted(s for s,g in self.grips.items() if g.held))
+        opening=any(self.grips[s].pending_since is not None and
+                    self.grips[s].ratio>=self.settings['grip_release_ratio'] for s in held if s in available)
+        self.suspended=opening or any(s not in available for s in held)
+        if not self.suspended: self.slots=held
+        return self.pose

@@ -24,6 +24,9 @@ tracking, filter, gesture và logic 3D/chemistry giữ nguyên.
 Thư viện **Mẫu phân tử 3D** có 32 mẫu, chia 4 trang; dùng **Trang trước/Trang sau**
 để chọn. Nhận tên dựa trên đồ thị liên kết, phân biệt etanol và đimetyl ete cùng
 công thức C₂H₆O. Vị trí là hình học minh họa; không tính phản ứng/năng lượng.
+Panel AR tái sử dụng texture khi chỉ di chuyển/trỏ qua nguyên tử; thông tin
+nguyên tố, trang và các điều khiển đổi thì cập nhật ngay. Nhận pinch dùng gate
+nhẹ riêng; các ngưỡng chụm/nhả và thời gian xác nhận không đổi.
 
 ### Hóa học AR — panel và vật thể trực tiếp trên hình camera
 

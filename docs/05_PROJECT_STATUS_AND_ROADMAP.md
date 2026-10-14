@@ -2,6 +2,19 @@
 
 ## Current task update — 2026-10-14
 
+Chemistry AR continuity refinement: inspected actual UI session diagnostics
+and removed unnecessary panel rebuilds triggered by atom hover or graph changes.
+Only visible content/button highlights invalidate that texture; semantic changes
+refresh immediately. A lightweight PinchGate shares raw pinch/hysteresis/loss
+semantics with GrabController but omits unused pose/orientation work; actual held
+component movement still uses GrabController. No gesture thresholds, Core
+equations or report results changed. Tests cover gate equivalence during opening,
+brief loss/generation/discontinuity and panel reuse/content refresh. Executed:
+200 submission tests, 654 full tests passed; actual GL check ran 180 synthetic
+frames with one/two-hand group hold and visible opening, finite bounded poses,
+and one static compact-panel texture upload. This is engineering regression
+evidence, not a measured physical hand latency/smoothness improvement.
+
 Expanded chemistry library: user-authorized 32 neutral covalent presets in four
 pages of eight entries. Graphs/finite illustrative coordinates are validated at
 startup. Formula and exact element/bond-order matching distinguish ethanol from

@@ -250,6 +250,14 @@ ions and resonance remain outside this library. The spatial palette paginates
 eight entries per page so every preset remains reachable without overlapping
 existing controls. Preset coordinates are authored illustrative scene units.
 
+Chemistry's discrete pinch gate reuses the exact raw ratio, hysteresis,
+confirmation/loss durations and generation behavior without computing an
+unused object pose. Held components continue to use GrabController. The panel
+texture depends only on visible panel content and button highlights; hovering
+atoms, moving objects or changing bond topology must not repaint an unchanged
+panel. Selection/page/control changes update immediately. Scientific graph
+labels remain owned by the scene/overlay, independently of the panel texture.
+
 #### Spatial presentation and freshness refinement — 2026-10-14
 
 The user authorized further responsiveness and spatial manipulation work.

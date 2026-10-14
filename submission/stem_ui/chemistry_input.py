@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
 from .camera_space import sphere_hit
-from .manipulation import GrabController
+from .manipulation import GrabController, PinchGate
 from .dwell import DwellSelector
 
 
@@ -170,7 +170,7 @@ class ChemistryInput:
             hand=available.get(key)
             gate=self.gates.get(key)
             if gate is None:
-                gate=GrabController(self.grab_settings); self.gates[key]=gate
+                gate=PinchGate(self.grab_settings); self.gates[key]=gate
             claim=self.claims.get(key)
             if claim and hand is not None and claim.generation!=hand.generation:
                 self.end(key); gate.reset(); claim=None

@@ -164,10 +164,18 @@ class CameraChemistryView:
         return finish()
 
     def _ensure_panel(self,force=False):
-        key=(self.space.aspect,self.input.page,self.input.template_page,self.scene.selected,self.scene.edit,self.scene.electrons,self.scene.order,self.scene.revision,self.renderer.help_visible,
-             tuple(sorted(str(v) for v in self.input.hover.values())),self.content[2:])
+        selected=self.scene.atoms.get(self.scene.selected)
+        # The panel only displays element details on the elements page. Atom
+        # movement/bond changes belong to the scene, not this static texture.
+        symbol=selected.symbol if selected is not None and self.input.page=='elements' else None
+        semantic=(self.space.aspect,self.input.page,self.input.template_page,symbol,
+                  self.scene.edit,self.scene.electrons,self.scene.order,self.renderer.help_visible,self.content[2:])
+        highlights=tuple(sorted({action for action in self.input.hover.values()
+                                 if action and not action.startswith(('atom:','panel:'))}))
+        key=semantic+(highlights,)
         now=time.monotonic()
-        if force or self.input.panel is None or (key!=self.panel_key and now-self.panel_at>=1/self.settings['chemistry_panel_fps']):
+        semantic_changed=self.panel_key is None or self.panel_key[:-1]!=semantic
+        if force or self.input.panel is None or (key!=self.panel_key and (semantic_changed or now-self.panel_at>=1/self.settings['chemistry_panel_fps'])):
             panel,surface=self._panel(); self.input.panel=panel
             self._upload(self.panel_texture,pygame.image.tobytes(surface,'RGBA',False),surface.get_size(),self.panel_size,gl.GL_RGBA,mipmaps=True)
             self.panel_size=surface.get_size(); self.panel_key=key; self.panel_at=now
