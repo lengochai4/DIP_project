@@ -242,3 +242,11 @@ docs/05_PROJECT_STATUS_AND_ROADMAP.md
 for the current project gate, task, blockers and Definition of Done.
 
 Do not infer implementation completion from this README.
+
+## Author
+```
+Nguyen Dak Loc - 24110107
+Le Ngoc Hai - 24110089
+Tran Gia Kiet - 24110103
+```
+This project is supported by Assoc.Prof.Hoang Van Dung and Ho Chi Minh City University of Technology and Engineering.
