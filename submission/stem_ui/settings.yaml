@@ -7,6 +7,10 @@ show_hand_skeleton: false
 render_fps: 60
 overlay_fps: 30
 camera_shutdown_timeout_s: 5.0
+droidcam_wifi_host: ''
+droidcam_wifi_port: 4747
+droidcam_open_timeout_ms: 3500
+droidcam_read_timeout_ms: 2500
 max_hands: 2
 association_max_distance: 0.25
 association_ambiguity_margin: 0.02

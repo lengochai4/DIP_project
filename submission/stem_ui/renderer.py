@@ -7,6 +7,7 @@ from functools import lru_cache
 import cv2
 import numpy as np
 import pygame
+from pygame._sdl2.video import Window
 from OpenGL import GL as gl, GLU as glu
 from .geometry import (Tip, FingerSelection, live_mesh, solid_mesh,
                        world_position, preview_position, TIPS)
@@ -24,6 +25,9 @@ class SubmissionRenderer:
         self.settings = settings
         self.size = tuple(settings['window'])
         self.windowed = self.size
+        self.windowed_position=None
+        self.display_index=0
+        self.restore_window_position=False
         self.fullscreen = False
         self.camera_visible = True
         self.help_visible = True
@@ -52,6 +56,10 @@ class SubmissionRenderer:
         self.preview_surface = None
         self.last_overlay_at = 0.0
         self.last_overlay_key = None
+        self.droidcam_dialog=False
+        self.droidcam_field='host'
+        self.droidcam_host=str(settings.get('droidcam_wifi_host',''))
+        self.droidcam_port=str(settings.get('droidcam_wifi_port',4747))
         self.chemistry=CameraChemistryView(settings,self)
 
     def open(self):
@@ -88,17 +96,23 @@ class SubmissionRenderer:
             gl.glDeleteTextures([self.texture])
         if hasattr(self,'unit_sphere'): gl.glDeleteLists(self.unit_sphere,1)
         if hasattr(self,'unit_bone'): gl.glDeleteLists(self.unit_bone,1)
-        # Desktop-sized borderless window avoids exclusive display-mode
-        # switching, which fails on some Windows drivers/remote sessions.
+        # SDL desktop fullscreen handles monitor bounds/origin and taskbar;
+        # merely enlarging a borderless window leaves its old screen offset.
         flags = pygame.OPENGL | pygame.DOUBLEBUF | (pygame.NOFRAME if self.fullscreen else pygame.RESIZABLE)
         for samples in (self.settings['render_msaa_samples'],0):
             pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLEBUFFERS,int(samples>0))
             pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLESAMPLES,samples)
             try:
-                pygame.display.set_mode(self.size,flags)
+                pygame.display.set_mode(self.size,flags,display=self.display_index)
                 break
             except pygame.error:
                 if not samples: raise
+        window=Window.from_display_module()
+        if self.fullscreen:
+            window.set_fullscreen(desktop=True)
+        elif self.restore_window_position:
+            window.position=self.windowed_position
+            self.restore_window_position=False
         self.actual_msaa_samples=int(gl.glGetIntegerv(gl.GL_SAMPLES))
         if self.actual_msaa_samples: gl.glEnable(gl.GL_MULTISAMPLE)
         self.size=pygame.display.get_window_size()
@@ -155,10 +169,28 @@ class SubmissionRenderer:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 actions.append('quit')
-            elif event.type == pygame.VIDEORESIZE and not self.fullscreen and (event.w,event.h)!=self.size:
+            elif event.type == pygame.VIDEORESIZE and not self.fullscreen and (event.w,event.h)!=self.size and (event.w,event.h)==pygame.display.get_window_size():
                 self.size=(max(960,event.w),max(660,event.h)); self.windowed=self.size; self._set_display()
             elif event.type == pygame.KEYDOWN:
                 key = event.key
+                if self.droidcam_dialog:
+                    if key==pygame.K_ESCAPE:
+                        self.droidcam_dialog=False
+                    elif key==pygame.K_TAB:
+                        self.droidcam_field='port' if self.droidcam_field=='host' else 'host'
+                    elif key in (pygame.K_RETURN,pygame.K_KP_ENTER):
+                        actions.append('droidcam_connect')
+                    elif key==pygame.K_BACKSPACE:
+                        if self.droidcam_field=='host': self.droidcam_host=self.droidcam_host[:-1]
+                        else: self.droidcam_port=self.droidcam_port[:-1]
+                    else:
+                        ch=event.unicode
+                        if ch and len(ch)==1:
+                            if self.droidcam_field=='host' and (ch.isalnum() or ch in '.-') and len(self.droidcam_host)<64:
+                                self.droidcam_host+=ch
+                            elif self.droidcam_field=='port' and ch.isdigit() and len(self.droidcam_port)<5:
+                                self.droidcam_port+=ch
+                    continue
                 if key == pygame.K_ESCAPE:
                     if self.fullscreen:
                         self.toggle_fullscreen()
@@ -193,9 +225,15 @@ class SubmissionRenderer:
                 elif pygame.K_1 <= key <= pygame.K_4:
                     self.kind=KINDS[key-pygame.K_1]; self.mode='solid'
             elif event.type == pygame.MOUSEWHEEL:
-                if self.mode!='chemistry': self.zoom=float(np.clip(self.zoom*math.exp(event.y*.08),.55,1.8))
+                if self.mode!='chemistry' and not self.droidcam_dialog: self.zoom=float(np.clip(self.zoom*math.exp(event.y*.08),.55,1.8))
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button==1:
                 action=next((a for rect,a in reversed(self.buttons) if rect.collidepoint(event.pos)),None)
+                if self.droidcam_dialog:
+                    if action=='droidcam_host': self.droidcam_field='host'
+                    elif action=='droidcam_port': self.droidcam_field='port'
+                    elif action=='droidcam_cancel': self.droidcam_dialog=False
+                    elif action in ('droidcam_connect','webcam_connect'): actions.append(action)
+                    continue
                 if action:
                     if action.startswith('kind:'):
                         self.kind=action.split(':')[1]; self.mode='solid'; self.menu=False
@@ -205,6 +243,9 @@ class SubmissionRenderer:
                         self.enter_chemistry()
                     elif action=='camera':
                         self.camera_visible=not self.camera_visible
+                    elif action=='droidcam':
+                        self.droidcam_dialog=True; self.droidcam_field='host'
+                        self.dragging=False; self.grab.release(); self.chemistry.input.release()
                     elif action=='help':
                         self.help_visible=not self.help_visible
                     elif action=='fullscreen':
@@ -222,18 +263,24 @@ class SubmissionRenderer:
                     else: self.dragging=True
             elif event.type == pygame.MOUSEBUTTONUP:
                 self.dragging=False
-                if self.mode=='chemistry' and event.button==1: self.chemistry.mouse('up',event.pos)
-            elif event.type == pygame.MOUSEMOTION and self.mode=='chemistry':
+                if self.mode=='chemistry' and event.button==1 and not self.droidcam_dialog: self.chemistry.mouse('up',event.pos)
+            elif event.type == pygame.MOUSEMOTION and self.mode=='chemistry' and not self.droidcam_dialog:
                 self.chemistry.mouse('move',event.pos)
             elif event.type == pygame.MOUSEMOTION and self.dragging:
                 self.yaw+=event.rel[0]*.3; self.pitch=float(np.clip(self.pitch+event.rel[1]*.3,-65,65))
         return actions
 
     def toggle_fullscreen(self):
+        window=Window.from_display_module()
         if not self.fullscreen:
             self.windowed=pygame.display.get_window_size()
+            self.windowed_position=window.position
+            self.display_index=window.display_index
+        else:
+            window.set_windowed()
+            self.restore_window_position=True
         self.fullscreen=not self.fullscreen
-        self.size=pygame.display.get_desktop_sizes()[0] if self.fullscreen else self.windowed
+        self.size=pygame.display.get_desktop_sizes()[self.display_index] if self.fullscreen else self.windowed
         self._set_display()
 
     def enter_chemistry(self):
@@ -275,7 +322,7 @@ class SubmissionRenderer:
     def _card(self,surface,rect,alpha=235,bright=False):
         card(surface,rect,alpha,bright,self.settings['ui_card_supersample'])
 
-    def draw(self,snapshot,status,*,active=False,error=None,run_id='',camera_index=0,replay=False):
+    def draw(self,snapshot,status,*,active=False,error=None,run_id='',camera_index=0,replay=False,source_kind='webcam'):
         w,h=self.size
         view=scene_rect(self.size,self.camera_visible)
         vx,vy,vw,vh=view
@@ -283,7 +330,7 @@ class SubmissionRenderer:
         draw_dt=0 if self.last_draw_at is None else now-self.last_draw_at
         self.last_draw_at=now
         if self.mode=='chemistry':
-            return self._draw_chemistry(snapshot,status,active,error,run_id,camera_index,replay,view,now,draw_dt)
+            return self._draw_chemistry(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,draw_dt)
         px=math.radians(self.pitch); yx=math.radians(self.yaw)
         rx=np.array(((1,0,0),(0,math.cos(px),-math.sin(px)),(0,math.sin(px),math.cos(px))))
         ry=np.array(((math.cos(yx),0,math.sin(yx)),(0,1,0),(-math.sin(yx),0,math.cos(yx))))
@@ -308,7 +355,7 @@ class SubmissionRenderer:
         gl.glLightModeli(gl.GL_LIGHT_MODEL_TWO_SIDE,gl.GL_TRUE)
         gl.glEnable(gl.GL_COLOR_MATERIAL); gl.glEnable(gl.GL_NORMALIZE)
         self._floor()
-        fresh = snapshot is not None and active and time.monotonic()-snapshot.delivered_at <= self.settings['stale_after_s']
+        fresh = snapshot is not None and active and not self.droidcam_dialog and time.monotonic()-snapshot.delivered_at <= self.settings['stale_after_s']
         hands=snapshot.hands if fresh else ()
         identity=(run_id,snapshot.frame_id) if fresh else None
         tips=[]
@@ -395,10 +442,11 @@ class SubmissionRenderer:
             gl.glPopMatrix()
         gl.glDisable(gl.GL_SCISSOR_TEST)
         overlay_key=(self.size,self.camera_visible,self.help_visible,self.menu,self.mode,self.kind,
-                     self.fullscreen,self.grab.scale_mode,active,error,status,camera_index)
+                     self.fullscreen,self.grab.scale_mode,active,error,status,camera_index,source_kind,self.droidcam_dialog,
+                     self.droidcam_host,self.droidcam_port,self.droidcam_field)
         # UI/preview is refreshed separately; 3D following remains render-rate.
         if overlay_key!=self.last_overlay_key or now-self.last_overlay_at>=1/self.settings['overlay_fps']:
-            overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,view,hands,tips,fresh,world_labels)
+            overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,tips,fresh,world_labels)
             self.last_overlay_at=now; self.last_overlay_key=overlay_key
         else:
             overlay=None
@@ -416,11 +464,11 @@ class SubmissionRenderer:
         hz=min(self.settings['live_response_max_hz'],self.settings['live_response_hz']+error*self.settings['live_response_gain'])
         return current+(1-math.exp(-math.tau*hz*max(0,dt)))*(target-current)
 
-    def _draw_chemistry(self,snapshot,status,active,error,run_id,camera_index,replay,view,now,dt):
+    def _draw_chemistry(self,snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,dt):
         w,h=self.size
         gl.glViewport(0,0,w,h); gl.glClearColor(*(c/255 for c in BG),1)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
-        fresh=snapshot is not None and active and now-snapshot.delivered_at<=self.settings['stale_after_s']
+        fresh=snapshot is not None and active and not self.droidcam_dialog and now-snapshot.delivered_at<=self.settings['stale_after_s']
         hands=snapshot.hands if fresh else ()
         count=0
         identity=(run_id,snapshot.frame_id) if fresh else None
@@ -439,9 +487,10 @@ class SubmissionRenderer:
             tuple(self.chemistry.labels),scene.revision,scene.selected,scene.edit,scene.electrons,scene.message,len(hands),
             tuple((str(key),c.kind,c.paused) for key,c in control.claims.items()),
             tuple((key,v['controller'].suspended) for key,v in control.groups.items()),
-            pygame.mouse.get_pos(),snapshot.frame_id if snapshot and self.camera_visible else None)
+            pygame.mouse.get_pos(),snapshot.frame_id if snapshot and self.camera_visible else None,
+            source_kind,self.droidcam_dialog,self.droidcam_host,self.droidcam_port,self.droidcam_field)
         if overlay_key!=self.last_overlay_key and (now-self.last_overlay_at>=1/self.settings['overlay_fps'] or not isinstance(self.last_overlay_key,tuple) or self.last_overlay_key[0]!='chemistry'):
-            overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,view,hands,[None]*count,fresh,[])
+            overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,[None]*count,fresh,[])
             self.last_overlay_at=now; self.last_overlay_key=overlay_key
         else: overlay=None
         self._overlay(overlay)
@@ -451,7 +500,7 @@ class SubmissionRenderer:
         pygame.display.flip(); self.clock.tick(self.settings['render_fps'])
         return len(hands),count
 
-    def _draw_ui(self,snapshot,status,active,error,run_id,camera_index,replay,view,hands,tips,fresh,world_labels):
+    def _draw_ui(self,snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,tips,fresh,world_labels):
         w,h=self.size; vx,vy,vw,vh=view; hh=header_height(w)
         overlay=self.overlay_surface; overlay.fill((0,0,0,0)); self.buttons=[]
         self._card(overlay,(10,8,w-20,hh-4),255,True)
@@ -461,26 +510,34 @@ class SubmissionRenderer:
         self._text(overlay,'Không gian tương tác',(68,49),12,MUTED)
         # All names are preserved at minimum size; the badge is centered
         # in the available top-bar space, independently of the controls.
-        controls=386; right=w-controls-20; left=275 if w>=1120 else 225
+        top_controls=[
+            ('Dừng camera' if active else 'Bật camera',110,'toggle',active),
+            ('Camera',70,'camera',self.camera_visible),
+        ]
+        if not replay:
+            top_controls.append(('DroidCam',72,'droidcam',source_kind=='droidcam_wifi'))
+        top_controls.extend((
+            ('Hướng dẫn',94,'help',self.help_visible),
+            ('Thu khung' if self.fullscreen else 'Phóng to',94,'fullscreen',self.fullscreen),
+        ))
+        controls=sum(item[1] for item in top_controls)+6*(len(top_controls)-1)
+        right=w-controls-20; left=275 if w>=1120 else 225
         badge=pygame.Rect(left,17,right-left-16,hh-20)
         self._card(overlay,badge,215)
         author_lines=AUTHORS.split(' | ')
-        if w>=1120:
-            author_lines=[author_lines[0],author_lines[1]+' | '+author_lines[2]]
-        else:
-            author_lines[0]=author_lines[0].replace('Nhóm tác giả: ','')
         fs=13 if w>=1120 else 12
+        combined=author_lines[1]+' | '+author_lines[2]
+        if self.fonts[fs].size(combined)[0]<=badge.width-20:
+            author_lines=[author_lines[0],combined]
+        elif w<1120:
+            author_lines[0]=author_lines[0].replace('Nhóm tác giả: ','')
         line_h=17; y=badge.centery-len(author_lines)*line_h//2
         for line in author_lines:
             label=self._label(line,fs,INK)
             overlay.blit(label,label.get_rect(center=(badge.centerx,y+line_h//2))); y+=line_h
         if w<1120: self._text(overlay,'Nhóm tác giả:',(badge.x+10,badge.y-12),12,MUTED)
         x=right; cy=hh//2-11
-        for label,bw,action,on in (
-            ('Dừng camera' if active else 'Bật camera',110,'toggle',active),
-            ('Camera',70,'camera',self.camera_visible),
-            ('Hướng dẫn',94,'help',self.help_visible),
-            ('Thu khung' if self.fullscreen else 'Phóng to',94,'fullscreen',self.fullscreen)):
+        for label,bw,action,on in top_controls:
             self._button(overlay,label,(x,cy,bw,38),action,on); x+=bw+6
         sy=hh+15
         self._card(overlay,(20,sy-5,388,46),230)
@@ -548,18 +605,22 @@ class SubmissionRenderer:
             self._text(overlay,'H: ẩn hướng dẫn  •  F11: phóng to',(hx+16,hy+157),12,MUTED)
         if self.menu and self.mode=='solid':
             for i,name in enumerate(NAMES): self._button(overlay,name,(424,sy+44+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
-        self._card(overlay,(20,h-55,w-40,45),248)
-        pygame.draw.circle(overlay,ACCENT if active else MUTED,(39,h-33),4)
-        readiness=(('Camera đã mở' if fresh else 'Đang nhận hình…') if active and snapshot is not None else status)+('  •  '+str(len(hands))+' tay' if hands else '')
-        self._text(overlay,readiness,(52,h-43),13,INK)
-        self._text(overlay,'Xử lý trên máy',(w-132,h-43),12,MUTED)
+        footer=pygame.Rect(20,h-55,w-40,45)
+        self._card(overlay,footer,248)
+        if self.mode!='chemistry':
+            pygame.draw.circle(overlay,ACCENT if active else MUTED,(39,h-33),4)
+            readiness=(('Camera đã mở' if fresh else 'Đang nhận hình…') if active and snapshot is not None else status)+('  •  '+str(len(hands))+' tay' if hands else '')
+            self._text(overlay,readiness,(52,h-43),13,INK)
+            self._text(overlay,'Xử lý trên máy',(w-132,h-43),12,MUTED)
         if self.mode=='chemistry':
             scene=self.chemistry.scene; selected=scene.selected
             label=scene.describe(scene.component(selected)) if selected in scene.atoms else scene.message
             claims=[claim for claim in self.chemistry.input.claims.values() if claim.kind in ('atom','group')]
             paused=any(group['controller'].suspended for group in self.chemistry.input.groups.values()) or any(claim.paused for claim in claims)
             if paused: label='Tạm mất tay • Vật thể giữ nguyên; đưa tay trở lại để tiếp tục'
-            elif claims and scene.edit: label='Ghép/tách • Kéo xa để tháo • Mở ngón, thả gần để nối'
+            elif claims and scene.edit:
+                current=scene.describe(scene.component(selected)) if selected in scene.atoms else scene.message
+                label='Ghép/tách • '+current+' • Kéo xa để tháo • Thả gần để nối'
             elif len(claims)>1: label='Đang giữ bằng hai tay • Tách / khép để đổi cỡ • Mở ngón để buông'
             elif claims: label='Đang cầm • Chụm tay còn lại trong vùng trống để xoay / đổi cỡ'
             elif scene.electrons: label+=(' • Chọn Cầm cả khối để dùng hai tay đổi cỡ' if scene.edit else ' • Cầm nguyên tử, chụm tay còn lại để đổi cỡ cả lớp e')
@@ -570,11 +631,49 @@ class SubmissionRenderer:
         else: label='Kéo chuột để xem góc khác  •  Cuộn để gần / xa  •  R để đặt lại'
         if error: label=error
         if replay: label='Phát lại  •  '+label
-        # Clip long action/file errors to the footer, never into the scene.
-        overlay.set_clip(pygame.Rect(52,h-23,w-90,18))
-        self._text(overlay,label,(52,h-25),12,(245,178,137) if error else MUTED)
-        overlay.set_clip(None)
+        if self.mode=='chemistry':
+            max_label_width=max(1,footer.width-28)
+            label_font=next((size for size in (20,17,15,13,12)
+                if self.fonts[size].size(label)[0]<=max_label_width),12)
+            rendered=self._label(label,label_font,(245,178,137) if error else INK)
+            overlay.set_clip(footer.inflate(-12,-6))
+            overlay.blit(rendered,rendered.get_rect(center=footer.center))
+            overlay.set_clip(None)
+        else:
+            overlay.set_clip(pygame.Rect(52,h-23,w-90,18))
+            self._text(overlay,label,(52,h-25),12,(245,178,137) if error else MUTED)
+            overlay.set_clip(None)
+        if self.droidcam_dialog and not replay:
+            self._draw_droidcam_dialog(overlay,source_kind,error)
         return overlay
+
+    def _draw_droidcam_dialog(self,overlay,source_kind,error=None):
+        w,h=self.size
+        rect=pygame.Rect(0,0,min(520,w-80),286); rect.center=(w//2,h//2)
+        shade=pygame.Surface(self.size,pygame.SRCALPHA); shade.fill((3,9,15,145)); overlay.blit(shade,(0,0))
+        self._card(overlay,rect,252,True)
+        self._text(overlay,'DROIDCAM WI-FI',(rect.x+24,rect.y+20),20,ACCENT)
+        self._text(overlay,'Nhập Wi-Fi IP và port đang hiện trên điện thoại',(rect.x+24,rect.y+51),13,MUTED)
+        host_rect=pygame.Rect(rect.x+24,rect.y+88,rect.width-160,42)
+        port_rect=pygame.Rect(rect.right-124,rect.y+88,100,42)
+        for field,box,value,title in (('host',host_rect,self.droidcam_host,'IP'),('port',port_rect,self.droidcam_port,'Port')):
+            active=self.droidcam_field==field
+            overlay.blit(glass(box.size,250,8,active,self.settings['ui_card_supersample']),box)
+            overlay.blit(outline(box.size,ACCENT if active else (83,119,139),samples=self.settings['ui_card_supersample']),box)
+            self._text(overlay,title,(box.x+10,box.y-17),12,MUTED)
+            shown=value or ('192.168.1.x' if field=='host' else '4747')
+            rendered=self._label(shown,17,INK if value else MUTED)
+            old_clip=overlay.get_clip(); overlay.set_clip(box.inflate(-16,-4))
+            overlay.blit(rendered,(min(box.x+12,box.right-12-rendered.get_width()),box.y+11))
+            overlay.set_clip(old_clip)
+            self.buttons.append((box,'droidcam_'+field))
+        hint='Điện thoại và máy tính phải cùng Wi-Fi. DroidCam mặc định dùng port 4747.'
+        old_clip=overlay.get_clip(); overlay.set_clip(pygame.Rect(rect.x+24,rect.y+144,rect.width-48,68))
+        self._wrap(overlay,error if error else hint,(rect.x+24,rect.y+148),rect.width-48,12,(245,178,137) if error else MUTED)
+        overlay.set_clip(old_clip)
+        self._button(overlay,'Kết nối Wi-Fi',(rect.x+24,rect.bottom-66,170,38),'droidcam_connect',source_kind=='droidcam_wifi')
+        self._button(overlay,'Dùng webcam máy',(rect.x+204,rect.bottom-66,160,38),'webcam_connect',source_kind=='webcam')
+        self._button(overlay,'Đóng',(rect.right-104,rect.bottom-66,80,38),'droidcam_cancel')
 
     def _hands3d(self,hands,fit):
         """Illustrative joint/bone volume, no invented missing landmarks."""

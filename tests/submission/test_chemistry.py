@@ -64,6 +64,16 @@ def test_formula_does_not_label_carbon_dioxide_without_matching_double_bonds():
     assert s.describe(s.component(c)).startswith('CO₂')
 
 
+def test_join_and_break_messages_report_the_current_graph_without_guessing_reactions():
+    s=ChemistryScene(SETTINGS)
+    o=s.add('O',(0,0,0)); h1=s.add('H',(-.4,0,0)); h2=s.add('H',(.4,0,0))
+    assert s.bond(o,h1) and 'HO' in s.message
+    assert s.bond(o,h2) and s.message.startswith('Đã ghép → H₂O')
+    s.move_atom(h2,(2.,0,0))
+    assert s.message.startswith('Đã tách → ')
+    assert 'H' in s.message and 'HO' in s.message
+
+
 @pytest.mark.parametrize('key',tuple(SETTINGS['chemistry_templates']))
 def test_templates_have_supported_topology_and_match_label(key):
     s=ChemistryScene(SETTINGS); s.add_template(key)
@@ -85,6 +95,8 @@ def test_edit_breaks_links_only_when_deliberately_moved_and_undo_restores_whole_
 
 def test_invalid_import_is_atomic_and_preserves_existing_workspace(tmp_path):
     s=ChemistryScene(SETTINGS); s.add_template('CH4'); before=s.state()
+    with pytest.raises(ValueError): s.restore([])
+    assert s.state()==before
     invalid=copy.deepcopy(before); invalid['atoms'][0]['position'][0]=float('nan')
     with pytest.raises(ValueError): s.restore(invalid)
     assert s.state()==before
@@ -96,6 +108,23 @@ def test_invalid_import_is_atomic_and_preserves_existing_workspace(tmp_path):
     assert s.state()==before
     p=tmp_path/'workspace.json'; s.save(p); s.delete_selected(); assert not s.atoms
     s.load(p); assert s.state()==before
+
+
+def test_join_skips_an_existing_closest_bond_and_finds_new_nearby_atom():
+    s=ChemistryScene(SETTINGS)
+    o=s.add('O',(0,0,0)); h1=s.add('H',(.1,0,0)); h2=s.add('H',(-.4,0,0))
+    assert s.bond(o,h1)
+    assert s.link_nearby(o)
+    assert s.describe(s.component(o)).startswith('H₂O')
+
+
+def test_save_failure_is_reported_without_stopping_chemistry(monkeypatch):
+    s=ChemistryScene(SETTINGS); s.add_template('H2O'); before=s.state()
+    c=ChemistryInput(s,SETTINGS)
+    def denied(path): raise OSError('denied')
+    monkeypatch.setattr(s,'save',denied)
+    c.command('save')
+    assert 'Chưa lưu được' in s.message and s.state()==before
 
 
 def test_observed_hover_spawns_once_and_requires_deliberate_rearm():

@@ -88,7 +88,9 @@ class ChemistryInput:
                     atom.target=(atom.position-center)*factor+np.array((.8,0.,0.))
                     atom.scale=float(np.clip(atom.scale*factor,self.settings['grab_min_scale'],self.settings['grab_max_scale']))
                 scene.message='Đưa mô hình về giữa vùng thao tác'; scene.revision+=1
-        elif action=='save': scene.save(self.path)
+        elif action=='save':
+            try: scene.save(self.path)
+            except OSError as exc: scene.message='Chưa lưu được: '+str(exc)
         elif action=='load':
             try: scene.load(self.path)
             except (OSError,ValueError,KeyError,TypeError) as exc: scene.message='Chưa mở được bản lưu: '+str(exc)

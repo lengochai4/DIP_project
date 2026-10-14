@@ -175,8 +175,11 @@ The user requested a visual-only refresh using the supplied design/assets,
 an exact author badge, responsive controls, sharper 3D materials and a
 translucent crystal-styled panel. Processing/filter/performance telemetry
 stays in local logs; sample FPS values in mockups are omitted from the UI.
-Fullscreen button and F11 share one reversible borderless-desktop transition,
-restore the last window dimensions and rebuild context-owned resources.
+Fullscreen button and F11 share one reversible SDL desktop-fullscreen
+transition without changing monitor resolution. They remember the current
+monitor, restore window dimensions and position, and rebuild context-owned
+resources. Stale resize events from a previous fullscreen transition must not
+resize the restored window.
 
 Chemistry panel actions now use configurable 1-second continuous fingertip
 hover with visible progress and a one-shot latch. Leaving the target, missing
@@ -197,6 +200,23 @@ but not through panel buttons. Selected electron view uses a selection volume
 around the illustrated shells. Nucleus, electron radii and selection volume
 share the stored object scale; framing includes the shell extents. UI schema
 5 adds actual dwell/claim/group state to local interaction diagnostics.
+
+The submission UI may select either the local OpenCV webcam or a presentation-
+only DroidCam Wi-Fi source using the phone's explicit IP/port. The Wi-Fi source
+reads the documented HTTP `/video` feed and emits the same raw BGR
+`FramePacket` contract. Source switching is serialized: the current live
+worker/capture must finish closing before the requested source is opened.
+The acquired BGR frames continue through the same Core preprocessing,
+landmark, filtering and gesture path; replay behavior and research baselines
+are unchanged. Network quality/latency is an input-device property and is not
+treated as a new algorithmic result.
+
+Opening the camera-settings dialog suspends scene input and cancels existing
+claims/dwell without clearing the scene. Cancel/quit during a pending source
+switch must not start a new capture. Live packets whose timestamps round to
+the same MediaPipe millisecond are skipped before Core processing, retaining
+original timestamps and logging the skipped count. Replay retains its strict
+timestamp validation; no research timing or filtering semantics change.
 
 #### Camera chemistry mode — 2026-10-14
 

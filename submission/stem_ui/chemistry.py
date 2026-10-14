@@ -74,6 +74,7 @@ class ChemistryScene:
             'bonds':[{'a':a,'b':b,'order':order} for (a,b),order in self.bonds.items()]}
 
     def restore(self,state):
+        if not isinstance(state,dict): raise ValueError('Không đúng định dạng không gian hóa học')
         if state.get('schema')!=1 or state.get('kind')!='illustrative_molecular_graph':
             raise ValueError('Không đúng định dạng không gian hóa học')
         rows=state['atoms']
@@ -168,7 +169,7 @@ class ChemistryScene:
         if self.bonds.get(key)==order: return False
         if history: self.remember()
         self.bonds[key]=order; self.revision+=1
-        self.message=f'Đã ghép {self.atoms[a].symbol}–{self.atoms[b].symbol} (bậc {order})'
+        self.message='Đã ghép → '+self.describe(self.component(a))
         return True
 
     def move_atom(self,i,target):
@@ -181,12 +182,18 @@ class ChemistryScene:
                 other=pair[1] if pair[0]==i else pair[0]
                 scale=(self.atoms[i].scale+self.atoms[other].scale)/2
                 if np.linalg.norm(self.atoms[i].target-self.atoms[other].position)>self.settings['chemistry_break_distance']*scale:
-                    del self.bonds[pair]; self.revision+=1; self.message='Đã tháo liên kết trong mô hình'
+                    del self.bonds[pair]; self.revision+=1
+                    parts=[]
+                    for start in (i,other):
+                        ids=self.component(start)
+                        if ids not in parts: parts.append(ids)
+                    self.message='Đã tách → '+' + '.join(self.describe(ids) for ids in parts)
 
     def link_nearby(self,i,exclude=()):
         candidates=sorted((float(np.linalg.norm(a.position-self.atoms[i].position)),j)
             for j,a in self.atoms.items() if j!=i and j not in exclude)
         for distance,j in candidates:
+            if self.bonds.get(tuple(sorted((i,j))))==self.order: continue
             scale=(self.atoms[i].scale+self.atoms[j].scale)/2
             if distance<=self.settings['chemistry_join_distance']*scale and self.can_bond(i,j):
                 return self.bond(i,j,history=False)

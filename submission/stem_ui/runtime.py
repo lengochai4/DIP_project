@@ -23,6 +23,7 @@ from dip_touchless.tracking import MeasurementValidator
 from experiments.run_replay import build_landmark_filter
 from dip_touchless.interaction import DeterministicGestureEngine
 from .acquisition import LatestCamera
+from .network_camera import DroidCamWifiSource
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -84,9 +85,10 @@ def convert_result(result, packet):
     return out
 
 class CaptureWorker:
-    def __init__(self, settings, *, camera_index=0, replay=None):
+    def __init__(self, settings, *, camera_index=0, droidcam_wifi=None, replay=None):
         self.settings = settings
         self.camera_index = camera_index
+        self.droidcam_wifi = droidcam_wifi
         self.replay = replay
         self.stop_event = threading.Event()
         self.thread = None
@@ -138,6 +140,11 @@ class CaptureWorker:
                 source.open()
             else:
                 def camera_factory():
+                    if self.droidcam_wifi is not None:
+                        host,port=self.droidcam_wifi
+                        return DroidCamWifiSource(run_id=self.run_id,host=host,port=port,
+                            open_timeout_ms=self.settings['droidcam_open_timeout_ms'],
+                            read_timeout_ms=self.settings['droidcam_read_timeout_ms'])
                     # Backend fallback stays inside the sole camera owner thread.
                     class Camera:
                         inner = None
@@ -172,14 +179,15 @@ class CaptureWorker:
                 'chemistry_data_sha256':hashlib.sha256((Path(__file__).with_name('data')/'pubchem-periodic-table.json').read_bytes()).hexdigest(),
                 'acquisition_policy':'ordered_replay' if self.replay else 'latest_camera_single_slot',
                 'run_id':self.run_id,'core_config':cfg,'ui_settings':self.settings,'camera_index':self.camera_index,
+                'live_source':'droidcam_wifi' if self.droidcam_wifi is not None else ('replay' if self.replay else 'webcam'),
                 'code_revision':revision,
                 'code_working_tree_dirty':dirty,
-                'source':str(self.replay) if self.replay else 'camera',
+                'source':str(self.replay) if self.replay else ('droidcam_wifi' if self.droidcam_wifi is not None else 'camera'),
                 'model_sha256':hashlib.sha256(model.read_bytes()).hexdigest(),
                 'research_compatible':False,'raw_video_saved':False},ensure_ascii=False,indent=2),encoding='utf-8')
             log = (folder/'frames.jsonl').open('w',encoding='utf-8')
             previous = {}; last_seen = {}; generations = [0,0]
-            bbox = None; validator = MeasurementValidator(); last_ms = -1
+            bbox = None; validator = MeasurementValidator(); last_ms = -1; skipped_timestamp_packets=0
             # Public TrackingFrame is used only at the composition root for
             # canonical gesture mapping, never leaked into renderer internals.
             from dip_touchless.core import TrackingFrame, StageTimings
@@ -187,16 +195,22 @@ class CaptureWorker:
                 packet = source.read()
                 if packet is None:
                     break
+                timestamp_ms = round(packet.timestamp_s*1000)
+                if timestamp_ms <= last_ms:
+                    if self.replay:
+                        raise RuntimeError('Dấu thời gian camera không tăng sau chuyển đổi mili giây.')
+                    # A network burst may deliver multiple live frames in one
+                    # millisecond. Skip duplicates without inventing timestamps
+                    # or advancing Core state on an unprocessed observation.
+                    skipped_timestamp_packets+=1
+                    continue
+                last_ms = timestamp_ms
                 compute_start=time.perf_counter()
                 h,w = packet.image.shape[:2]
                 roi = manager.update(frame_width=w,frame_height=h,hand_bbox=bbox)
                 illumination = decision.update(analyzer.measure(packet,roi))
                 processed = preprocessor.process_frame(packet,roi,illumination)
                 preprocess_end=time.perf_counter()
-                timestamp_ms = round(packet.timestamp_s*1000)
-                if timestamp_ms <= last_ms:
-                    raise RuntimeError('Dấu thời gian camera không tăng sau chuyển đổi mili giây.')
-                last_ms = timestamp_ms
                 rgb = np.ascontiguousarray(cv2.cvtColor(processed.frame.image,cv2.COLOR_BGR2RGB))
                 result = landmarker.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB,data=rgb),timestamp_ms)
                 observations = [validator.validate(o) for o in convert_result(result,packet)]
@@ -253,6 +267,7 @@ class CaptureWorker:
                         'canonical_interaction_valid':hand.interaction.interaction_valid} for hand in hands],
                     'camera_packets_dropped':source.dropped if not self.replay else 0,
                     'camera_queue_wait_ms':source.last_wait_ms if not self.replay else None,
+                    'live_timestamp_packets_skipped':skipped_timestamp_packets,
                     'compute_ms':(time.perf_counter()-compute_start)*1000})+'\n')
                 if self.replay:
                     self.stop_event.wait(1/30)

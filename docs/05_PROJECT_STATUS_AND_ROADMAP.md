@@ -2,6 +2,31 @@
 
 ## Current task update — 2026-10-14
 
+Submission source convenience: the small DroidCam control now opens direct
+Wi-Fi settings (phone IP + port, default 4747) and uses DroidCam's HTTP
+`/video` feed. The last valid endpoint is stored locally for reuse. Switching
+between local webcam and DroidCam is serialized so the current capture worker
+must finish closing before the requested source starts. Only the presentation
+live FrameSource changes; Core preprocessing/tracking/filter/gesture,
+ReplayRuntime and frozen report results are unchanged. Verification: direct
+endpoint/FramePacket/error-path tests pass; an app-level webcam -> DroidCam ->
+webcam test fails on any overlapping live worker and currently passes. Final
+Latest audit also covers delayed camera closure, cancel/quit during switching,
+corrupt saved preferences/workspaces, save failure, existing-bond selection,
+modal input suspension and live network bursts sharing one detector millisecond.
+Final regression: 125 submission tests and 579 full-project tests passed.
+Actual renderer check: 90 synthetic frames across three window sizes/modes,
+modal scene freeze, fullscreen button path and F11 restore passed; screenshots
+inspected. A reported fullscreen defect was reproduced from offset (280,180):
+desktop fullscreen now reaches origin (0,0) at 1920x1200 on this monitor and
+restores (280,180) at 1360x860. F11 and queued resize regression checks pass.
+Two recorded-source MediaPipe runs processed 30 frames each in tips/chemistry,
+observed two hands/up to ten tips and stopped without error. A loopback HTTP
+MJPEG stream produced three real OpenCV/FFmpeg frames
+with valid BGR shape and increasing timestamps. A physical phone Wi-Fi session
+was not measured. `git diff --check` is clean. Checklist is recorded in
+`submission/stem_ui/QA_CHECKLIST.md`; Core/report results remain frozen.
+
 Quick user-requested correction: fingertip framing now uses a configured fixed
 scale and whole-hand centering, avoiding inverse small-tip-span magnification
 when fingers fold or identity reacquires. Chemistry dwell default is 1 second;

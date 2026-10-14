@@ -170,6 +170,53 @@ def test_worker_uses_validated_snapshots_and_closes_resources_on_loss(tmp_path,m
     assert not np.shares_memory(snapshots[0].image,image)
     assert not snapshots[0].image.flags.writeable
 
+
+@pytest.mark.parametrize('burst',(False,True))
+def test_live_droidcam_worker_uses_only_network_source_and_closes_it(tmp_path,monkeypatch,burst):
+    import shutil
+    import submission.stem_ui.runtime as runtime
+    from dip_touchless.core import FramePacket,ColorSpace
+    root=Path(__file__).resolve().parents[2]
+    shutil.copytree(root/'config',tmp_path/'config')
+    (tmp_path/'models').mkdir(); (tmp_path/'models/hand_landmarker.task').write_bytes(b'test model')
+    monkeypatch.setattr(runtime,'ROOT',tmp_path)
+    image=np.full((24,32,3),90,np.uint8)
+    created=[]
+    timestamps=[]
+    class WifiSource:
+        closed=False
+        def __init__(self,**kwargs): self.i=0; created.append(kwargs)
+        def open(self): pass
+        def read(self):
+            times=(.033,.0331,.066) if burst else (.033,)
+            if self.i==len(times): return None
+            p=FramePacket('wifi',self.i,times[self.i],image,ColorSpace.BGR,'droidcam_wifi')
+            self.i+=1; return p
+        def close(self): WifiSource.closed=True
+    def local_camera_forbidden(*args,**kwargs):
+        raise AssertionError('local webcam must not open for DroidCam Wi-Fi')
+    class Landmarker:
+        def detect_for_video(self,image,timestamp):
+            timestamps.append(timestamp)
+            return SimpleNamespace(hand_landmarks=[],handedness=[])
+        def close(self): pass
+    if burst:
+        class OrderedPump:
+            dropped=0; last_wait_ms=0.; alive=False
+            def __init__(self,factory,*args): self.source=factory()
+            def open(self): self.source.open()
+            def read(self): return self.source.read()
+            def close(self): self.source.close()
+        monkeypatch.setattr(runtime,'LatestCamera',OrderedPump)
+    monkeypatch.setattr(runtime,'DroidCamWifiSource',WifiSource)
+    monkeypatch.setattr(runtime,'OpenCVCameraSource',local_camera_forbidden)
+    monkeypatch.setattr(runtime.mp.tasks.vision.HandLandmarker,'create_from_options',lambda options:Landmarker())
+    worker=runtime.CaptureWorker(SETTINGS,droidcam_wifi=('192.168.1.25',4747)); worker._run()
+    assert worker.error is None and worker.finished and WifiSource.closed
+    assert len(created)==1 and created[0]['host']=='192.168.1.25' and created[0]['port']==4747
+    assert worker.latest is not None and worker.latest.frame_id==(2 if burst else 0)
+    assert timestamps==([33,66] if burst else [33])
+
 def test_stopping_unstarted_worker_is_safe_and_worker_cannot_start_twice(monkeypatch):
     from submission.stem_ui.runtime import CaptureWorker
     worker=CaptureWorker(SETTINGS)

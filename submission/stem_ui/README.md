@@ -10,6 +10,14 @@ Hoặc nhấp đúp `Chay_UI.bat`, hay chạy `Chay_UI.ps1` trong PowerShell.
 Camera chỉ mở sau khi bấm **Bật camera**. Nếu camera
 bận, đóng ứng dụng đang dùng camera rồi thử lại; có thể đổi Camera 0–3 khi
 đang dừng. Không có phiên tay mới bắt buộc khi chạy kiểm tra tự động.
+Nút **DroidCam** mở hộp nhập **Wi-Fi IP** và **Port** đang hiện trên ứng dụng
+DroidCam ở điện thoại. Port mặc định là `4747`; UI kết nối trực tiếp tới
+`http://IP:PORT/video`, không cần đoán camera index của Windows. IP/port hợp lệ
+được lưu cục bộ vào `runs/ui/droidcam.json` để lần sau không phải nhập lại.
+Nút **Dùng webcam máy** trong cùng hộp chuyển ngược về webcam. Khi đổi nguồn,
+app luôn yêu cầu worker/camera cũ dừng hẳn rồi mới mở nguồn mới, nên không có
+hai capture session chạy chồng. Đây chỉ là đổi nguồn RGB đầu vào; preprocessing,
+tracking, filter, gesture và logic 3D/chemistry giữ nguyên.
 
 ## Cách thao tác
 
