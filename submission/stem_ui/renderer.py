@@ -357,10 +357,9 @@ class SubmissionRenderer:
             gl.glPushMatrix()
             fit=1.0
             if hands:
-                positions=np.array([t.position for t in tips]) if tips else np.array(list(self.hand_points.values()))
+                positions=np.array(list(self.hand_points.values()))
                 center=(positions.min(axis=0)+positions.max(axis=0))/2
-                span=max(float(np.ptp(positions[:,0])),float(np.ptp(positions[:,1])),.5)
-                fit=min(5.0,self.settings['live_fit_width']/span)
+                fit=self.settings['live_fit_scale']
                 changed=self.fit_identity is None or self.fit_identity[0]!=run_id or any(
                     slot in self.fit_identity[1] and self.fit_identity[1][slot]!=value for slot,value in generation.items())
                 if self.fit_center is None or changed:

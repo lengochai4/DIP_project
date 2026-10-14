@@ -98,7 +98,7 @@ def test_invalid_import_is_atomic_and_preserves_existing_workspace(tmp_path):
     s.load(p); assert s.state()==before
 
 
-def test_observed_three_second_hover_spawns_once_and_requires_deliberate_rearm():
+def test_observed_hover_spawns_once_and_requires_deliberate_rearm():
     s=ChemistryScene(SETTINGS); c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
     panel=SpatialPanel(False,space); panel.targets=[((0,0,720,1000),'element:H')]; c.panel=panel
     nx,ny=space.project(panel.world(360,400))
@@ -107,6 +107,16 @@ def test_observed_three_second_hover_spawns_once_and_requires_deliberate_rearm()
     c.update((aim(nx+.06,ny,pinch=False),),6.05,space)
     for t in np.arange(6.1,9.21,.05): c.update((aim(nx+.06,ny,pinch=False),),float(t),space)
     assert len(s.atoms)==2
+
+
+def test_current_palette_dwell_selects_at_one_second_and_not_before():
+    s=ChemistryScene(SETTINGS); c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    panel=SpatialPanel(False,space); panel.targets=[((0,0,720,1000),'element:H')]; c.panel=panel
+    nx,ny=space.project(panel.world(360,400))
+    for t in np.arange(1.,1.96,.05): c.update((aim(nx,ny,pinch=False),),float(t),space)
+    assert not s.atoms
+    c.update((aim(nx,ny,pinch=False),),2.,space)
+    assert len(s.atoms)==1
 
 
 def test_short_hover_and_pinch_do_not_create_atom():

@@ -178,7 +178,7 @@ stays in local logs; sample FPS values in mockups are omitted from the UI.
 Fullscreen button and F11 share one reversible borderless-desktop transition,
 restore the last window dimensions and rebuild context-owned resources.
 
-Chemistry panel actions now use configurable 3-second continuous fingertip
+Chemistry panel actions now use configurable 1-second continuous fingertip
 hover with visible progress and a one-shot latch. Leaving the target, missing
 observations, identity change, timestamp discontinuity or stale input cancel
 progress. A just-activated target must not rearm through a page change until
@@ -249,6 +249,10 @@ including interior points. Within-hand skeletons may be shown as lit joint
 spheres/bones. Framing stays fixed within a continuous hand-identity session
 so hand translation and apparent size changes are not normalized away.
 Geometry and display filtering are submission-only, not research outputs.
+Quick refinement requested by user: fingertip scene scale is fixed by UI
+configuration, not divided by the span of currently selected tips. Initial
+centering uses the whole observed hand geometry, so folding fingers or a
+short reacquisition cannot trigger excessive automatic enlargement.
 
 #### Interaction continuity refinement — 2026-10-14
 

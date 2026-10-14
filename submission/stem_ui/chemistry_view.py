@@ -107,7 +107,7 @@ class CameraChemistryView:
         text('HÓA HỌC AR',(32,25),38,ACCENT)
         pygame.draw.line(surface,(161,213,232,150),(32,78),(w-32,78),2)
         if control.page=='home':
-            text('Trỏ vào nút và giữ 3 giây để chọn',(32,99),29)
+            text(f"Trỏ vào nút và giữ {self.settings['chemistry_dwell_s']:g} giây để chọn",(32,99),29)
             button('BẢNG NGUYÊN TỐ',(32,165,w-64,130),'elements')
             button('MẪU PHÂN TỬ 3D',(32,322,w-64,105),'templates')
             if self.renderer.help_visible:

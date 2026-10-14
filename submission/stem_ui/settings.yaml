@@ -19,7 +19,7 @@ thumb_enter_angle: 135
 thumb_exit_angle: 120
 thumb_enter_spread: 0.45
 thumb_exit_spread: 0.35
-live_fit_width: 3.0
+live_fit_scale: 1.5
 live_response_hz: 6.0
 live_response_gain: 8.0
 live_response_max_hz: 18.0
@@ -66,7 +66,7 @@ chemistry_break_distance: 1.12
 chemistry_panel_fps: 30
 chemistry_electron_speed: 0.35
 chemistry_cursor_response_hz: 18.0
-chemistry_dwell_s: 3.0
+chemistry_dwell_s: 1.0
 chemistry_dwell_max_gap_s: 0.25
 chemistry_dwell_rearm_distance: 0.035
 chemistry_grip_press_ratio: 0.28

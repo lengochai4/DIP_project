@@ -18,7 +18,7 @@ bận, đóng ứng dụng đang dùng camera rồi thử lại; có thể đổ
 Chọn **Hóa học AR** (hoặc P). Camera là nền của cảnh; panel có phối cảnh
 và nằm trong cùng cảnh với các nguyên tử, không phải một cửa sổ webcam nhỏ.
 Khi mới vào, panel có nút **Bảng nguyên tố**. Trỏ ngón trỏ lên ô và giữ
-liên tục khoảng **3 giây**; vòng và thanh tiến trình báo đang chọn. Đi ngang
+liên tục khoảng **1 giây**; vòng và thanh tiến trình báo đang chọn. Đi ngang
 qua ô không kích hoạt. Sau khi chọn, cần di chuyển rõ sang vùng khác hoặc
 rời mục tiêu trước khi chọn lần nữa; đổi trang không tự nhấn tiếp nút mới
 dưới cùng vị trí ngón. Mất tay hoặc ngắt thời gian hủy tiến trình. Chuột
@@ -114,7 +114,7 @@ Chạy phát lại riêng với `--mode chemistry`.
   mặt ngay trên các đỉnh đó; không tự thêm đáy hay đỉnh khác. Các điểm nằm
   trong đường bao vẫn giữ nút. Mặc định chỉ hiện các đầu ngón đang duỗi,
   tránh nhầm khớp/xương của ngón gập với đỉnh hình. Khung giữ mốc trong
-  phiên tay liên tục để chuyển động và thay đổi cỡ tay không bị tự căn mất.
+  phiên tay liên tục; tỷ lệ cảnh cố định, không tự phóng theo số ngón duỗi.
 - Có lập phương, tứ diện, bát diện, cầu. Menu khối và phím 1–4 chọn vật thể.
 - Kéo chuột đổi góc nhìn, cuộn thu/phóng, R đặt lại; Tab qua ba chế độ;
   H ẩn/hiện hướng dẫn; C ẩn/hiện camera; F11 phóng to/thu nhỏ; Enter mở/dừng.

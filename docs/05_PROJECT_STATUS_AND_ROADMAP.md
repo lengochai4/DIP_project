@@ -2,6 +2,14 @@
 
 ## Current task update — 2026-10-14
 
+Quick user-requested correction: fingertip framing now uses a configured fixed
+scale and whole-hand centering, avoiding inverse small-tip-span magnification
+when fingers fold or identity reacquires. Chemistry dwell default is 1 second;
+the panel label reads the resolved setting. Canonical change: 02/5; modules:
+submission renderer/settings/chemistry_view and tests. Presentation only;
+Core/report results unchanged. Full suite 566 passed; explicit test confirms
+selection at one second and no earlier activation.
+
 Latest reported defect fix: aliased/blurry rendering, delayed chemical release
 and extra fingertip vertices. Change: immutable HandView adds validated raw
 landmarks beside filtered motion landmarks; UI pinch/extension use raw input,
