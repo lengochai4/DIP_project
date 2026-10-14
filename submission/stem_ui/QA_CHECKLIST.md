@@ -6,7 +6,7 @@ không thay thế đặc tả canonical hoặc số liệu thực nghiệm Core.
 
 | Hạng mục | Kết quả kiểm tra |
 |---|---|
-| Core, filtering, replay, cấu hình, dữ liệu và extension | Toàn bộ 579 test dự án đạt; compile Python đạt |
+| Core, filtering, replay, cấu hình, dữ liệu và extension | Toàn bộ 580 test dự án đạt; compile Python đạt |
 | Nhận ngón, 0–10 đỉnh, raw/filtered, mất tay/tái nhận | Regression đạt; hai lượt replay qua MediaPipe, mỗi lượt 30 frame, nhận hai tay/tối đa 10 ngón; không tự thêm đỉnh hoặc auto-zoom theo span |
 | Cầm bằng một/hai tay, xoay, đổi cỡ, kéo dãn, buông | Regression về hysteresis, giới hạn và rebase đạt |
 | Ghép/tách, hóa trị, công thức, tên phân tử | Đối chiếu đồ thị; sửa lỗi liên kết cũ gần nhất chặn ghép mới |
@@ -21,6 +21,7 @@ không thay thế đặc tả canonical hoặc số liệu thực nghiệm Core.
 | Hộp cài camera | Tạm dừng thao tác tay/chuột lên cảnh phía sau; không xóa công việc |
 | UI ở 960×660, 1120×740, 1360×860 | Render thật, ảnh đã kiểm; thanh tác giả theo chiều rộng, footer căn giữa |
 | Ba chế độ, F11, fullscreen, resize | Chạy renderer 90 frame tổng hợp; sửa offset fullscreen; khôi phục cả vị trí/kích thước cũ; chặn resize cũ; có test chọn đúng monitor |
+| Crash bộ nhớ khi khởi động/vòng sự kiện | Tái hiện và sửa vòng đời SDL Window; test subprocess thực có GC/event polling/F11 và exit code đạt; kiểm tra cửa sổ app thường responding |
 | Thực thi lệnh và dữ liệu nhập | Không thấy eval/exec/pickle/shell=True trong mã app/Core/extension được quét; IP không đi vào shell |
 | Git | Chỉ stage mã/docs/test thuộc task; môi trường, video, logs và report artifacts cục bộ không đưa vào commit |
 

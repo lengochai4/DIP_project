@@ -8,6 +8,7 @@ import submission.stem_ui.renderer as renderer
 def test_fullscreen_tracks_current_display_and_restores_original_position(monkeypatch):
     r=renderer.SubmissionRenderer(SETTINGS)
     window=SimpleNamespace(position=(2100,180),display_index=1)
+    r._window=window
     calls=[]
     window.set_windowed=lambda:calls.append('windowed')
     monkeypatch.setattr(renderer,'Window',SimpleNamespace(from_display_module=lambda:window))

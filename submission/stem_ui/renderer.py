@@ -28,6 +28,7 @@ class SubmissionRenderer:
         self.windowed_position=None
         self.display_index=0
         self.restore_window_position=False
+        self._window=None
         self.fullscreen = False
         self.camera_visible = True
         self.help_visible = True
@@ -107,7 +108,11 @@ class SubmissionRenderer:
                 break
             except pygame.error:
                 if not samples: raise
-        window=Window.from_display_module()
+        # Pygame 2.6.1 stores a raw pointer to this wrapper in SDL's
+        # "pg_window" data. Keep it alive until the display is replaced/closed;
+        # a temporary wrapper leaves event.get() with a dangling pointer.
+        self._window=Window.from_display_module()
+        window=self._window
         if self.fullscreen:
             window.set_fullscreen(desktop=True)
         elif self.restore_window_position:
@@ -155,6 +160,7 @@ class SubmissionRenderer:
         outline.cache_clear()
         atom_mark.cache_clear()
         pygame.quit()
+        self._window=None
 
     def reset(self):
         if self.mode=='chemistry':
@@ -271,7 +277,7 @@ class SubmissionRenderer:
         return actions
 
     def toggle_fullscreen(self):
-        window=Window.from_display_module()
+        window=self._window
         if not self.fullscreen:
             self.windowed=pygame.display.get_window_size()
             self.windowed_position=window.position

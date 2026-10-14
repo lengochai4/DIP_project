@@ -2,6 +2,15 @@
 
 ## Current task update — 2026-10-14
 
+Startup crash correction: the borrowed Pygame SDL Window wrapper is now owned
+by the renderer until display replacement/close. Pygame 2.6.1 registers its
+raw pointer as SDL window data; allowing the wrapper to die before event polling
+caused a native access violation. Reproduced in the normal idle app, fixed with
+a persistent reference, and verified with a real event loop under forced GC
+and repeated F11 transitions. A subprocess regression now checks exit status,
+event polling and restore after native fullscreen. Full suite: 580 passed.
+Normal app launch was checked; Windows reports the window responding.
+
 Submission source convenience: the small DroidCam control now opens direct
 Wi-Fi settings (phone IP + port, default 4747) and uses DroidCam's HTTP
 `/video` feed. The last valid endpoint is stored locally for reuse. Switching
