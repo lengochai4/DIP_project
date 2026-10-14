@@ -172,21 +172,163 @@ class ProductWindow(QMainWindow):
         self.setCentralWidget(self.stack)
         toolbar = QToolBar("Session")
         toolbar.setMovable(False)
+        toolbar.setStyleSheet("""
+            QToolBar {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #15222e, stop:1 #0e1720);
+                border-bottom: 1px solid #223847;
+                padding: 4px 10px;
+                spacing: 8px;
+            }
+        """)
         self.addToolBar(toolbar)
+
+        # Brand Badge & Topic Identity
+        brand_box = QWidget()
+        bb_layout = QHBoxLayout(brand_box)
+        bb_layout.setContentsMargins(0, 0, 0, 0)
+        bb_layout.setSpacing(8)
+
         brand = QLabel("DIP TOUCHLESS STEM")
-        brand.setStyleSheet("font-size: 19px; font-weight: 600; padding: 6px;")
-        toolbar.addWidget(brand)
+        brand.setStyleSheet("""
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #06B6D4, stop:1 #8B5CF6);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        """)
+        bb_layout.addWidget(brand)
+
+        topic_lbl = QLabel("Tương tác STEM 3D không chạm · DIP Pipeline")
+        topic_lbl.setStyleSheet("color: #72bfcc; font-size: 11px; font-weight: 600;")
+        topic_lbl.setToolTip(
+            "Đề tài: Tương tác STEM 3D không chạm thời gian thực sử dụng tiền xử lý ảnh thích nghi "
+            "và lọc tín hiệu chuyển động với một camera RGB"
+        )
+        bb_layout.addWidget(topic_lbl)
+        toolbar.addWidget(brand_box)
+
+        # Team authors badge
+        authors_lbl = QLabel("👥 Nhóm: Lê Ngọc Hải · Nguyễn Đắc Lộc · Trần Tuấn Kiệt")
+        authors_lbl.setStyleSheet("""
+            color: #d1dde3;
+            font-size: 11px;
+            font-weight: 600;
+            background: #1c2b37;
+            border: 1px solid #2c4252;
+            padding: 4px 10px;
+            border-radius: 6px;
+        """)
+        authors_lbl.setToolTip("Nhóm tác giả thực hiện đồ án môn Xử lý ảnh số (DIP)")
+        toolbar.addWidget(authors_lbl)
+
         spacer = QWidget()
         spacer.setSizePolicy(
             spacer.sizePolicy().Policy.Expanding, spacer.sizePolicy().Policy.Preferred
         )
         toolbar.addWidget(spacer)
+
+        # Quick Snapshot button
+        self.snapshot_button = QPushButton("📸 Chụp 3D")
+        self.snapshot_button.setToolTip("Chụp ảnh mô hình 3D hiện tại và lưu vào thư mục runs/snapshots (PNG)")
+        self.snapshot_button.setStyleSheet("""
+            QPushButton {
+                background: #1c2b37;
+                border: 1px solid #314a59;
+                color: #efca82;
+                font-weight: 600;
+                font-size: 11px;
+                padding: 4px 10px;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background: #253949;
+                border-color: #efca82;
+            }
+        """)
+        self.snapshot_button.clicked.connect(self.take_snapshot)
+        toolbar.addWidget(self.snapshot_button)
+
         self.tracking_label = QLabel("Camera stopped")
+        self.tracking_label.setStyleSheet("""
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            font-weight: 700;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 6px;
+        """)
         toolbar.addWidget(self.tracking_label)
-        self.start_button = QPushButton("Start camera")
+
+        self.cam_combo = QComboBox()
+        self.cam_combo.setToolTip("Chọn thiết bị Camera (Webcam 0, Webcam 1...)")
+        self.cam_combo.addItem("📷 Cam 0", 0)
+        self.cam_combo.addItem("📷 Cam 1", 1)
+        self.cam_combo.addItem("📷 Cam 2", 2)
+        cur_cam = min(2, max(0, getattr(self.settings, "camera_index", 0)))
+        self.cam_combo.setCurrentIndex(cur_cam)
+        self.cam_combo.setStyleSheet("""
+            QComboBox {
+                background: #1c2b37;
+                border: 1px solid #314a59;
+                color: #d1dde3;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 4px 6px;
+                border-radius: 6px;
+            }
+            QComboBox:hover { border-color: #0ea5e9; }
+        """)
+        self.cam_combo.currentIndexChanged.connect(
+            lambda idx: self.set_preference("camera_index", self.cam_combo.itemData(idx))
+        )
+        toolbar.addWidget(self.cam_combo)
+
+        self.start_button = QPushButton("▶ Bật camera")
+        self.start_button.setStyleSheet("""
+            QPushButton {
+                background: #0284c7;
+                color: #ffffff;
+                font-weight: 700;
+                font-size: 11px;
+                padding: 5px 12px;
+                border-radius: 6px;
+                border: 1px solid #0369a1;
+            }
+            QPushButton:hover {
+                background: #0ea5e9;
+            }
+            QPushButton:disabled {
+                background: #1e293b;
+                color: #64748b;
+                border-color: #334155;
+            }
+        """)
         self.start_button.clicked.connect(self.start_camera)
         toolbar.addWidget(self.start_button)
-        self.stop_button = QPushButton("Stop")
+
+        self.stop_button = QPushButton("⏹ Dừng")
+        self.stop_button.setStyleSheet("""
+            QPushButton {
+                background: #1f2937;
+                color: #f87171;
+                font-weight: 600;
+                font-size: 11px;
+                padding: 5px 10px;
+                border-radius: 6px;
+                border: 1px solid #374151;
+            }
+            QPushButton:hover {
+                background: #374151;
+            }
+            QPushButton:disabled {
+                background: #1e293b;
+                color: #64748b;
+                border-color: #334155;
+            }
+        """)
         self.stop_button.clicked.connect(self.stop_camera)
         self.stop_button.setEnabled(False)
         toolbar.addWidget(self.stop_button)
@@ -306,38 +448,76 @@ class ProductWindow(QMainWindow):
         self.tools_button = button(hidden_layout, "Tools", self.show_tools, checkable=True)
         self.reset_button = button(hidden_layout, "Reset view", self.reset_view)
 
-        # Sleek academic presentation header bar (reserving space for logo, project name, 3 team members)
+        # Sleek academic presentation header bar (project title, active lab, team members)
         header_bar = QFrame()
         header_bar.setObjectName("ExploreHeader")
         header_bar.setStyleSheet("""
             QFrame#ExploreHeader {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(20, 32, 44, 235),
-                    stop:0.5 rgba(26, 42, 58, 240),
-                    stop:1 rgba(20, 32, 44, 235));
-                border: 1px solid #284457;
+                    stop:0 rgba(16, 26, 34, 245),
+                    stop:0.5 rgba(23, 37, 48, 250),
+                    stop:1 rgba(16, 26, 34, 245));
+                border: 1px solid #314a59;
                 border-radius: 8px;
-                min-height: 42px;
-                max-height: 42px;
+                min-height: 44px;
+                max-height: 44px;
             }
         """)
         header_layout = QHBoxLayout(header_bar)
         header_layout.setContentsMargins(14, 0, 14, 0)
+        header_layout.setSpacing(14)
 
-        self.school_label = QLabel("")
-        self.school_label.setStyleSheet("color: #72bfcc; font-weight: bold; font-size: 11px;")
-        header_layout.addWidget(self.school_label)
+        # Left: Topic Badge & Title
+        title_box = QWidget()
+        tb_layout = QHBoxLayout(title_box)
+        tb_layout.setContentsMargins(0, 0, 0, 0)
+        tb_layout.setSpacing(8)
+
+        badge_lbl = QLabel("DIP TOUCHLESS STEM")
+        badge_lbl.setStyleSheet("""
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #06B6D4, stop:1 #8B5CF6);
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 7px;
+            border-radius: 4px;
+        """)
+
+        self.school_label = QLabel("Real-Time 3D Interaction · DIP Pipeline")
+        self.school_label.setStyleSheet("color: #72bfcc; font-weight: 600; font-size: 11px;")
+        self.school_label.setToolTip("Đề tài: Tương tác STEM 3D không chạm thời gian thực sử dụng tiền xử lý ảnh thích nghi và lọc tín hiệu chuyển động với một camera RGB")
+        tb_layout.addWidget(badge_lbl)
+        tb_layout.addWidget(self.school_label)
+        header_layout.addWidget(title_box)
 
         header_layout.addStretch(1)
 
-        self.lab_title = QLabel("")
-        self.lab_title.setStyleSheet("color: #efca82; font-weight: bold; font-size: 12px;")
+        # Center: Active STEM Lab Indicator
+        self.lab_title = QLabel(f"🔬 {self.registry.current.title}")
+        self.lab_title.setStyleSheet("""
+            color: #efca82;
+            font-weight: 700;
+            font-size: 12px;
+            background: rgba(239, 202, 130, 0.12);
+            border: 1px solid rgba(239, 202, 130, 0.35);
+            padding: 4px 12px;
+            border-radius: 6px;
+        """)
         header_layout.addWidget(self.lab_title)
 
         header_layout.addStretch(1)
 
-        self.team_label = QLabel("")
-        self.team_label.setStyleSheet("color: #8fa6b2; font-size: 11px; font-weight: 500;")
+        # Right: Team Members
+        self.team_label = QLabel("👥 Nhóm: Lê Ngọc Hải · Nguyễn Đắc Lộc · Trần Tuấn Kiệt")
+        self.team_label.setStyleSheet("""
+            color: #d1dde3;
+            font-size: 11px;
+            font-weight: 600;
+            background: #213340;
+            border: 1px solid #314a59;
+            padding: 4px 10px;
+            border-radius: 6px;
+        """)
         header_layout.addWidget(self.team_label)
 
         layout.addWidget(header_bar)
@@ -364,9 +544,9 @@ class ProductWindow(QMainWindow):
             )
         )
 
-        # Empty placeholder frame for future gesture tutorial & project introduction (Item 1)
+        # Supportive Interactive Sidebar (Lab Selector, Quick Actions & Gesture Reference)
         self.sidebar_frame = QFrame()
-        self.sidebar_frame.setFixedWidth(190)
+        self.sidebar_frame.setFixedWidth(225)
         self.sidebar_frame.setStyleSheet("""
             QFrame {
                 background: #13202c;
@@ -375,17 +555,130 @@ class ProductWindow(QMainWindow):
             }
         """)
         sidebar_layout = QVBoxLayout(self.sidebar_frame)
-        sidebar_layout.setContentsMargins(12, 14, 12, 14)
-        sidebar_layout.setSpacing(8)
+        sidebar_layout.setContentsMargins(12, 12, 12, 12)
+        sidebar_layout.setSpacing(10)
 
-        self.sidebar_title = QLabel("HƯỚNG DẪN & GIỚI THIỆU")
-        self.sidebar_title.setStyleSheet("color: #72bfcc; font-weight: bold; font-size: 11px; letter-spacing: 0.5px;")
-        sidebar_layout.addWidget(self.sidebar_title)
+        # Section 1: Lab Switcher Dropdown
+        lbl_lab_select = QLabel("CHỌN PHÒNG LAB STEM")
+        lbl_lab_select.setStyleSheet("color: #72bfcc; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;")
+        sidebar_layout.addWidget(lbl_lab_select)
 
-        self.sidebar_content = QLabel("")
+        self.lab_combo = QComboBox()
+        lab_icons = {
+            "coordinate": "📐", "vector": "↗️", "calculus": "📊",
+            "molecule": "🧪", "crystal": "💎", "protein": "🧬",
+            "orbital": "🪐", "optics": "🔦", "wave": "🌊",
+        }
+        for key, lab in self.registry.extensions.items():
+            icon = lab_icons.get(key, "🔬")
+            self.lab_combo.addItem(f"{icon} {lab.title.replace(' Lab', '')}", key)
+        self.lab_combo.setStyleSheet("""
+            QComboBox {
+                background: #1c2b36;
+                border: 1px solid #314a59;
+                border-radius: 6px;
+                padding: 6px 8px;
+                font-size: 11px;
+                color: #e5eef1;
+                font-weight: 600;
+            }
+            QComboBox:hover { border-color: #72bfcc; }
+        """)
+        self.lab_combo.currentIndexChanged.connect(
+            lambda idx: self.select_lab(self.lab_combo.itemData(idx))
+        )
+        sidebar_layout.addWidget(self.lab_combo)
+
+        # Section 2: Preset Views
+        lbl_views = QLabel("GÓC NHÌN CHUẨN")
+        lbl_views.setStyleSheet("color: #72bfcc; font-weight: 700; font-size: 10px; letter-spacing: 0.5px; margin-top: 2px;")
+        sidebar_layout.addWidget(lbl_views)
+
+        views_row = QHBoxLayout()
+        views_row.setSpacing(4)
+        btn_iso = QPushButton("📐 Đẳng cự")
+        btn_iso.setToolTip("Góc nhìn phối cảnh đẳng cự 3D (phím 1)")
+        btn_iso.clicked.connect(lambda: self.set_view_preset("isometric"))
+
+        btn_front = QPushButton("⏹ Trước")
+        btn_front.setToolTip("Góc nhìn trực diện mặt trước (phím 2)")
+        btn_front.clicked.connect(lambda: self.set_view_preset("front"))
+
+        btn_top = QPushButton("⬆ Trên")
+        btn_top.setToolTip("Góc nhìn từ trên xuống (phím 3)")
+        btn_top.clicked.connect(lambda: self.set_view_preset("top"))
+
+        views_row.addWidget(btn_iso)
+        views_row.addWidget(btn_front)
+        views_row.addWidget(btn_top)
+        sidebar_layout.addLayout(views_row)
+
+        # Section 3: Quick Actions Toolbar
+        lbl_quick = QLabel("THAO TÁC NHANH")
+        lbl_quick.setStyleSheet("color: #72bfcc; font-weight: 700; font-size: 10px; letter-spacing: 0.5px; margin-top: 4px;")
+        sidebar_layout.addWidget(lbl_quick)
+
+        actions_grid = QGridLayout()
+        actions_grid.setSpacing(6)
+
+        btn_reset_view = QPushButton("↺ Đặt lại (R)")
+        btn_reset_view.setToolTip("Đặt lại góc nhìn và zoom chuẩn ban đầu (phím tắt R)")
+        btn_reset_view.clicked.connect(self.reset_view)
+        actions_grid.addWidget(btn_reset_view, 0, 0)
+
+        btn_toggle_lock = QPushButton("🔒 Khóa (L)")
+        btn_toggle_lock.setCheckable(True)
+        btn_toggle_lock.setToolTip("Khóa góc xoay để thuận tiện vẽ hình / đo đạc (phím tắt L)")
+        btn_toggle_lock.clicked.connect(self._toggle_view_lock)
+        self._btn_view_lock = btn_toggle_lock
+        actions_grid.addWidget(btn_toggle_lock, 0, 1)
+
+        btn_toggle_guide = QPushButton("📖 Hướng dẫn (G)")
+        btn_toggle_guide.setCheckable(True)
+        btn_toggle_guide.setChecked(self.settings.lab_guide)
+        btn_toggle_guide.clicked.connect(lambda chk: self.show_guide(chk))
+        self._btn_sidebar_guide = btn_toggle_guide
+        actions_grid.addWidget(btn_toggle_guide, 1, 0)
+
+        btn_snap = QPushButton("📸 Chụp ảnh 3D")
+        btn_snap.setToolTip("Chụp ảnh mô hình 3D và lưu vào runs/snapshots (phím P)")
+        btn_snap.clicked.connect(self.take_snapshot)
+        actions_grid.addWidget(btn_snap, 1, 1)
+
+        sidebar_layout.addLayout(actions_grid)
+
+        # Section 3: Gesture Quick Reference
+        lbl_gesture_ref = QLabel("HƯỚNG DẪN CỬ CHỈ BÀN TAY")
+        lbl_gesture_ref.setStyleSheet("color: #efca82; font-weight: 700; font-size: 10px; letter-spacing: 0.5px; margin-top: 4px;")
+        sidebar_layout.addWidget(lbl_gesture_ref)
+
+        self.sidebar_content = QLabel(
+            "• <b>1 ngón trỏ</b>: Xoay góc nhìn 3D<br>"
+            "• <b>Chụm trỏ + cái</b>: Di chuyển / Thu phóng<br>"
+            "• <b>Xòe các ngón</b>: Sinh hình học trực tiếp<br>"
+            "• <b>Giữ yên 1.3s</b>: Bấm chọn nút trên màn hình"
+        )
+        self.sidebar_content.setTextFormat(Qt.TextFormat.RichText)
         self.sidebar_content.setWordWrap(True)
-        self.sidebar_content.setStyleSheet("color: #8fa6b2; font-size: 12px; line-height: 1.4;")
+        self.sidebar_content.setStyleSheet("color: #93a8b4; font-size: 11px; line-height: 1.4;")
         sidebar_layout.addWidget(self.sidebar_content)
+
+        # Section 4: Live Sensitivity
+        lbl_sens = QLabel("ĐỘ NHẠY XOAY")
+        lbl_sens.setStyleSheet("color: #72bfcc; font-weight: 700; font-size: 10px; letter-spacing: 0.5px; margin-top: 4px;")
+        sidebar_layout.addWidget(lbl_sens)
+
+        sens_row = QHBoxLayout()
+        self.sens_slider = QDoubleSpinBox()
+        self.sens_slider.setRange(0.25, 3.0)
+        self.sens_slider.setSingleStep(0.25)
+        self.sens_slider.setValue(self.settings.manipulation_sensitivity)
+        self.sens_slider.valueChanged.connect(
+            lambda v: self.set_preference("manipulation_sensitivity", v)
+        )
+        sens_row.addWidget(self.sens_slider)
+        sidebar_layout.addLayout(sens_row)
+
         sidebar_layout.addStretch(1)
         sidebar_layout.addWidget(self.library)
 
@@ -735,6 +1028,12 @@ class ProductWindow(QMainWindow):
             self.snap_control.blockSignals(True)
             self.snap_control.setChecked(value)
             self.snap_control.blockSignals(False)
+        if key == "camera_index" and hasattr(self, "cam_combo") and self.cam_combo is not None:
+            self.cam_combo.blockSignals(True)
+            idx = self.cam_combo.findData(value)
+            if idx >= 0:
+                self.cam_combo.setCurrentIndex(idx)
+            self.cam_combo.blockSignals(False)
         self.viewport.settings = self.settings
         if key == "lab_guide":
             self.reveal_guide(value)
@@ -826,6 +1125,10 @@ class ProductWindow(QMainWindow):
 
     def reveal_guide(self, visible):
         self.guide_button.setChecked(visible)
+        if hasattr(self, "_btn_sidebar_guide") and self._btn_sidebar_guide is not None:
+            self._btn_sidebar_guide.blockSignals(True)
+            self._btn_sidebar_guide.setChecked(visible)
+            self._btn_sidebar_guide.blockSignals(False)
         if visible:
             self.reveal_tools(False)
         self.guide_dock.setVisible(visible and self.page_name == "Explore")
@@ -1160,7 +1463,14 @@ class ProductWindow(QMainWindow):
         self.library.blockSignals(True)
         self.library.setCurrentRow(tuple(self.registry.extensions).index(key))
         self.library.blockSignals(False)
-        self.lab_title.setText("")
+        if hasattr(self, "lab_combo") and self.lab_combo is not None:
+            if key in tuple(self.registry.extensions):
+                idx = tuple(self.registry.extensions).index(key)
+                self.lab_combo.blockSignals(True)
+                self.lab_combo.setCurrentIndex(idx)
+                self.lab_combo.blockSignals(False)
+        if hasattr(self, "lab_title") and self.lab_title is not None:
+            self.lab_title.setText(f"🔬 {lab.title}")
         self.refresh_inspector(rebuild=True)
         self.refresh_guide()
         if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
@@ -1243,9 +1553,100 @@ class ProductWindow(QMainWindow):
 
     def _toggle_view_lock(self):
         self._view_locked = not getattr(self, "_view_locked", False)
+        if hasattr(self, "_btn_view_lock") and self._btn_view_lock is not None:
+            self._btn_view_lock.blockSignals(True)
+            self._btn_view_lock.setChecked(self._view_locked)
+            self._btn_view_lock.setText("🔓 Mở (L)" if self._view_locked else "🔒 Khóa (L)")
+            self._btn_view_lock.blockSignals(False)
+        msg = (
+            "🔒 Đã KHÓA góc nhìn 3D (không bị xoay khi thao tác)"
+            if self._view_locked
+            else "🔓 Đã MỞ KHÓA xoay góc nhìn 3D"
+        )
+        if hasattr(self, "feedback") and self.feedback is not None:
+            self.feedback.setText(msg)
+        self.statusBar().showMessage(msg, 3000)
         if hasattr(self, "orientation_gizmo") and self.orientation_gizmo is not None:
             self.orientation_gizmo.update()
         self.viewport.update()
+
+    def set_view_preset(self, preset: str):
+        lab = self.registry.current
+        if preset == "isometric":
+            lab.yaw, lab.pitch = 0.35, 0.35
+        elif preset == "front":
+            lab.yaw, lab.pitch = 0.0, 0.0
+        elif preset == "top":
+            lab.yaw, lab.pitch = 0.0, 1.5707963
+        elif preset == "side":
+            lab.yaw, lab.pitch = 1.5707963, 0.0
+        if hasattr(lab, "frozen_shapes"):
+            for s in lab.frozen_shapes:
+                s.yaw = lab.yaw
+                s.pitch = lab.pitch
+        self._prev_rotate_xy = None
+        if hasattr(self, "_rotate_history"):
+            self._rotate_history.clear()
+        self._was_rotating = False
+        if hasattr(self, "orientation_gizmo") and self.orientation_gizmo is not None:
+            self.orientation_gizmo.update()
+        self.viewport.update()
+        msg = f"Đã chuyển sang góc nhìn: {preset.capitalize()}"
+        if hasattr(self, "feedback") and self.feedback is not None:
+            self.feedback.setText(msg)
+        self.statusBar().showMessage(msg, 3000)
+
+    def take_snapshot(self):
+        from datetime import datetime
+        snap_dir = ROOT / "runs" / "snapshots"
+        snap_dir.mkdir(parents=True, exist_ok=True)
+        lab_id = getattr(getattr(self, "registry", None), "current", None)
+        lid = lab_id.id if lab_id is not None else "stem"
+        fname = f"stem_{lid}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        fpath = snap_dir / fname
+        pixmap = self.viewport.grab()
+        success = pixmap.save(str(fpath), "PNG")
+        if success:
+            msg = f"📸 Đã lưu ảnh chụp 3D vào: runs/snapshots/{fname}"
+            if hasattr(self, "feedback") and self.feedback is not None:
+                self.feedback.setText(msg)
+            self.statusBar().showMessage(msg, 5000)
+        else:
+            self.statusBar().showMessage("❌ Không thể lưu ảnh chụp 3D", 3000)
+
+    def update_tracking_badge(self, text: str):
+        self.tracking_label.setText(text)
+        t_upper = text.upper()
+        if "TRACKING" in t_upper or "VALID" in t_upper or "READY" in t_upper:
+            self.tracking_label.setStyleSheet("""
+                background: rgba(16, 185, 129, 0.15);
+                color: #10b981;
+                border: 1px solid rgba(16, 185, 129, 0.35);
+                font-weight: 700;
+                font-size: 11px;
+                padding: 4px 10px;
+                border-radius: 6px;
+            """)
+        elif "REACQUIR" in t_upper or "STARTING" in t_upper:
+            self.tracking_label.setStyleSheet("""
+                background: rgba(245, 158, 11, 0.15);
+                color: #f59e0b;
+                border: 1px solid rgba(245, 158, 11, 0.35);
+                font-weight: 700;
+                font-size: 11px;
+                padding: 4px 10px;
+                border-radius: 6px;
+            """)
+        else:
+            self.tracking_label.setStyleSheet("""
+                background: rgba(239, 68, 68, 0.15);
+                color: #ef4444;
+                border: 1px solid rgba(239, 68, 68, 0.35);
+                font-weight: 700;
+                font-size: 11px;
+                padding: 4px 10px;
+                border-radius: 6px;
+            """)
 
     def confirm_reset_lab(self):
         self.cancel()
@@ -1510,6 +1911,10 @@ class ProductWindow(QMainWindow):
                 ("M", lambda: self.tool_select.setCurrentText("Distance")),
                 ("R", self.reset_view),
                 ("L", self._toggle_view_lock),
+                ("P", self.take_snapshot),
+                ("1", lambda: self.set_view_preset("isometric")),
+                ("2", lambda: self.set_view_preset("front")),
+                ("3", lambda: self.set_view_preset("top")),
                 ("Esc", self.escape_explore),
                 ("G", lambda: self.show_guide(not self.guide_button.isChecked())),
                 ("Ctrl+Shift+F", lambda: self.set_expanded(not self._expanded)),
@@ -1615,7 +2020,7 @@ class ProductWindow(QMainWindow):
             self.config, self.settings.camera_index, self, engine=self.settings.engine
         )
         self.worker.failure.connect(self.camera_error)
-        self.worker.status.connect(self.tracking_label.setText)
+        self.worker.status.connect(self.update_tracking_badge)
         self.worker.finished.connect(self.camera_finished)
         self.last_frame_time = None
         self._prev_frame_time = None
@@ -1627,11 +2032,16 @@ class ProductWindow(QMainWindow):
     def camera_error(self, message):
         self._camera_failure = message
         self.cancel()
+        if "failed to open camera index" in message.lower() and getattr(self.settings, "camera_index", 0) != 0:
+            self.feedback.setText(f"Camera index {self.settings.camera_index} không khả dụng. Đang tự động chuyển về Camera 0...")
+            self.set_preference("camera_index", 0)
+            QTimer.singleShot(600, self.start_camera)
+            return
         self.feedback.setText(
-            "Camera or hand tracking unavailable. Open Analyze for the error details. Mouse and keyboard remain available."
+            "Camera hoặc mô hình tay không khả dụng. Kiểm tra lại thiết bị hoặc quyền truy cập camera trong Windows Settings."
         )
         self.diagnostics.setPlainText(message)
-        self.tracking_label.setText("Tracking unavailable")
+        self.update_tracking_badge("Tracking unavailable")
 
     def camera_finished(self):
         self.clear_tracking(
@@ -1676,7 +2086,7 @@ class ProductWindow(QMainWindow):
             camera.product_landmarks = {}
             camera.message = message
             camera.update()
-        self.tracking_label.setText(message)
+        self.update_tracking_badge(message)
         self.home_status.setText(
             f"Tracking: {message}   ·   Gesture control paused; mouse controls remain available in WORLD."
         )
@@ -2118,7 +2528,7 @@ class ProductWindow(QMainWindow):
                                 and not any(pointing_hand.fingers[2:])
                             )
                             # Solution 1: Buffer Zone (disable rotation when finger in top-right toolbar area)
-                            in_toolbar_zone = screen_ix > 0.60 and screen_iy < 0.42
+                            in_toolbar_zone = is_coord and (screen_ix > 0.78 and screen_iy < 0.28)
 
                             # Solution 2: Context-aware Lock (disable rotation while toolbar open, drawing shape, or gizmo hovered)
                             toolbar_busy = (
@@ -2170,7 +2580,7 @@ class ProductWindow(QMainWindow):
                                     d_rx = screen_ix - self._prev_rotate_xy[0]
                                     d_ry = screen_iy - self._prev_rotate_xy[1]
                                     if math.hypot(d_rx, d_ry) < 0.15:
-                                        ROTATION_SENSITIVITY = 2.64  # Increased by 20% (was 2.2)
+                                        ROTATION_SENSITIVITY = 5.20 * getattr(self.settings, "manipulation_sensitivity", 1.0)
                                         if active_shape is not None:
                                             active_shape.yaw = (
                                                 active_shape.yaw + d_rx * ROTATION_SENSITIVITY
@@ -2219,45 +2629,11 @@ class ProductWindow(QMainWindow):
                                 self._prev_rotate_xy = screen_ixy
                             else:
                                 if self._was_rotating:
-                                    # Solution A Disengagement Rollback: Cancel out trailing curl flick
-                                    if len(self._rotate_history) >= 3:
-                                        rb_idx = 0 if len(self._rotate_history) <= 4 else -4
-                                        rb_yaw, rb_pitch = self._rotate_history[rb_idx]
-                                        if active_shape is not None:
-                                            active_shape.yaw = rb_yaw
-                                            active_shape.pitch = rb_pitch
-                                        if hasattr(self.registry.current, "yaw"):
-                                            self.registry.current.yaw = rb_yaw
-                                            self.registry.current.pitch = rb_pitch
-                                        self.viewport.update()
-                                        if hasattr(self, "orientation_gizmo") and self.orientation_gizmo is not None:
-                                            self.orientation_gizmo.update()
                                     self._rotate_history.clear()
                                     self._was_rotating = False
                                 self._prev_rotate_xy = None
                     else:
                         if self._was_rotating:
-                            if len(self._rotate_history) >= 3:
-                                rb_idx = 0 if len(self._rotate_history) <= 4 else -4
-                                rb_yaw, rb_pitch = self._rotate_history[rb_idx]
-                                active_shape = None
-                                if hasattr(self.registry.current, "frozen_shapes") and self.registry.current.frozen_shapes:
-                                    sel_id = getattr(self.registry.current, "selected_shape_id", None)
-                                    for fs in self.registry.current.frozen_shapes:
-                                        if fs.shape_id == sel_id:
-                                            active_shape = fs
-                                            break
-                                    if active_shape is None:
-                                        active_shape = self.registry.current.frozen_shapes[-1]
-                                if active_shape is not None:
-                                    active_shape.yaw = rb_yaw
-                                    active_shape.pitch = rb_pitch
-                                if hasattr(self.registry.current, "yaw"):
-                                    self.registry.current.yaw = rb_yaw
-                                    self.registry.current.pitch = rb_pitch
-                                self.viewport.update()
-                                if hasattr(self, "orientation_gizmo") and self.orientation_gizmo is not None:
-                                    self.orientation_gizmo.update()
                             self._rotate_history.clear()
                             self._was_rotating = False
                         self._drag_shape = None
@@ -2448,7 +2824,7 @@ class ProductWindow(QMainWindow):
             if self.settings.engine == "LEGACY"
             else "TRACKING" if valid else reason
         )
-        self.tracking_label.setText(tracking + f" · {len(hands)} hand(s)")
+        self.update_tracking_badge(tracking + f" · {len(hands)} hand(s)")
         gesture = (
             ("LEGACY" if legacy_usable else "LOST")
             if self.settings.engine == "LEGACY"

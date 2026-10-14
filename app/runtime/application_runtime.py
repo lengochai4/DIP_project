@@ -116,7 +116,21 @@ class RuntimeWorker(QThread):
                             "valid": valid,
                             "reason": reason,
                             "hands": {
-                                k: [asdict(p) for p in v] for k, v in filtered.items()
+                                k: [
+                                    {
+                                        "index": p.index,
+                                        "x": p.x,
+                                        "y": p.y,
+                                        "z": p.z,
+                                        "coordinate_space": getattr(
+                                            p,
+                                            "coordinate_space",
+                                            getattr(p, "space", None),
+                                        ),
+                                    }
+                                    for p in v
+                                ]
+                                for k, v in filtered.items()
                             },
                         },
                         default=str,

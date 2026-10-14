@@ -141,6 +141,10 @@ class OpenCVCameraSource:
             cv2.CAP_PROP_FPS,
             self._requested_fps,
         )
+        capture.set(
+            cv2.CAP_PROP_BUFFERSIZE,
+            1,
+        )
 
         start_time = self._clock()
 

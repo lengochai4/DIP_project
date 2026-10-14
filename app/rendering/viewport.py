@@ -204,12 +204,15 @@ class SurfaceMixin:
         is_coord = getattr(lab, "id", "") == "coordinate"
         show_camera = (self.mode == "HAND" or (is_coord and self.image is not None))
         if show_camera and self.image is not None:
-            img = (
-                self.image.mirrored(True, False)
-                if self.settings.mirror
-                else self.image
-            )
-            painter.drawImage(QRectF(*self.image_rect()), img)
+            r = self.image_rect()
+            if self.settings.mirror:
+                painter.save()
+                painter.translate(r[0] + r[2], r[1])
+                painter.scale(-1, 1)
+                painter.drawImage(QRectF(0, 0, r[2], r[3]), self.image)
+                painter.restore()
+            else:
+                painter.drawImage(QRectF(*r), self.image)
             if self.settings.skeleton:
                 x, y, w, h = self.image_rect()
                 for landmarks in self.landmarks.values():
