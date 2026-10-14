@@ -9,7 +9,9 @@ import pygame
 from OpenGL import GL as gl, GLU as glu
 from .geometry import (Tip, FingerSelection, live_mesh, solid_mesh,
                        world_position, preview_position, TIPS)
+from .geometry import bone_transforms
 from .manipulation import GrabController
+from .chemistry_view import CameraChemistryView
 
 BG = (12,20,31)
 PANEL = (22,33,47)
@@ -53,6 +55,7 @@ class SubmissionRenderer:
         self.preview_surface = None
         self.last_overlay_at = 0.0
         self.last_overlay_key = None
+        self.chemistry=CameraChemistryView(settings,self)
 
     def open(self):
         pygame.init()
@@ -70,6 +73,7 @@ class SubmissionRenderer:
         self.unit_bone=gl.glGenLists(1)
         gl.glNewList(self.unit_bone,gl.GL_COMPILE)
         glu.gluCylinder(self.quadric,1,1,1,10,1); gl.glEndList()
+        self.chemistry.open()
         self.solid_lists={}
         for kind in KINDS:
             display_list=gl.glGenLists(1)
@@ -79,6 +83,7 @@ class SubmissionRenderer:
             self.solid_lists[kind]=display_list
 
     def _set_display(self):
+        self.chemistry.close()
         for display_list in getattr(self,'solid_lists',{}).values():
             gl.glDeleteLists(display_list,1)
         if hasattr(self,'texture'):
@@ -97,6 +102,7 @@ class SubmissionRenderer:
         self.overlay_surface=pygame.Surface(self.size,pygame.SRCALPHA)
         self.last_overlay_at=0.0; self.last_overlay_key=None
         if hasattr(self,'solid_lists'):
+            self.chemistry.open()
             self.unit_sphere=gl.glGenLists(1)
             gl.glNewList(self.unit_sphere,gl.GL_COMPILE)
             glu.gluSphere(self.quadric,1,16,12); gl.glEndList()
@@ -111,6 +117,7 @@ class SubmissionRenderer:
                 self.solid_lists[kind]=display_list
 
     def close(self):
+        self.chemistry.close()
         for display_list in getattr(self,'solid_lists',{}).values():
             gl.glDeleteLists(display_list,1)
         if hasattr(self,'texture'):
@@ -123,6 +130,8 @@ class SubmissionRenderer:
         pygame.quit()
 
     def reset(self):
+        if self.mode=='chemistry':
+            self.chemistry.input.command('frame'); self.chemistry.input.page='compact'; return
         self.yaw=32.; self.pitch=20.; self.zoom=1.
         self.object_yaw=self.object_pitch=0.; self.object_scale=1.
         self.grab.reset()
@@ -155,20 +164,32 @@ class SubmissionRenderer:
                 elif key == pygame.K_r:
                     self.reset()
                 elif key == pygame.K_s:
-                    self.cycle_scale_mode()
+                    if self.mode=='chemistry': self.chemistry.input.command('order')
+                    else: self.cycle_scale_mode()
+                elif key == pygame.K_p:
+                    self.enter_chemistry()
+                elif self.mode=='chemistry' and key==pygame.K_b:
+                    self.chemistry.input.command('elements' if self.chemistry.input.page=='compact' else 'compact')
+                elif self.mode=='chemistry' and key in (pygame.K_e,pygame.K_o,pygame.K_t,pygame.K_z,pygame.K_y,pygame.K_BACKSPACE,pygame.K_l,pygame.K_j):
+                    self.chemistry.input.command({pygame.K_e:'edit',pygame.K_o:'electrons',pygame.K_t:'table',pygame.K_z:'undo',
+                        pygame.K_y:'redo',pygame.K_BACKSPACE:'delete',pygame.K_l:'save',pygame.K_j:'load'}[key])
                 elif key == pygame.K_TAB:
-                    self.mode='tips' if self.mode=='solid' else 'solid'
+                    if self.mode=='solid': self.mode='tips'
+                    elif self.mode=='tips': self.enter_chemistry()
+                    else: self.mode='solid'; self.chemistry.input.release()
                 elif pygame.K_1 <= key <= pygame.K_4:
                     self.kind=KINDS[key-pygame.K_1]; self.mode='solid'
             elif event.type == pygame.MOUSEWHEEL:
-                self.zoom=float(np.clip(self.zoom*math.exp(event.y*.08),.55,1.8))
+                if self.mode!='chemistry': self.zoom=float(np.clip(self.zoom*math.exp(event.y*.08),.55,1.8))
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button==1:
                 action=next((a for rect,a in reversed(self.buttons) if rect.collidepoint(event.pos)),None)
                 if action:
                     if action.startswith('kind:'):
                         self.kind=action.split(':')[1]; self.mode='solid'; self.menu=False
                     elif action in ('solid','tips'):
-                        self.mode=action
+                        self.mode=action; self.chemistry.input.release()
+                    elif action=='chemistry':
+                        self.enter_chemistry()
                     elif action=='camera':
                         self.camera_visible=not self.camera_visible
                     elif action=='help':
@@ -184,9 +205,13 @@ class SubmissionRenderer:
                     else:
                         actions.append(action)
                 else:
-                    self.dragging=True
+                    if self.mode=='chemistry': self.chemistry.mouse('down',event.pos)
+                    else: self.dragging=True
             elif event.type == pygame.MOUSEBUTTONUP:
                 self.dragging=False
+                if self.mode=='chemistry' and event.button==1: self.chemistry.mouse('up',event.pos)
+            elif event.type == pygame.MOUSEMOTION and self.mode=='chemistry':
+                self.chemistry.mouse('move',event.pos)
             elif event.type == pygame.MOUSEMOTION and self.dragging:
                 self.yaw+=event.rel[0]*.3; self.pitch=float(np.clip(self.pitch+event.rel[1]*.3,-65,65))
         return actions
@@ -195,6 +220,10 @@ class SubmissionRenderer:
         self.fullscreen=not self.fullscreen
         self.size=pygame.display.get_desktop_sizes()[0] if self.fullscreen else self.windowed
         self._set_display()
+
+    def enter_chemistry(self):
+        self.mode='chemistry'; self.camera_visible=False; self.menu=False
+        self.grab.release(); self.chemistry.input.release()
 
     def cycle_scale_mode(self):
         modes=('uniform','stretch','distance','depth')
@@ -235,6 +264,8 @@ class SubmissionRenderer:
         now=time.monotonic()
         draw_dt=0 if self.last_draw_at is None else now-self.last_draw_at
         self.last_draw_at=now
+        if self.mode=='chemistry':
+            return self._draw_chemistry(snapshot,status,active,error,run_id,camera_index,replay,view,now,draw_dt)
         px=math.radians(self.pitch); yx=math.radians(self.yaw)
         rx=np.array(((1,0,0),(0,math.cos(px),-math.sin(px)),(0,math.sin(px),math.cos(px))))
         ry=np.array(((math.cos(yx),0,math.sin(yx)),(0,1,0),(-math.sin(yx),0,math.cos(yx))))
@@ -289,7 +320,7 @@ class SubmissionRenderer:
         alpha=1-math.exp(-math.tau*self.settings['live_response_hz']*max(0,draw_dt))
         hand_targets={(hand.slot,hand.generation,l.index):np.array(world_position(l,snapshot.image.shape[1]/snapshot.image.shape[0],self.settings))
                       for hand in hands for l in hand.landmarks}
-        self.hand_points={key:self.hand_points.get(key,value)+alpha*(value-self.hand_points.get(key,value))
+        self.hand_points={key:self._follow_point(self.hand_points.get(key,value),value,draw_dt)
                           for key,value in hand_targets.items()}
         self.live_points={key:self.hand_points[key] for key in targets}
         tips=[Tip(key[0],key[2],tuple(value)) for key,value in self.live_points.items()]
@@ -363,6 +394,40 @@ class SubmissionRenderer:
         self.clock.tick(self.settings['render_fps'])
         return len(hands),len(tips)
 
+    def _follow_point(self,current,target,dt):
+        error=float(np.linalg.norm(target-current))
+        hz=min(self.settings['live_response_max_hz'],self.settings['live_response_hz']+error*self.settings['live_response_gain'])
+        return current+(1-math.exp(-math.tau*hz*max(0,dt)))*(target-current)
+
+    def _draw_chemistry(self,snapshot,status,active,error,run_id,camera_index,replay,view,now,dt):
+        w,h=self.size
+        gl.glViewport(0,0,w,h); gl.glClearColor(*(c/255 for c in BG),1)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
+        fresh=snapshot is not None and active and now-snapshot.delivered_at<=self.settings['stale_after_s']
+        hands=snapshot.hands if fresh else ()
+        count=0
+        identity=(run_id,snapshot.frame_id) if fresh else None
+        if identity!=self.last_identity:
+            present={hand.slot for hand in hands}
+            for slot in self.last_slots-present: self.selectors[slot].reset()
+            for hand in hands:
+                if getattr(self,'selector_generation',{}).get(hand.slot)!=hand.generation: self.selectors[hand.slot].reset()
+                self.selectors[hand.slot].update(hand.landmarks,snapshot.image.shape[1]/snapshot.image.shape[0])
+            self.last_identity=identity; self.last_slots=present
+            self.selector_generation={hand.slot:hand.generation for hand in hands}
+        count=sum(len(self.selectors[hand.slot].active) for hand in hands)
+        self.chemistry.draw(snapshot,view,fresh,dt,run_id)
+        if now-self.last_overlay_at>=1/self.settings['overlay_fps'] or self.last_overlay_key!='chemistry':
+            overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,view,hands,[None]*count,fresh,[])
+            self.last_overlay_at=now; self.last_overlay_key='chemistry'
+        else: overlay=None
+        self._overlay(overlay)
+        if self.capture_path:
+            self._capture_back(self.capture_path); self.capture_path=None
+        self.last_draw_cpu_ms=(time.monotonic()-now)*1000
+        pygame.display.flip(); self.clock.tick(self.settings['render_fps'])
+        return len(hands),count
+
     def _draw_ui(self,snapshot,status,active,error,run_id,camera_index,replay,view,hands,tips,fresh,world_labels):
         w,h=self.size
         vx,vy,vw,vh=view
@@ -381,11 +446,12 @@ class SubmissionRenderer:
         self._button(overlay,'Thu khung' if self.fullscreen else 'Toàn màn',(x+360,23,124,42),'fullscreen',self.fullscreen)
         self._button(overlay,'Khối 3D',(24,99,116,35),'solid',self.mode=='solid')
         self._button(overlay,'Đầu ngón',(148,99,116,35),'tips',self.mode=='tips')
+        self._button(overlay,'Hóa học AR',(276,99,140,35),'chemistry',self.mode=='chemistry')
         if self.mode=='solid':
-            self._button(overlay,NAMES[KINDS.index(self.kind)]+'  v',(280,99,150,35),'menu')
+            self._button(overlay,NAMES[KINDS.index(self.kind)]+'  v',(428,99,150,35),'menu')
             label={'uniform':'2 tay: cỡ đều','stretch':'2 tay: kéo dãn','distance':'1 tay: đổi cỡ','depth':'1 tay: tiến/lùi'}[self.grab.scale_mode]
-            self._button(overlay,label,(442,99,142,35),'scale_mode',self.grab.scale_mode!='uniform')
-        self._button(overlay,'Đặt lại góc nhìn',(w-170,99,146,35),'reset')
+            self._button(overlay,label,(590,99,142,35),'scale_mode',self.grab.scale_mode!='uniform')
+        self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại góc nhìn',(w-170,99,146,35),'reset')
         self._text(overlay,f'{len(hands)} tay • {len(tips)} đầu ngón duỗi' if fresh else status,(vx+12,vy+12),15,ACCENT if hands else MUTED)
         if self.mode=='solid' and fresh:
             self._text(overlay,self.grab.feedback,(vx+12,vy+38),15,ACCENT if self.grab.slots else MUTED)
@@ -439,7 +505,7 @@ class SubmissionRenderer:
                 self._wrap(overlay,error,(px+18,py+489),300,15,(246,165,134))
             if not active:
                 self._button(overlay,f'Camera {camera_index} • đổi',(px+18,py+310,304,38),'next_camera')
-        if self.help_visible:
+        if self.help_visible and self.mode!='chemistry':
             hw=min(390,vw-36); hx=vx+18; hy=vy+58
             pygame.draw.rect(overlay,(22,33,47,240),(hx,hy,hw,170),border_radius=14)
             self._text(overlay,'Thử trong 3 bước',(hx+16,hy+13),20,ACCENT)
@@ -451,13 +517,25 @@ class SubmissionRenderer:
             self._text(overlay,'Mở ngón để buông • S đổi thao tác • H ẩn hướng dẫn',(hx+16,hy+143),13,MUTED)
         if self.menu and self.mode=='solid':
             for i,name in enumerate(NAMES):
-                self._button(overlay,name,(280,139+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
+                self._button(overlay,name,(428,139+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
         if error and not self.camera_visible:
             pygame.draw.rect(overlay,(62,35,37,245),(vx+12,h-127,vw-24,68),border_radius=12)
             self._wrap(overlay,error,(vx+24,h-118),vw-48,15,(246,165,134))
-        self._text(overlay,'Kéo chuột: đổi góc nhìn   •   Cuộn: góc nhìn gần/xa   •   R: đặt lại',(24,h-48),15,MUTED)
+        if self.mode=='chemistry':
+            scene=self.chemistry.scene
+            selected=scene.selected
+            label=scene.describe(scene.component(selected)) if selected in scene.atoms else scene.message
+            self._text(overlay,label,(24,h-48),17,ACCENT)
+            for text,pos in self.chemistry.labels:
+                size=self.fonts[15].size(text)
+                pygame.draw.rect(overlay,(12,20,31,210),(pos[0]-3,pos[1]-2,size[0]+6,size[1]+4),border_radius=4)
+                self._text(overlay,text,pos,15,INK)
+            # Status stays below the scene so it cannot obscure panel headings.
+        else:
+            self._text(overlay,'Kéo chuột: đổi góc nhìn   •   Cuộn: góc nhìn gần/xa   •   R: đặt lại',(24,h-48),15,MUTED)
         detail=('Bao 3D từ đầu ngón • z tương đối của từng tay' if getattr(self,'live_mesh_mode','')=='hull3d'
                 else 'Đầu ngón gần đồng phẳng • độ dày là minh họa') if self.mode=='tips' else 'Cảnh 3D có chiếu phối cảnh • tiến/lùi là thao tác biểu kiến'
+        if self.mode=='chemistry': detail='Hình học minh họa • lớp e của nguyên tử trung hòa riêng lẻ • E: sửa • O: e • B: thu bảng • Z/Y: hoàn tác/làm lại'
         self._text(overlay,detail,(24,h-25),13,MUTED)
         if replay:
             self._text(overlay,'PHÁT LẠI • dữ liệu đã ghi',(w-295,h-47),15,(237,185,110))
@@ -466,9 +544,8 @@ class SubmissionRenderer:
     def _hands3d(self,hands,fit):
         """Illustrative joint/bone volume, no invented missing landmarks."""
         gl.glEnable(gl.GL_LIGHTING)
-        chains=((0,1,2,3,4),(0,5,6,7,8),(5,9,10,11,12),(9,13,14,15,16),(13,17,18,19,20),(0,17))
         for hand in hands:
-            p={i:self.hand_points[(hand.slot,hand.generation,i)] for i in range(21)}
+            p=np.array([self.hand_points[(hand.slot,hand.generation,i)] for i in range(21)])
             gl.glColor3f(*(.55*np.array(COLORS[hand.slot])))
             palm=(0,5,9,13,17)
             for a,b in zip(palm[1:-1],palm[2:]):
@@ -481,17 +558,11 @@ class SubmissionRenderer:
                 gl.glPushMatrix(); gl.glTranslatef(*p[i])
                 gl.glScalef(*([self.settings['hand_joint_radius']/fit]*3))
                 gl.glCallList(self.unit_sphere); gl.glPopMatrix()
-            for chain in chains:
-                for a,b in zip(chain,chain[1:]):
-                    d=p[b]-p[a]; length=np.linalg.norm(d)
-                    if length<1e-8: continue
-                    z=d/length
-                    reference=np.array((0.,1.,0.)) if abs(z[1])<.9 else np.array((1.,0.,0.))
-                    x=np.cross(reference,z); x/=np.linalg.norm(x); y=np.cross(z,x)
-                    matrix=np.eye(4); matrix[:3,:3]=np.column_stack((x,y,z))
-                    gl.glPushMatrix(); gl.glTranslatef(*p[a]); gl.glMultMatrixf(matrix.T.astype(np.float32))
-                    radius=self.settings['hand_bone_radius']/fit
-                    gl.glScalef(radius,radius,length); gl.glCallList(self.unit_bone); gl.glPopMatrix()
+            matrices,lengths=bone_transforms(p)
+            radius=self.settings['hand_bone_radius']/fit
+            for matrix,length in zip(matrices,lengths):
+                gl.glPushMatrix(); gl.glMultMatrixf(matrix.T.astype(np.float32))
+                gl.glScalef(radius,radius,length); gl.glCallList(self.unit_bone); gl.glPopMatrix()
 
     def _shadow(self,vertices,floor_y=-1.99):
         """Floor cue projected from display geometry, not a physical contact test."""

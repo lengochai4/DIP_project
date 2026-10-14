@@ -13,6 +13,57 @@ bận, đóng ứng dụng đang dùng camera rồi thử lại; có thể đổ
 
 ## Cách thao tác
 
+### Hóa học AR — panel và vật thể trực tiếp trên hình camera
+
+Chọn **Hóa học AR** (hoặc P). Camera là nền của cảnh; panel có phối cảnh
+và nằm trong cùng cảnh với các nguyên tử, không phải một cửa sổ webcam nhỏ.
+Khi mới vào, panel có nút **Bảng nguyên tố**. Trỏ ngón trỏ lên ô: viền vàng
+báo mục tiêu. Chụm cái–trỏ và mở lại để chọn. Di chuyển ngang qua một ô
+không tự kích hoạt; giữ chụm không tạo lặp. Chuột có thể chọn/kéo dự phòng.
+
+1. Chọn H, C, N, O, F, P, S, Cl trong bảng thường dùng hoặc mở bảng tuần
+   hoàn đầy đủ 118 nguyên tố. Mỗi lượt chọn tạo một nguyên tử ở vùng thao tác.
+2. Bật **Ghép/tách**, chụm ngay trên nguyên tử để kéo nó. Thả gần nguyên
+   tử khác để ghép liên kết được hỗ trợ; kéo xa để tháo liên kết. Nút
+   **Liên kết 1/2/3** (phím S) chọn bậc của liên kết mới.
+3. Đổi sang **Cầm cả khối** để dời/xoay cả thành phần liên thông. Hai tay
+   giữ hai nguyên tử trong cùng phân tử để xoay/đổi cỡ cả phân tử. Trong
+   Ghép/tách, hai tay có thể kéo hai nguyên tử khác nhau độc lập.
+
+**Nguyên tử / e** (O) hiện lớp electron minh họa cho nguyên tử đang chọn.
+Thông tin là của nguyên tử trung hòa riêng lẻ, không phải orbital phân tử
+hay đường đi electron. Panel ghi Z, số proton/electron và cấu hình nguồn;
+không tự đoán số neutron. Mẫu 3D có H₂O, CO₂, CH₄, NH₃, H₂, O₂, N₂, HCl.
+Tên mẫu được đối chiếu đồ thị liên kết; công thức cùng số nguyên tử chưa
+đủ để gọi tên phân tử. Hình học do người dùng kéo và tọa độ mẫu chỉ minh họa.
+
+**Thu bảng** (B) giữ một nút nhỏ trong cảnh để mở lại. **Về giữa cảnh** (R)
+đưa vật thể bị kéo ra ngoài về vùng thao tác. H ẩn/hiện hướng dẫn trong
+panel. Hoàn tác/làm lại dùng Z/Y; Backspace xóa nguyên tử đang chọn trong
+Ghép/tách, hoặc cả thành phần liên thông trong Cầm cả khối.
+
+**Lưu / Mở đã lưu** (L/J) dùng `runs/ui-chemistry/workspace.json` trên máy.
+Lưu gồm nguyên tử, vị trí ở đơn vị cảnh và liên kết; không lưu video. Bản
+mở được kiểm tra trước khi thay không gian hiện tại. Chuyển chế độ vẫn giữ
+không gian đang xây. Mất tay/dừng camera kết thúc thao tác mà không tự ghép.
+Mất dấu ngắn đóng băng nguyên tử; nhận lại tay gắn mốc mới, không nhảy.
+
+Giới hạn: đây là camera-composited AR minh họa trên một webcam RGB. Panel
+neo theo cảnh hiển thị; app không định vị phòng, đo chiều sâu, biết tay đang
+che vật thể hay mô phỏng phản ứng. Ghép/tách không làm đổi nguyên tố. Các
+giới hạn cộng hóa trị trung hòa trong settings không thay thế kiểm chứng
+hóa học tổng quát; nguyên tố khác vẫn xem được nhưng không đoán liên kết.
+
+Luồng tham khảo Nanome Builder/Periodic Table và Microsoft hand interaction:
+https://help.nanome.ai/nanome_v2/toolspanel
+https://help.nanome.ai/nanome1x/navigation/toolsmenu
+https://learn.microsoft.com/en-us/previous-versions/mixed-reality/mrtk-unreal/ux-tools/features/hand-interaction
+
+Dữ liệu offline và nguồn hóa học: [data/README.md](data/README.md).
+Chạy phát lại riêng với `--mode chemistry`.
+
+### Khối và đầu ngón
+
 - **Khối 3D**: chụm cái–trỏ để giữ. Khi giữ một tay, di chuyển tay để dời
   khối, xoay lòng bàn tay để xoay khối. Thả chụm để buông, khối giữ trạng thái.
 - **Hai tay cùng chụm**: tách/khép hai tay để đổi kích thước, vặn đường nối
@@ -39,7 +90,7 @@ bận, đóng ứng dụng đang dùng camera rồi thử lại; có thể đổ
   ánh sáng và kiểm tra độ sâu giúp thấy hướng gập/duỗi. Khung giữ mốc trong
   phiên tay liên tục để chuyển động và thay đổi cỡ tay không bị tự căn mất.
 - Có lập phương, tứ diện, bát diện, cầu. Menu khối và phím 1–4 chọn vật thể.
-- Kéo chuột đổi góc nhìn, cuộn thu/phóng, R đặt lại; Tab đổi chế độ;
+- Kéo chuột đổi góc nhìn, cuộn thu/phóng, R đặt lại; Tab qua ba chế độ;
   H ẩn/hiện hướng dẫn; C ẩn/hiện camera; F11 phóng to/thu nhỏ; Enter mở/dừng.
 
 ## Phạm vi và độ tin cậy
@@ -131,6 +182,17 @@ Nhật ký phiên mới bổ sung hand_states (thế hệ tay và tỷ lệ ch�
 frames.jsonl, và trạng thái giữ, kích thước/kéo dãn trong interactions.jsonl.
 Các giá trị là trạng thái ứng dụng; không phải tracking confidence hay số
 liệu đánh giá nghiên cứu. Không cần ghi video để đối chiếu thao tác.
+
+Đợt hóa học thêm các kiểm tra dữ liệu 118 nguyên tố, electron, phép chiếu
+panel, ngưỡng liên kết, topology/nhãn, lịch sử, bản lưu không hợp lệ, latch
+chọn bằng tay, ghép/tháo, danh tính/mất tay và một/hai tay cầm phân tử.
+Kiểm tra OpenGL 179 khung dùng tay tổng hợp trên nền ảnh đã ghi đã thực hiện
+mở panel, tạo H/O/H, ghép H₂O, tháo nguyên tử, hoàn tác, bảng 118, resize và
+toàn màn. Nguồn ảnh ghép hai tay đi qua provider thật cũng chạy chế độ này.
+Các lượt tổng hợp không chứng minh người dùng thật hoàn tất mọi cử chỉ.
+Schema UI 4 ghi đồ thị hóa học và SHA dữ liệu nguyên tố, tách khỏi Core.
+33 kiểm tra mới trong đợt này đạt; tổng 83 kiểm tra UI và 537 kiểm tra toàn
+dự án đạt. Có cả kiểm tra bản lưu lỗi không thay thế không gian đang làm.
 
 Đợt không gian/độ trễ bổ sung có 50 kiểm tra UI và toàn bộ 504 kiểm tra đạt;
 vòng đổi chế độ đi qua đủ bốn thao tác. Kiểm tra OpenGL 130

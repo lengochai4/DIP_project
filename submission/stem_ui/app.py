@@ -11,12 +11,13 @@ def main():
     parser=argparse.ArgumentParser(description='DIP Touchless STEM — UI nộp đồ án')
     parser.add_argument('--replay',type=Path)
     parser.add_argument('--camera',type=int,default=0)
-    parser.add_argument('--mode',choices=('solid','tips'),default='solid')
+    parser.add_argument('--mode',choices=('solid','tips','chemistry'),default='solid')
     parser.add_argument('--smoke-frames',type=int,default=0)
     parser.add_argument('--screenshot',type=Path)
     args=parser.parse_args()
     settings=yaml.safe_load(Path(__file__).with_name('settings.yaml').read_text(encoding='utf-8'))
     renderer=SubmissionRenderer(settings); renderer.mode=args.mode
+    if args.mode=='chemistry': renderer.enter_chemistry()
     worker=None; active=False; error=None; camera_index=args.camera
     frame_count=0; seen=set(); max_hands=max_tips=0; start=time.monotonic()
     interaction_log=None; log_run=None; logged_frame=None
@@ -60,6 +61,7 @@ def main():
                     'position':grip.pose.position.tolist(),'rotation':grip.pose.rotation.tolist(),
                     'mode':renderer.mode,'live_mesh_mode':getattr(renderer,'live_mesh_mode',None),
                     'draw_cpu_ms_excluding_swap_and_cap':renderer.last_draw_cpu_ms,
+                    'chemistry':renderer.chemistry.scene.state() if renderer.mode=='chemistry' else None,
                     'feedback':grip.feedback},ensure_ascii=False)+'\n')
                 logged_frame=snapshot.frame_id
             max_hands=max(max_hands,hands); max_tips=max(max_tips,tips)

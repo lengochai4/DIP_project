@@ -2,6 +2,52 @@
 
 ## Current task update — 2026-10-14
 
+Camera chemistry demonstration (current authorized addition):
+
+Change: isolated camera-composited mode with perspective spatial panel,
+hover/confirmed-pinch targeting, full offline 118-element palette, lit atoms,
+neutral-atom electron-shell illustration, limited neutral covalent bond
+editing, component manipulation and history/local save/load. User clarified
+that both atomic and molecular views are wanted, with molecules prioritized.
+Reason: user requested VR-inspired creation/manipulation directly on camera.
+Canonical file/section changed: 01 section 7 and 02 section 5; 03 unchanged.
+Code/modules affected: submission camera_space/chemistry/chemistry_input/
+chemistry_view plus renderer/app/settings, tests and source documentation.
+Algorithmic impact: application-only picking/editor semantics; no Core
+provider model, equation, baseline config or research gesture changes.
+Experimental impact: UI schema 4 captures molecular graph and atomic-data
+file SHA. No camera-relative/physical atomic lengths or reaction results.
+Compatibility impact: UI adds chemistry mode; one-hand Core contracts and
+ReplayRuntime stay unchanged. Existing UI workspaces use validated schema 1.
+Existing results invalidated: no; G7/ROUND2 source/config/results unchanged.
+Primary data: PubChem periodic-table JSON snapshot, 118 rows with preserved
+electron configurations. Direct local download returned NCBI block HTML;
+that HTML was discarded. All 2,505 web-readable JSON lines were captured,
+parsed and normalized, then all neutral electron totals validated against Z.
+IUPAC supplies the table reference; conservative covalent rules/reference
+graphs are documented with OpenStax sources. No isotope/neutron guesses.
+Templates have illustrative scene-unit coordinates, not optimized geometry.
+Recognized molecular names require graph matching, not formula alone.
+Scope limits: no world localization, real hand/object occlusion, metric
+camera depth, force fields, quantum orbital or reaction simulation.
+
+Fingertip refinement: profile inspection of 90 synthetic render frames
+identified repeated per-bone NumPy operations; batched orthonormal frames
+replace those calls. Bounded error-adaptive display following improves
+large-move response without predicting absent observations. Core filtering
+and existing experiment profiles are unchanged. No measured physical latency
+or FPS improvement is claimed from this profiling run.
+
+Executed chemistry checks: 33 targeted tests, 83 submission tests and
+full regression suite 537 passed. Existing manipulation/window controls
+also re-executed successfully. Synthetic
+OpenGL acceptance completed 179 frames: spatial palette selection, three
+spawns, H2O topology construction, atom separation, undo, full periodic
+table, resize and fullscreen restore. Actual provider replay on the existing
+mirrored two-hand fixture observed 30 frames / 2 hands / up to 10 tips in
+chemistry mode (ui-20261014-164451-017213), clean shutdown. This is recorded/
+synthetic-source evidence, not new live operator chemistry validation.
+
 Spatial/freshness refinement (following the continuity fix):
 
 Change: live-only single-slot acquisition, bounded error-adaptive display

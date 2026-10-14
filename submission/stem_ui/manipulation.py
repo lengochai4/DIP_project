@@ -125,6 +125,13 @@ class GrabController:
         if mode != self.scale_mode:
             self.scale_mode=mode; self.base=None; self.target=self.pose.copy()
 
+    def adopt_confirmed_grip(self,hand,timestamp_s,aspect):
+        """Reuse a UI-confirmed pinch when assigning it to a selected object."""
+        ratio=pinch_ratio(hand,aspect)
+        if not math.isfinite(ratio) or ratio>=self.settings['grip_release_ratio']:
+            raise ValueError('cannot adopt an open pinch')
+        self.grips[hand.slot]=Grip(getattr(hand,'generation',0),held=True,last_seen=timestamp_s,ratio=ratio)
+
     def _recognize(self, hand, t, aspect):
         generation=getattr(hand,'generation',0)
         grip=self.grips.get(hand.slot)

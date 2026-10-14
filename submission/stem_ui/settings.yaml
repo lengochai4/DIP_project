@@ -14,6 +14,8 @@ thumb_enter_spread: 0.45
 thumb_exit_spread: 0.35
 live_fit_width: 3.0
 live_response_hz: 6.0
+live_response_gain: 8.0
+live_response_max_hz: 18.0
 live_depth_ratio: 0.06
 live_depth_exit_ratio: 0.04
 hand_joint_radius: 0.055
@@ -46,6 +48,60 @@ stretch_max: 4.0
 one_hand_scale_enabled: true
 grab_min_span: 0.10
 mirror: true
+camera_ar_fov_deg: 44.0
+chemistry_max_atoms: 32
+chemistry_scene_limit: 8.0
+chemistry_history_limit: 40
+chemistry_response_hz: 9.0
+chemistry_atom_radius: 0.16
+chemistry_join_distance: 0.68
+chemistry_break_distance: 1.12
+chemistry_panel_fps: 30
+chemistry_electron_speed: 0.35
+# Conservative neutral covalent editing rules; not general chemistry valences.
+chemistry_covalent_limits: {H: 1, C: 4, N: 3, O: 2, F: 1, P: 3, S: 2, Cl: 1, Br: 1, I: 1}
+chemistry_common_elements: [H, C, N, O, F, P, S, Cl]
+chemistry_templates:
+  H2O:
+    label: 'H₂O • Nước'
+    symbols: [O, H, H]
+    positions: [[0, 0, 0], [-0.45, -0.35, 0], [0.45, -0.35, 0]]
+    bonds: [[0, 1, 1], [0, 2, 1]]
+  CO2:
+    label: 'CO₂ • Carbon dioxide'
+    symbols: [C, O, O]
+    positions: [[0, 0, 0], [-0.65, 0, 0], [0.65, 0, 0]]
+    bonds: [[0, 1, 2], [0, 2, 2]]
+  CH4:
+    label: 'CH₄ • Methane'
+    symbols: [C, H, H, H, H]
+    positions: [[0, 0, 0], [0.32, 0.32, 0.32], [-0.32, -0.32, 0.32], [-0.32, 0.32, -0.32], [0.32, -0.32, -0.32]]
+    bonds: [[0, 1, 1], [0, 2, 1], [0, 3, 1], [0, 4, 1]]
+  NH3:
+    label: 'NH₃ • Ammonia'
+    symbols: [N, H, H, H]
+    positions: [[0, 0.12, 0], [0.5, -0.22, 0], [-0.25, -0.22, 0.43], [-0.25, -0.22, -0.43]]
+    bonds: [[0, 1, 1], [0, 2, 1], [0, 3, 1]]
+  H2:
+    label: 'H₂ • Hydrogen'
+    symbols: [H, H]
+    positions: [[-0.28, 0, 0], [0.28, 0, 0]]
+    bonds: [[0, 1, 1]]
+  O2:
+    label: 'O₂ • Oxygen'
+    symbols: [O, O]
+    positions: [[-0.28, 0, 0], [0.28, 0, 0]]
+    bonds: [[0, 1, 2]]
+  N2:
+    label: 'N₂ • Nitrogen'
+    symbols: [N, N]
+    positions: [[-0.28, 0, 0], [0.28, 0, 0]]
+    bonds: [[0, 1, 3]]
+  HCl:
+    label: 'HCl • Hydrogen chloride'
+    symbols: [H, Cl]
+    positions: [[-0.28, 0, 0], [0.28, 0, 0]]
+    bonds: [[0, 1, 1]]
 # Presentation defaults for faster response; not the F2 research profile.
 filter_overrides:
   adaptive:

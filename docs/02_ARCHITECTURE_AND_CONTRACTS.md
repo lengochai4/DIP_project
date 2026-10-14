@@ -169,6 +169,29 @@ Consumes `InteractionState` only. It MAY manage renderer/scene/application behav
 
 ### Additive submission presentation boundary — 2026-10-14
 
+#### Camera chemistry mode — 2026-10-14
+
+The renderer may composite the immutable mirrored BGR camera snapshot as
+the scene background. A camera-aligned perspective scene, textured spatial
+panel and atom/bond geometry use WORLD_RENDER. Hand targets map through the
+same letterboxed content rectangle and perspective ray; arbitrary stretch
+or a second mirror must not misalign targets and the camera image.
+The panel is display-anchored, not localized to a physical room. No physical
+hand/object occlusion or depth sensing is implied. Panel selection uses
+visible hover plus confirmed pinch, with a mouse fallback. Hover alone must
+not spawn atoms. Each hand may claim one target; generation/loss/stale input
+release claims safely. A held panel selection cannot trigger repeatedly.
+
+A renderer-independent chemistry scene owns sourced element data, atoms,
+bond topology, history and explicit action modes. Whole-component grab may
+reuse the submission GrabController for one/two-hand movement/rotation/scale.
+Atomic edit moves one atom and separates bonds only in the explicit edit
+mode; nearby permitted atoms may link on deliberate release. Display atom
+radii/positions are scene units, not physical atomic distances. Formula
+counts and verified small graph labels must not claim a reaction or stability.
+Electron shells are an illustrative neutral-atom model, not electron paths
+or computed quantum orbitals. No chemistry logic is added to DIP Core.
+
 #### Spatial presentation and freshness refinement — 2026-10-14
 
 The user authorized further responsiveness and spatial manipulation work.

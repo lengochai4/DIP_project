@@ -6,6 +6,23 @@ import numpy as np
 
 TIPS = (4, 8, 12, 16, 20)
 FINGER_NAMES = ('Cái', 'Trỏ', 'Giữa', 'Áp út', 'Út')
+HAND_CHAINS=((0,1,2,3,4),(0,5,6,7,8),(5,9,10,11,12),(9,13,14,15,16),(13,17,18,19,20),(0,17))
+HAND_BONES=np.array([(a,b) for chain in HAND_CHAINS for a,b in zip(chain,chain[1:])])
+
+
+def bone_transforms(points,edges=HAND_BONES):
+    """Batch orthonormal bone frames, avoiding repeated tiny NumPy cross calls."""
+    p=np.asarray(points,dtype=float)
+    a=p[edges[:,0]]; delta=p[edges[:,1]]-a
+    lengths=np.linalg.norm(delta,axis=1); valid=lengths>1e-8
+    a=a[valid]; z=delta[valid]/lengths[valid,None]
+    references=np.zeros_like(z); references[:,1]=1
+    vertical=np.abs(z[:,1])>=.9; references[vertical]=(1.,0.,0.)
+    x=np.cross(references,z); x/=np.linalg.norm(x,axis=1)[:,None]
+    y=np.cross(z,x)
+    matrices=np.tile(np.eye(4),(len(a),1,1))
+    matrices[:,:3,0]=x; matrices[:,:3,1]=y; matrices[:,:3,2]=z; matrices[:,:3,3]=a
+    return matrices,lengths[valid]
 
 @dataclass(frozen=True)
 class Tip:

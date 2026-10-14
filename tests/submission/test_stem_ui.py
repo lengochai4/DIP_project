@@ -10,7 +10,7 @@ from submission.stem_ui.geometry import (Tip, FingerSelection, world_position,
 from submission.stem_ui.manipulation import GrabController
 from submission.stem_ui.runtime import HandView, associate, convert_result
 
-SETTINGS=yaml.safe_load((Path(__file__).resolve().parents[2]/'submission/stem_ui/settings.yaml').read_text())
+SETTINGS=yaml.safe_load((Path(__file__).resolve().parents[2]/'submission/stem_ui/settings.yaml').read_text(encoding='utf-8'))
 
 def palm(x=.5,y=.5):
     p=[(x,y,0.) for _ in range(21)]
