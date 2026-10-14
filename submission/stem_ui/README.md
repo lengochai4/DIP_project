@@ -6,7 +6,8 @@ Chạy ở thư mục gốc với môi trường đã cài `.[dev,demo3d]`:
 .\.venv-research\Scripts\python.exe -X utf8 -m submission.stem_ui.app
 ```
 
-Hoặc chạy `Chay_UI.ps1`. Camera chỉ mở sau khi bấm **Mở camera**. Nếu camera
+Hoặc nhấp đúp `Chay_UI.bat`, hay chạy `Chay_UI.ps1` trong PowerShell.
+Camera chỉ mở sau khi bấm **Mở camera**. Nếu camera
 bận, đóng ứng dụng đang dùng camera rồi thử lại; có thể đổi Camera 0–3 khi
 đang dừng. Không có phiên tay mới bắt buộc khi chạy kiểm tra tự động.
 
