@@ -41,6 +41,7 @@ TASK_GENERAL = (
 )
 TASK_3D = (
     ("cross_section", "🔪 Thiết diện cắt"),
+    ("unfold", "📦 Bung mặt phẳng"),
 )
 
 # Unicode icons for each shape
@@ -69,7 +70,9 @@ ITEM_H = 38             # height of each item row (px)
 HEADER_H = 26           # section header height (px)
 PANEL_PAD = 8           # padding inside panel (px)
 GROUP_SPACING = 6       # spacing between groups (px)
-MARGIN = 12             # margin from viewport edges (px)
+CAMERA_INSET_X = 24     # inset from camera frame border to keep hand + wrist within FOV
+CAMERA_INSET_Y = 20     # inset from camera frame top/bottom border
+MARGIN = CAMERA_INSET_Y # for backward compatibility
 DELETE_H = 44           # delete button height (px)
 DELETE_W = 180          # delete button width (px)
 PROGRESS_H = 4          # dwell progress bar height (px)
@@ -114,6 +117,7 @@ class ShapeToolbar(QWidget):
         self._hovered_task_item: str | None = None
         self._frozen_shapes: list = []
         self._selected_shape_id: str | None = None
+        self._shape_select_frac: float = 0.0
         self.last_task_event: str | None = None
         self.task_dropdown_opened: bool = False
         self.task_started: bool = False
@@ -217,12 +221,14 @@ class ShapeToolbar(QWidget):
         is_dragging_shape: bool = False,
         frozen_shapes: list | None = None,
         selected_shape_id: str | None = None,
+        shape_select_frac: float = 0.0,
     ) -> None:
         """Call once per frame from shell consume()."""
         if frozen_shapes is not None:
             self._frozen_shapes = frozen_shapes
         if selected_shape_id is not None or frozen_shapes is not None:
             self._selected_shape_id = selected_shape_id
+        self._shape_select_frac = shape_select_frac
 
         tip_px = self._to_widget_px(tip_xy) if tip_xy is not None else None
         self._tip_px = tip_px
@@ -250,25 +256,42 @@ class ShapeToolbar(QWidget):
             return None
         return QPoint(round(norm_xy[0] * pw), round(norm_xy[1] * ph))
 
+    def _camera_rect(self) -> QRect:
+        """Returns the displayed camera frame bounding box inside the viewport."""
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "image_rect"):
+            ix, iy, iw, ih = parent.image_rect()
+            if iw > 0 and ih > 0:
+                return QRect(round(ix), round(iy), round(iw), round(ih))
+        return QRect(0, 0, max(0, self.width()), max(0, self.height()))
+
     def _trigger_rect(self) -> QRect:
-        """Top-right button (Shape selector)."""
-        return QRect(self.width() - TRIGGER_W - MARGIN, MARGIN, TRIGGER_W, TRIGGER_H)
+        """Top-right button (Shape selector), safely inside camera feed."""
+        cam = self._camera_rect()
+        return QRect(
+            cam.x() + cam.width() - TRIGGER_W - CAMERA_INSET_X,
+            cam.y() + CAMERA_INSET_Y,
+            TRIGGER_W,
+            TRIGGER_H,
+        )
 
     def _task_trigger_rect(self) -> QRect:
         """Task selector button positioned directly below shape selector button."""
+        cam = self._camera_rect()
         return QRect(
-            self.width() - TRIGGER_W - MARGIN,
-            MARGIN + TRIGGER_H + 8,
+            cam.x() + cam.width() - TRIGGER_W - CAMERA_INSET_X,
+            cam.y() + CAMERA_INSET_Y + TRIGGER_H + 8,
             TRIGGER_W,
             TRIGGER_H,
         )
 
     def _panel_rect(self) -> QRect:
         """Shape dropdown menu, positioned directly below both buttons."""
+        cam = self._camera_rect()
         panel_h = self._panel_total_height()
         return QRect(
-            self.width() - PANEL_W - MARGIN,
-            MARGIN + TRIGGER_H + 8 + TRIGGER_H + 6,
+            cam.x() + cam.width() - PANEL_W - CAMERA_INSET_X,
+            cam.y() + CAMERA_INSET_Y + TRIGGER_H + 8 + TRIGGER_H + 6,
             PANEL_W,
             panel_h,
         )
@@ -291,10 +314,11 @@ class ShapeToolbar(QWidget):
 
     def _task_panel_rect(self) -> QRect:
         """Task dropdown menu, positioned directly below the task button."""
+        cam = self._camera_rect()
         panel_h = self._task_panel_total_height()
         return QRect(
-            self.width() - PANEL_W - MARGIN,
-            MARGIN + TRIGGER_H + 8 + TRIGGER_H + 6,
+            cam.x() + cam.width() - PANEL_W - CAMERA_INSET_X,
+            cam.y() + CAMERA_INSET_Y + TRIGGER_H + 8 + TRIGGER_H + 6,
             PANEL_W,
             panel_h,
         )
@@ -327,7 +351,14 @@ class ShapeToolbar(QWidget):
         return rects
 
     def _delete_rect(self) -> QRect:
-        return QRect(MARGIN, self.height() - DELETE_H - MARGIN, DELETE_W, DELETE_H)
+        """Bottom-left delete button, safely inside camera feed."""
+        cam = self._camera_rect()
+        return QRect(
+            cam.x() + CAMERA_INSET_X,
+            cam.y() + cam.height() - DELETE_H - CAMERA_INSET_Y,
+            DELETE_W,
+            DELETE_H,
+        )
 
     # ------------------------------------------------------------------
     # Dwell update helpers
@@ -538,6 +569,14 @@ class ShapeToolbar(QWidget):
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QBrush(dot_col))
         p.drawEllipse(pos, 3, 3)
+
+        if getattr(self, "_shape_select_frac", 0.0) > 0.001:
+            # Draw circular dwell progress arc around the fingertip reticle
+            p.setPen(QPen(QColor("#f59e0b"), 3))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            r_arc = 18
+            span = int(min(1.0, self._shape_select_frac) * 360 * 16)
+            p.drawArc(QRect(pos.x() - r_arc, pos.y() - r_arc, r_arc * 2, r_arc * 2), 90 * 16, -span)
 
     def _draw_trigger(self, p: QPainter):
         rect = self._trigger_rect()
@@ -812,3 +851,66 @@ class ShapeToolbar(QWidget):
         p.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
         icon = SHAPE_ICON.get(self._selected_shape, "")
         p.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, f"{icon} {self._selected_shape}")
+
+    def handle_mouse_press(self, pt: QPoint) -> bool:
+        """Handle mouse click on toolbar buttons or dropdowns. Returns True if handled."""
+        if not self.isVisible():
+            return False
+
+        # Shape selector button
+        if self._trigger_rect().contains(pt):
+            if not self._task_open:
+                self._open = not self._open
+                if self._open:
+                    self._task_open = False
+                self.update()
+            return True
+
+        # Task selector button
+        if self._task_trigger_rect().contains(pt):
+            if self.is_task_trigger_enabled():
+                self._task_open = not self._task_open
+                if self._task_open:
+                    self.task_dropdown_opened = True
+                self.update()
+            return True
+
+        # Delete button
+        if self._delete_rect().contains(pt):
+            self.delete_event = "ALL"
+            self.update()
+            return True
+
+        # Shape panel items
+        if self._open:
+            for shape, r in self._item_rects():
+                if r.contains(pt):
+                    self._selected_shape = shape
+                    self._open = False
+                    self.update()
+                    return True
+            if self._panel_rect().contains(pt):
+                return True
+
+        # Task panel items
+        if self._task_open:
+            for tid, label, r, enabled in self._task_item_rects():
+                if enabled and r.contains(pt):
+                    active_shape = self.get_active_shape()
+                    if active_shape is not None:
+                        if not hasattr(active_shape, "tasks"):
+                            active_shape.tasks = set()
+                        if tid in active_shape.tasks:
+                            active_shape.tasks.remove(tid)
+                            self.last_task_event = f"Đã tắt {label} trên {active_shape.kind}."
+                        else:
+                            active_shape.tasks.add(tid)
+                            self.last_task_event = f"Đã bật {label} trên {active_shape.kind}."
+                            self.task_started = True
+                    self._task_open = False
+                    self.update()
+                    return True
+            if self._task_panel_rect().contains(pt):
+                return True
+
+        return False

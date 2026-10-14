@@ -14,15 +14,18 @@ class LabGuide:
 
 GUIDES = {
     "coordinate": LabGuide(
-        "Khám phá điểm, đoạn thẳng, mặt và khối trong hệ tọa độ.",
-        "Duỗi 2 ngón để tạo đoạn; 3 ngón tạo tam giác. Từ 4 đầu ngón không đồng phẳng có thể tạo khối kín.",
+        "Khám phá không gian hình học 3D bằng cử chỉ tay không chạm (DIP Touchless STEM).",
+        "Nhận diện bàn tay chính (<1.5m). Chọn hình, tạo hình, chọn vật thể điều khiển, di chuyển và xoay độc lập.",
         (
-            "Đưa một hoặc hai tay vào camera; duỗi những ngón muốn dùng.",
-            "Di chuyển, duỗi hoặc gập ngón để thay đổi hình trực tiếp.",
-            "Mở Tools để đọc loại hình và số đo; thử đưa các đầu ngón ra trước/sau.",
+            "Bước 1 (Chọn hình): Chỉ ngón trỏ vào nút 'Chọn hình' (giữ 1.3s) để mở bảng chọn hình 2D/3D (ưu tiên khóa 1 tay).",
+            "Bước 2 (Tạo & Đóng băng): Mở ngón tay theo quy tắc tạo hình và giữ yên 1.8s để ghim vào không gian (ưu tiên khóa tay phải sau khi tạo).",
+            "Bước 3 (Chọn vật thể): Dù 1 hay nhiều hình, chỉ ngón trỏ vào hình giữ 0.6s cho hình phát sáng để kích hoạt điều khiển.",
+            "Bước 4 (Di chuyển): Chụm ngón cái + trỏ vào hình đã chọn để kéo di chuyển trong không gian 3D.",
+            "Bước 5 (Xoay hình): Dùng 1 ngón trỏ quét để xoay hình; cất ngón tay hình lập tức về trạng thái tĩnh tuyệt đối.",
+            "Bước 6 (Tác vụ nâng cao): Vào nút 'Tác vụ' để Bung mặt phẳng khối 3D hoặc Xóa hình đã chọn.",
         ),
-        "Hình và số đo cập nhật theo các đầu ngón đang duỗi, tối đa 10 đỉnh.",
-        "Các đầu ngón gần đồng phẳng tạo mặt phẳng, không tự biến thành khối. Số đo dùng đơn vị cảnh.",
+        "Hình 3D xuất hiện, xoay, di chuyển và bung lưới mặt phẳng mượt mà theo cử chỉ tay.",
+        "Hệ thống ưu tiên tay gần camera nhất (<1.5m) để loại bỏ nhiễu người phía sau. Giữ khoảng cách ổn định.",
     ),
     "molecule": LabGuide(
         "Quan sát hình dạng phân tử và góc liên kết.",

@@ -39,7 +39,7 @@ def test_source_archive_contents_crc_hashes_and_private_data_exclusion(tmp_path)
 
 def test_scene_code_does_not_import_provider_tracking_or_hand_geometry():
     for path in (ROOT / "app/extensions").glob("*.py"):
-        tree = ast.parse(path.read_text())
+        tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 assert not any(

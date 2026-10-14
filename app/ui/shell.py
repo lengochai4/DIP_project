@@ -49,6 +49,7 @@ from app.interaction.contracts import (
 from app.interaction.engine import IntentEngine
 from app.interaction.hand_geometry import describe
 from app.interaction.shape_gestures import ShapeGestureEngine, find_hit_shape
+from app.interaction.dwell_tracker import DwellTracker
 from app.rendering.hand_anchor import HandAnchor
 from app.rendering.viewport import Viewport, SoftwareViewport, bgr_image
 from app.runtime.application_runtime import RuntimeWorker
@@ -84,6 +85,62 @@ _SHAPE_RULES = {
     "Box": "Bắt buộc 2 tay: 4 ngón mỗi tay (chiều dài × chiều rộng khác nhau).",
     "Pyramid": "Bắt buộc 2 tay (mỗi tay 3 ngón trỏ, cái, giữa): tay trỏ-cái ngắn hơn = đỉnh, tay kia = 3 đỉnh đáy.",
 }
+
+_SIDEBAR_GUIDE_HTML = """
+<div style="color: #a4b8c4; font-size: 11px; line-height: 1.4;">
+  <div style="background: rgba(26, 42, 58, 0.7); border: 1px solid #284457; border-radius: 6px; padding: 7px 9px; margin-bottom: 8px;">
+    <div style="color: #6ed0e0; font-weight: bold; font-size: 11px; margin-bottom: 3px;">✦ DIP TOUCHLESS STEM</div>
+    <div style="color: #9ab3c0; font-size: 10.5px; line-height: 1.35;">
+      Hệ thống học tập STEM không chạm: nhận diện bàn tay 3D thời gian thực qua camera RGB thông thường để tương tác trực quan với hình học không gian.
+    </div>
+  </div>
+
+  <div style="color: #efca82; font-weight: bold; font-size: 10.5px; margin-bottom: 6px; letter-spacing: 0.5px;">
+    QUY TRÌNH THAO TÁC CỬ CHỈ
+  </div>
+
+  <div style="background: rgba(18, 30, 42, 0.75); border-left: 3px solid #38bdf8; border-radius: 4px; padding: 5px 7px; margin-bottom: 6px;">
+    <div style="color: #ffffff; font-weight: bold; font-size: 11px;">1. Chọn hình vẽ</div>
+    <div style="color: #8fa6b2; font-size: 10px; line-height: 1.35;">Chỉ <b>1 ngón trỏ</b> vào nút <i>Chọn hình</i> (giữ 1.3s) ở góc trên để mở danh sách hình 2D/3D (ưu tiên khóa 1 tay).</div>
+  </div>
+
+  <div style="background: rgba(18, 30, 42, 0.75); border-left: 3px solid #38bdf8; border-radius: 4px; padding: 5px 7px; margin-bottom: 6px;">
+    <div style="color: #ffffff; font-weight: bold; font-size: 11px;">2. Tạo hình & Đóng băng</div>
+    <div style="color: #8fa6b2; font-size: 10px; line-height: 1.35;">Mở ngón tay theo quy tắc hình đã chọn; <b>giữ yên 1.8s</b> để ghim hình vào không gian. Sau khi tạo, hệ thống tự động ưu tiên khóa tay phải điều khiển.</div>
+  </div>
+
+  <div style="background: rgba(18, 30, 42, 0.75); border-left: 3px solid #f59e0b; border-radius: 4px; padding: 5px 7px; margin-bottom: 6px;">
+    <div style="color: #ffffff; font-weight: bold; font-size: 11px;">3. Chọn hình điều khiển</div>
+    <div style="color: #8fa6b2; font-size: 10px; line-height: 1.35;">
+      Dù 1 hay nhiều hình, hình tạo xong luôn ở <b>trạng thái tĩnh</b>. Đặt đầu ngón trỏ vào hình và <b>giữ 0.6s</b>; khi <b>vật thể phát sáng</b> mới tiếp nhận tín hiệu điều khiển.
+    </div>
+  </div>
+
+  <div style="background: rgba(18, 30, 42, 0.75); border-left: 3px solid #10b981; border-radius: 4px; padding: 5px 7px; margin-bottom: 6px;">
+    <div style="color: #ffffff; font-weight: bold; font-size: 11px;">4. Di chuyển vật thể</div>
+    <div style="color: #8fa6b2; font-size: 10px; line-height: 1.35;"><b>Chụm ngón cái + trỏ</b> chạm vào hình đang sáng (đã chọn) và kéo trong không gian để di chuyển.</div>
+  </div>
+
+  <div style="background: rgba(18, 30, 42, 0.75); border-left: 3px solid #818cf8; border-radius: 4px; padding: 5px 7px; margin-bottom: 6px;">
+    <div style="color: #ffffff; font-weight: bold; font-size: 11px;">5. Xoay hình độc lập</div>
+    <div style="color: #8fa6b2; font-size: 10px; line-height: 1.35;">Dùng <b>1 ngón trỏ</b> quét ngang/dọc để xoay hình. <b>Cất ngón tay</b>: hình lập tức về trạng thái tĩnh, vẩy tay qua lại không làm biến đổi hình.</div>
+  </div>
+
+  <div style="background: rgba(18, 30, 42, 0.75); border-left: 3px solid #ec4899; border-radius: 4px; padding: 5px 7px; margin-bottom: 8px;">
+    <div style="color: #ffffff; font-weight: bold; font-size: 11px;">6. Tác vụ nâng cao</div>
+    <div style="color: #8fa6b2; font-size: 10px; line-height: 1.35;">Chỉ vào nút <i>Tác vụ</i> để <b>Bung mặt phẳng</b> (trải các mặt khối 3D ra 2D) hoặc Xóa hình đã chọn.</div>
+  </div>
+
+  <div style="background: rgba(22, 36, 49, 0.5); border: 1px dashed #284457; border-radius: 5px; padding: 6px 8px;">
+    <div style="color: #72bfcc; font-weight: bold; font-size: 10.5px; margin-bottom: 3px;">💡 Mẹo thông minh</div>
+    <div style="color: #8fa6b2; font-size: 9.5px; line-height: 1.3;">
+      • <b>Khóa tay gần nhất</b>: Bắt tay chính &lt; 1.5m, tự động bỏ qua người phía sau.<br>
+      • <b>Ưu tiên tay phải</b>: Khi có cả 2 tay trên màn hình sau tạo hình, hệ thống tự động khóa tay phải điều khiển.<br>
+      • <b>Khối xoay Gizmo</b>: Chạm vào mặt Trên/Trước/Trái/Phải để chuyển góc nhìn chuẩn.
+    </div>
+  </div>
+</div>
+"""
 
 PAGES = ("Home", "Explore", "Analyze", "Evidence", "Calibrate", "Settings", "Help")
 
@@ -133,8 +190,17 @@ class ProductWindow(QMainWindow):
         self.orientation_gizmo = None
         self._drag_shape = None
         self._drag_offset = (0.0, 0.0)
+        self._shape_select_dwell = DwellTracker(threshold_s=0.6)
         self._prev_rotate_xy = None
         self._view_locked = False
+        self._manipulation_locked_hand_id = None
+        self._primary_hand_id = None
+        self._primary_hand_last_seen_time = None
+        self._creation_locked_left_id = None
+        self._creation_locked_right_id = None
+        self._creation_left_last_seen_time = None
+        self._creation_right_last_seen_time = None
+        self._single_hand_controlling = False
         self.worker = None
         self._camera_failure = None
         self.page_name = "Home"
@@ -235,6 +301,7 @@ class ProductWindow(QMainWindow):
         self._drag_screen_xy = None
         self._drag_offset = (0.0, 0.0)
         self._prev_rotate_xy = None
+        self._freeze_cooldown_s = 0.0
         self._freeze_cooldown_frames = 0
         self._prev_is_pinched = False
         self._has_env_notice = False
@@ -364,29 +431,65 @@ class ProductWindow(QMainWindow):
             )
         )
 
-        # Empty placeholder frame for future gesture tutorial & project introduction (Item 1)
+        # Gesture tutorial & project introduction sidebar frame (Item 1)
         self.sidebar_frame = QFrame()
-        self.sidebar_frame.setFixedWidth(190)
+        self.sidebar_frame.setObjectName("SidebarFrame")
+        self.sidebar_frame.setFixedWidth(248)
         self.sidebar_frame.setStyleSheet("""
-            QFrame {
+            QFrame#SidebarFrame {
                 background: #13202c;
                 border: 1px solid #223847;
                 border-radius: 8px;
             }
         """)
         sidebar_layout = QVBoxLayout(self.sidebar_frame)
-        sidebar_layout.setContentsMargins(12, 14, 12, 14)
-        sidebar_layout.setSpacing(8)
+        sidebar_layout.setContentsMargins(10, 12, 10, 12)
+        sidebar_layout.setSpacing(6)
 
         self.sidebar_title = QLabel("HƯỚNG DẪN & GIỚI THIỆU")
         self.sidebar_title.setStyleSheet("color: #72bfcc; font-weight: bold; font-size: 11px; letter-spacing: 0.5px;")
         sidebar_layout.addWidget(self.sidebar_title)
 
-        self.sidebar_content = QLabel("")
+        sidebar_scroll = QScrollArea()
+        sidebar_scroll.setWidgetResizable(True)
+        sidebar_scroll.setStyleSheet("""
+            QScrollArea {
+                background: transparent;
+                border: none;
+            }
+            QScrollBar:vertical {
+                width: 5px;
+                background: transparent;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #284457;
+                border-radius: 2px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #3b637d;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+        """)
+
+        sidebar_container = QWidget()
+        sidebar_container.setStyleSheet("background: transparent;")
+        container_layout = QVBoxLayout(sidebar_container)
+        container_layout.setContentsMargins(0, 2, 4, 2)
+        container_layout.setSpacing(6)
+
+        self.sidebar_content = QLabel()
+        self.sidebar_content.setTextFormat(Qt.TextFormat.RichText)
         self.sidebar_content.setWordWrap(True)
-        self.sidebar_content.setStyleSheet("color: #8fa6b2; font-size: 12px; line-height: 1.4;")
-        sidebar_layout.addWidget(self.sidebar_content)
-        sidebar_layout.addStretch(1)
+        self.sidebar_content.setText(_SIDEBAR_GUIDE_HTML)
+        container_layout.addWidget(self.sidebar_content)
+        container_layout.addStretch(1)
+
+        sidebar_scroll.setWidget(sidebar_container)
+        sidebar_layout.addWidget(sidebar_scroll, 1)
         sidebar_layout.addWidget(self.library)
 
         body.addWidget(self.sidebar_frame)
@@ -1053,6 +1156,8 @@ class ProductWindow(QMainWindow):
             self.viewport.reference_plane = None
         self._drag_shape = None
         self._prev_rotate_xy = None
+        if hasattr(self, "_shape_select_dwell"):
+            self._shape_select_dwell.reset()
         self.viewport.pointer = None
         self.viewport.live_sources = ()
         self._dwell_target = self._dwell_since = None
@@ -1072,6 +1177,15 @@ class ProductWindow(QMainWindow):
                     self.shape_toolbar.setGeometry(0, 0, event.size().width(), event.size().height())
                 if hasattr(self, "orientation_gizmo") and self.orientation_gizmo is not None:
                     self.orientation_gizmo.reposition()
+            elif event.type() == QEvent.Type.MouseButtonPress:
+                if (
+                    hasattr(self, "shape_toolbar")
+                    and self.shape_toolbar is not None
+                    and self.shape_toolbar.isVisible()
+                ):
+                    pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+                    if self.shape_toolbar.handle_mouse_press(pos):
+                        return True
         return super().eventFilter(watched, event)
 
     def cancel_tool(self):
@@ -1653,6 +1767,13 @@ class ProductWindow(QMainWindow):
 
     def clear_tracking(self, message):
         self.cancel()
+        self._manipulation_locked_hand_id = None
+        self._primary_hand_id = None
+        self._primary_hand_last_seen_time = None
+        self._creation_locked_left_id = None
+        self._creation_locked_right_id = None
+        self._creation_left_last_seen_time = None
+        self._creation_right_last_seen_time = None
         if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
             self.shape_toolbar.update_tip(None, 0.0)
         if hasattr(self, "shape_gesture_engine"):
@@ -1748,6 +1869,179 @@ class ProductWindow(QMainWindow):
             hand = describe(landmarks, w, h, self.config, track_id=label, role=role)
             if hand is not None:
                 hands.append(hand)
+
+        # 1. Depth estimation model and 1.5m real-world working range cutoff
+        def _estimate_hand_depth(h):
+            span = getattr(getattr(h, "palm", None), "span", 0.0)
+            return 0.09 / max(span, 1e-4)
+
+        in_range_hands = [h for h in hands if _estimate_hand_depth(h) <= 1.5]
+        # Sort ascending by depth (closest hand first)
+        in_range_hands.sort(key=_estimate_hand_depth)
+
+        # 2. Check manipulation lock
+        is_manipulating = (
+            (self._drag_shape is not None)
+            or (self._prev_rotate_xy is not None)
+            or getattr(self, "_was_rotating", False)
+        )
+
+        if is_manipulating:
+            # Manipulation mode: lock strictly to the initiating hand
+            if self._manipulation_locked_hand_id is None and in_range_hands:
+                self._manipulation_locked_hand_id = in_range_hands[0].track_id
+            if self._manipulation_locked_hand_id is not None:
+                hands = [h for h in in_range_hands if h.track_id == self._manipulation_locked_hand_id]
+            else:
+                hands = []
+        else:
+            self._manipulation_locked_hand_id = None
+
+            is_shape_creation = (
+                getattr(self, "shape_toolbar", None) is not None
+                and getattr(self.shape_toolbar, "selected_shape", None) is not None
+            )
+
+            _hand_side = self._hand_side
+
+            toolbar_controlling = (
+                getattr(self, "shape_toolbar", None) is not None
+                and (
+                    getattr(self.shape_toolbar, "is_open", False)
+                    or getattr(self.shape_toolbar, "hovering_trigger", False)
+                    or getattr(self.shape_toolbar, "is_task_open", False)
+                )
+            )
+            has_frozen = (
+                hasattr(getattr(self, "registry", None), "current")
+                and hasattr(self.registry.current, "frozen_shapes")
+                and len(self.registry.current.frozen_shapes) > 0
+            )
+            gizmo_hover = getattr(getattr(self, "orientation_gizmo", None), "_hovering", False)
+            not_explore = (getattr(self, "page_name", "") != "Explore")
+
+            is_controlling = (
+                is_manipulating
+                or toolbar_controlling
+                or has_frozen
+                or gizmo_hover
+                or not_explore
+            )
+
+            if is_controlling and not is_shape_creation:
+                self._single_hand_controlling = True
+                # Single controlling hand mode:
+                # Strictly lock onto 1 controlling hand; reject any other hand (whether Left or Right)
+                # unless the locked hand has been hidden from camera for >= 1.0s.
+                self._creation_locked_left_id = None
+                self._creation_locked_right_id = None
+
+                if self._primary_hand_id is not None:
+                    matching = next((h for h in in_range_hands if h.track_id == self._primary_hand_id), None)
+                    if matching is not None:
+                        self._primary_hand_last_seen_time = now
+                        hands = [matching]
+                    else:
+                        lost_elapsed = now - (self._primary_hand_last_seen_time or now)
+                        if lost_elapsed >= 1.0:
+                            if in_range_hands:
+                                right_cand = next(
+                                    (h for h in in_range_hands if _hand_side(h) == "Right" or h.role == "DOMINANT"),
+                                    in_range_hands[0],
+                                )
+                                self._primary_hand_id = right_cand.track_id
+                                self._primary_hand_last_seen_time = now
+                                hands = [right_cand]
+                            else:
+                                self._primary_hand_id = None
+                                self._primary_hand_last_seen_time = None
+                                self._single_hand_controlling = False
+                                hands = []
+                        else:
+                            # Lost for < 1.0s: hold lock, do NOT recognize any other hand!
+                            hands = []
+                elif in_range_hands:
+                    right_cand = next(
+                        (h for h in in_range_hands if _hand_side(h) == "Right" or h.role == "DOMINANT"),
+                        in_range_hands[0],
+                    )
+                    self._primary_hand_id = right_cand.track_id
+                    self._primary_hand_last_seen_time = now
+                    hands = [right_cand]
+                else:
+                    hands = []
+            else:
+                self._single_hand_controlling = False
+                self._primary_hand_id = None
+                self._primary_hand_last_seen_time = None
+
+                left_candidates = [h for h in in_range_hands if _hand_side(h) == "Left"]
+                right_candidates = [h for h in in_range_hands if _hand_side(h) == "Right"]
+
+                # Left hand tracking & lock
+                active_left = None
+                if self._creation_locked_left_id is not None:
+                    matching = next((h for h in left_candidates if h.track_id == self._creation_locked_left_id), None)
+                    if matching is not None:
+                        best_left = left_candidates[0]
+                        if (
+                            best_left.track_id != self._creation_locked_left_id
+                            and _estimate_hand_depth(best_left) < _estimate_hand_depth(matching) - 0.15
+                        ):
+                            self._creation_locked_left_id = best_left.track_id
+                            self._creation_left_last_seen_time = now
+                            active_left = best_left
+                        else:
+                            self._creation_left_last_seen_time = now
+                            active_left = matching
+                    else:
+                        lost_elapsed = now - (self._creation_left_last_seen_time or now)
+                        if lost_elapsed >= 1.0:
+                            self._creation_locked_left_id = left_candidates[0].track_id if left_candidates else None
+                            self._creation_left_last_seen_time = now if left_candidates else None
+                            active_left = left_candidates[0] if left_candidates else None
+                        else:
+                            active_left = None
+                elif left_candidates:
+                    self._creation_locked_left_id = left_candidates[0].track_id
+                    self._creation_left_last_seen_time = now
+                    active_left = left_candidates[0]
+
+                # Right hand tracking & lock
+                active_right = None
+                if self._creation_locked_right_id is not None:
+                    matching = next((h for h in right_candidates if h.track_id == self._creation_locked_right_id), None)
+                    if matching is not None:
+                        best_right = right_candidates[0]
+                        if (
+                            best_right.track_id != self._creation_locked_right_id
+                            and _estimate_hand_depth(best_right) < _estimate_hand_depth(matching) - 0.15
+                        ):
+                            self._creation_locked_right_id = best_right.track_id
+                            self._creation_right_last_seen_time = now
+                            active_right = best_right
+                        else:
+                            self._creation_right_last_seen_time = now
+                            active_right = matching
+                    else:
+                        lost_elapsed = now - (self._creation_right_last_seen_time or now)
+                        if lost_elapsed >= 1.0:
+                            self._creation_locked_right_id = right_candidates[0].track_id if right_candidates else None
+                            self._creation_right_last_seen_time = now if right_candidates else None
+                            active_right = right_candidates[0] if right_candidates else None
+                        else:
+                            active_right = None
+                elif right_candidates:
+                    self._creation_locked_right_id = right_candidates[0].track_id
+                    self._creation_right_last_seen_time = now
+                    active_right = right_candidates[0]
+
+                hands = [h for h in (active_left, active_right) if h is not None]
+
+        # Keep filtered landmarks synchronized with active hands to eliminate CPU & drawing overhead
+        active_ids = {h.track_id for h in hands}
+        filtered = {k: v for k, v in filtered.items() if k in active_ids}
+
         self.current_hands = tuple(hands)
         self.viewport.image = bgr_image(packet.image)
 
@@ -1931,7 +2225,22 @@ class ProductWindow(QMainWindow):
                     is_dragging_shape=is_dragging,
                     frozen_shapes=frozen_shapes,
                     selected_shape_id=selected_shape_id,
+                    shape_select_frac=getattr(self._shape_select_dwell, "fraction", 0.0),
                 )
+                animating_unfold = False
+                for fs in frozen_shapes:
+                    target_unfold = 1.0 if "unfold" in getattr(fs, "tasks", set()) else 0.0
+                    curr_unfold = getattr(fs, "unfold_progress", 0.0)
+                    if abs(curr_unfold - target_unfold) > 1e-4:
+                        animating_unfold = True
+                        step = 2.5 * max(0.001, frame_dt)
+                        if curr_unfold < target_unfold:
+                            fs.unfold_progress = min(target_unfold, curr_unfold + step)
+                        else:
+                            fs.unfold_progress = max(target_unfold, curr_unfold - step)
+                if animating_unfold:
+                    self.viewport.update()
+
                 if getattr(self.shape_toolbar, "task_dropdown_opened", False) or getattr(self.shape_toolbar, "task_started", False):
                     self._brightness_sampling_counter = 8
                     self._brightness_samples = []
@@ -1975,7 +2284,7 @@ class ProductWindow(QMainWindow):
                 shape_drawing_active = True
                 shape_type = self.shape_toolbar.selected_shape
                 candidate = self.shape_gesture_engine.update(
-                    hands, shape_type, mirror=self.settings.mirror
+                    hands, shape_type, mirror=self.settings.mirror, dt=frame_dt
                 )
                 if candidate.params is not None:
                     p = candidate.params
@@ -1992,16 +2301,32 @@ class ProductWindow(QMainWindow):
                     if candidate.is_stable:
                         frozen = FrozenShape(kind=shape_type, params=params_dict)
                         self.registry.current.add_frozen_shape(frozen)
+                        self.registry.current.selected_shape_id = None
                         self.registry.current.preview_frozen_shape = None
                         self.shape_toolbar.clear_selection()
                         self.shape_gesture_engine.reset()
-                        self._freeze_cooldown_frames = 60  # ~2 seconds cooldown
+                        self._freeze_cooldown_s = 1.5
+                        self._freeze_cooldown_frames = 39  # cooldown matching ~1.5s
                         self._drag_shape = None
                         self._prev_is_pinched = True       # prevent immediate grab
                         self._prev_rotate_xy = None
-                        self._shape_instruction = f"Đã đóng băng {shape_type} vào scene."
+                        self._shape_instruction = (
+                            f"Đã đóng băng {shape_type} vào scene (trạng thái tĩnh). Giữ ngón trỏ lên vật thể để chọn."
+                        )
                         self.feedback.setText(self._shape_instruction)
                         shape_drawing_active = False
+
+                        # Lock immediately to the Right hand (Hand 1) upon freezing for subsequent control
+                        right_cand = next(
+                            (h for h in hands if self._hand_side(h) == "Right" or h.role == "DOMINANT"),
+                            hands[0] if hands else None,
+                        )
+                        if right_cand is not None:
+                            self._primary_hand_id = right_cand.track_id
+                            self._primary_hand_last_seen_time = now
+                            self._single_hand_controlling = True
+                            hands = [right_cand]
+                            self.current_hands = (right_cand,)
                     else:
                         self.registry.current.preview_frozen_shape = FrozenShape(
                             kind=shape_type, params=params_dict
@@ -2035,8 +2360,11 @@ class ProductWindow(QMainWindow):
                 self.shape_toolbar.selected_shape is None
                 and hasattr(self.registry.current, "frozen_shapes")
             ):
-                if getattr(self, "_freeze_cooldown_frames", 0) > 0:
-                    self._freeze_cooldown_frames -= 1
+                cooldown_s = getattr(self, "_freeze_cooldown_s", 0.0)
+                if cooldown_s > 0.0 or getattr(self, "_freeze_cooldown_frames", 0) > 0:
+                    self._freeze_cooldown_s = max(0.0, cooldown_s - frame_dt)
+                    if getattr(self, "_freeze_cooldown_frames", 0) > 0:
+                        self._freeze_cooldown_frames -= 1
                     self._drag_shape = None
                     self._prev_rotate_xy = None
                     self._prev_is_pinched = False
@@ -2067,15 +2395,20 @@ class ProductWindow(QMainWindow):
                         if self._drag_shape is None and is_pinched and not was_pinched:
                             if self.registry.current.frozen_shapes:
                                 hit = find_hit_shape(self.registry.current.frozen_shapes, pinch_xy)
-                                if hit is not None:
+                                cur_sel_id = getattr(self.registry.current, "selected_shape_id", None)
+                                # Exclusive control: ONLY the selected shape can be moved via pinch!
+                                if hit is not None and cur_sel_id is not None and hit.shape_id == cur_sel_id:
                                     self._drag_shape = hit
-                                    if hasattr(self.registry.current, "selected_shape_id"):
-                                        self.registry.current.selected_shape_id = hit.shape_id
+                                    self._manipulation_locked_hand_id = pointing_hand.track_id
                                     hcx, hcy = hit.params.get("center_xy", (0.5, 0.5))
                                     self._drag_offset = (hcx - pinch_xy[0], hcy - pinch_xy[1])
 
                         if is_pinched and self._drag_shape is not None:
                             self._prev_rotate_xy = None  # disable rotation while moving
+                            if hasattr(self, "_shape_select_dwell"):
+                                self._shape_select_dwell.reset()
+                            if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
+                                self.shape_toolbar._shape_select_frac = 0.0
                             self._drag_screen_xy = pinch_xy
                             old_cx, old_cy = self._drag_shape.params.get("center_xy", (0.5, 0.5))
                             new_cx = min(0.95, max(0.05, pinch_xy[0] + self._drag_offset[0]))
@@ -2103,6 +2436,11 @@ class ProductWindow(QMainWindow):
                             self.feedback.setText(self._shape_instruction)
                             self.viewport.update()
                         else:
+                            if self._drag_shape is not None:
+                                self.registry.current.selected_shape_id = None
+                                if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
+                                    self.shape_toolbar._selected_shape_id = None
+                                self.viewport.update()
                             self._drag_shape = None
                             self._drag_screen_xy = None
 
@@ -2146,26 +2484,63 @@ class ProductWindow(QMainWindow):
                                 and not view_locked
                             )
 
-                            # Touch-to-select: If finger points at/near a shape, select it as active target
-                            if can_rotate and hasattr(self.registry.current, "frozen_shapes") and self.registry.current.frozen_shapes:
-                                if self._prev_rotate_xy is None:
-                                    hit = find_hit_shape(self.registry.current.frozen_shapes, screen_ixy)
-                                    if hit is not None:
-                                        self.registry.current.selected_shape_id = hit.shape_id
+                            frozen_shapes = getattr(self.registry.current, "frozen_shapes", [])
+                            cur_sel_id = getattr(self.registry.current, "selected_shape_id", None)
+                            is_dwelling_selection = False
+
+                            if frozen_shapes:
+                                if can_rotate and self._prev_rotate_xy is None:
+                                    hit = find_hit_shape(frozen_shapes, screen_ixy)
+                                    if hit is not None and hit.shape_id != cur_sel_id:
+                                        is_dwelling_selection = True
+                                        if hasattr(self, "_shape_select_dwell"):
+                                            dwell_ev = self._shape_select_dwell.update(hit.shape_id, frame_dt)
+                                            frac = getattr(self._shape_select_dwell, "fraction", 0.0)
+                                            if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
+                                                self.shape_toolbar._shape_select_frac = frac
+                                                self.shape_toolbar.update()
+                                            if (dwell_ev is not None and dwell_ev.state in ("ENTER", "HOLD")) or frac >= 1.0:
+                                                self.registry.current.selected_shape_id = hit.shape_id
+                                                cur_sel_id = hit.shape_id
+                                                if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
+                                                    self.shape_toolbar._selected_shape_id = hit.shape_id
+                                                self._shape_select_dwell.reset()
+                                                if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
+                                                    self.shape_toolbar._shape_select_frac = 0.0
+                                                    self.shape_toolbar.update()
+                                                self._shape_instruction = f"Đã chọn {hit.kind}. Sẵn sàng điều khiển."
+                                                self.feedback.setText(self._shape_instruction)
+                                                self.viewport.update()
+                                            else:
+                                                pct = int(frac * 100)
+                                                self._shape_instruction = f"Giữ ngón tay để chọn {hit.kind}... ({pct}%)"
+                                                self.feedback.setText(self._shape_instruction)
+                                                self.viewport.update()
+                                    else:
+                                        if hasattr(self, "_shape_select_dwell"):
+                                            self._shape_select_dwell.reset()
+                                        if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
+                                            self.shape_toolbar._shape_select_frac = 0.0
+                                else:
+                                    if hasattr(self, "_shape_select_dwell"):
+                                        self._shape_select_dwell.reset()
+                                    if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
+                                        self.shape_toolbar._shape_select_frac = 0.0
 
                             # Active target shape identification
                             active_shape = None
-                            if hasattr(self.registry.current, "frozen_shapes") and self.registry.current.frozen_shapes:
-                                sel_id = getattr(self.registry.current, "selected_shape_id", None)
-                                for fs in self.registry.current.frozen_shapes:
-                                    if fs.shape_id == sel_id:
-                                        active_shape = fs
-                                        break
-                                if active_shape is None:
-                                    active_shape = self.registry.current.frozen_shapes[-1]
-                                    self.registry.current.selected_shape_id = active_shape.shape_id
+                            if frozen_shapes:
+                                if cur_sel_id is not None:
+                                    for fs in frozen_shapes:
+                                        if fs.shape_id == cur_sel_id:
+                                            active_shape = fs
+                                            break
+
+                            if is_dwelling_selection:
+                                can_rotate = False
 
                             if can_rotate:
+                                self._manipulation_locked_hand_id = pointing_hand.track_id
                                 if self._prev_rotate_xy is not None:
                                     d_rx = screen_ix - self._prev_rotate_xy[0]
                                     d_ry = screen_iy - self._prev_rotate_xy[1]
@@ -2188,7 +2563,9 @@ class ProductWindow(QMainWindow):
                                                 self.registry.current.pitch = active_shape.pitch
                                             cur_rot = (active_shape.yaw, active_shape.pitch)
                                             self._shape_instruction = f"Xoay {active_shape.kind} độc lập theo ngón trỏ..."
-                                        else:
+                                            self._rotate_history.append(cur_rot)
+                                            self._was_rotating = True
+                                        elif not frozen_shapes:
                                             self.registry.current.yaw = (
                                                 self.registry.current.yaw + d_rx * ROTATION_SENSITIVITY
                                             ) % (2 * math.pi)
@@ -2208,15 +2585,17 @@ class ProductWindow(QMainWindow):
                                             self.registry.current.pitch = new_pitch
                                             cur_rot = (self.registry.current.yaw, self.registry.current.pitch)
                                             self._shape_instruction = "Xoay hình theo ngón trỏ..."
-
-                                        self._rotate_history.append(cur_rot)
-                                        self._was_rotating = True
+                                            self._rotate_history.append(cur_rot)
+                                            self._was_rotating = True
 
                                         self.feedback.setText(self._shape_instruction)
                                         self.viewport.update()
                                         if hasattr(self, "orientation_gizmo") and self.orientation_gizmo is not None:
                                             self.orientation_gizmo.update()
-                                self._prev_rotate_xy = screen_ixy
+                                if active_shape is not None or not frozen_shapes:
+                                    self._prev_rotate_xy = screen_ixy
+                                else:
+                                    self._prev_rotate_xy = None
                             else:
                                 if self._was_rotating:
                                     # Solution A Disengagement Rollback: Cancel out trailing curl flick
@@ -2234,6 +2613,19 @@ class ProductWindow(QMainWindow):
                                             self.orientation_gizmo.update()
                                     self._rotate_history.clear()
                                     self._was_rotating = False
+                                    # Finger put away -> shape enters static state immediately
+                                    self.registry.current.selected_shape_id = None
+                                    if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
+                                        self.shape_toolbar._selected_shape_id = None
+                                    self._shape_instruction = "Vật thể ở trạng thái tĩnh. Giữ ngón trỏ vào vật thể để chọn lại."
+                                    self.feedback.setText(self._shape_instruction)
+                                    self.viewport.update()
+                                elif not is_pointing and cur_sel_id is not None:
+                                    # Disengagement without prior rotating: return shape to static state
+                                    self.registry.current.selected_shape_id = None
+                                    if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
+                                        self.shape_toolbar._selected_shape_id = None
+                                    self.viewport.update()
                                 self._prev_rotate_xy = None
                     else:
                         if self._was_rotating:
@@ -2247,8 +2639,6 @@ class ProductWindow(QMainWindow):
                                         if fs.shape_id == sel_id:
                                             active_shape = fs
                                             break
-                                    if active_shape is None:
-                                        active_shape = self.registry.current.frozen_shapes[-1]
                                 if active_shape is not None:
                                     active_shape.yaw = rb_yaw
                                     active_shape.pitch = rb_pitch
@@ -2260,9 +2650,17 @@ class ProductWindow(QMainWindow):
                                     self.orientation_gizmo.update()
                             self._rotate_history.clear()
                             self._was_rotating = False
+                        if hasattr(self.registry.current, "selected_shape_id") and self.registry.current.selected_shape_id is not None:
+                            self.registry.current.selected_shape_id = None
+                        if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
+                            self.shape_toolbar._selected_shape_id = None
                         self._drag_shape = None
                         self._prev_rotate_xy = None
                         self._prev_is_pinched = False
+                        if hasattr(self, "_shape_select_dwell"):
+                            self._shape_select_dwell.reset()
+                        if hasattr(self, "shape_toolbar") and self.shape_toolbar is not None:
+                            self.shape_toolbar._shape_select_frac = 0.0
 
         if intent.type is Type.CANCEL:
             self._dwell_target = self._dwell_since = None
@@ -2551,9 +2949,11 @@ class ProductWindow(QMainWindow):
                         f"Vẽ {shape_type}: {_SHAPE_RULES.get(shape_type, 'Mở các ngón tay để tạo hình.')}",
                     )
             elif getattr(self, "_drag_shape", None) is not None:
-                msg = f"Đang di chuyển hình {self._drag_shape.kind} theo tay chụm..."
+                msg = getattr(self, "_shape_instruction", f"Đang di chuyển hình {self._drag_shape.kind} theo tay chụm...")
             elif getattr(self, "_prev_rotate_xy", None) is not None:
-                msg = "Đang xoay góc nhìn theo ngón trỏ..."
+                msg = getattr(self, "_shape_instruction", "Đang xoay góc nhìn theo ngón trỏ...")
+            elif getattr(self, "_shape_instruction", None):
+                msg = self._shape_instruction
             elif (
                 hasattr(self.registry.current, "frozen_shapes")
                 and self.registry.current.frozen_shapes
@@ -2612,6 +3012,25 @@ class ProductWindow(QMainWindow):
             if idx and not (ring and pnk) and not all(h.fingers[:5]):
                 return True
         return False
+
+    @staticmethod
+    def _hand_side(h) -> str:
+        if h is None:
+            return "Right"
+        tid = str(getattr(h, "track_id", "")).lower()
+        role = str(getattr(h, "role", "")).upper()
+        if "left" in tid:
+            return "Left"
+        if "right" in tid:
+            return "Right"
+        if role == "DOMINANT":
+            return "Right"
+        if role == "SUPPORT":
+            return "Left"
+        tips = getattr(h, "tips", ())
+        if len(tips) >= 5:
+            return "Right" if tips[0].position[0] > tips[4].position[0] else "Left"
+        return "Right" if getattr(h, "pointer_xy", (0.5, 0.5))[0] > 0.5 else "Left"
 
     def update_environment(self, frame, reason):
         message = ""

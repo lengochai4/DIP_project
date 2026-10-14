@@ -57,6 +57,7 @@ class FrozenShape:
     yaw: float = 0.0
     pitch: float = 0.0
     tasks: set = field(default_factory=set)
+    unfold_progress: float = 0.0
 
 
 class StemExtension(Protocol):
@@ -144,7 +145,7 @@ class Lab:
         if not hasattr(self, "frozen_shapes"):
             self.frozen_shapes = []
         self.frozen_shapes.append(shape)
-        self.selected_shape_id = shape.shape_id
+        self.selected_shape_id = None
 
     def remove_frozen_shape_by_id(self, shape_id: str) -> bool:
         """Remove a frozen shape by its ID.  Returns True if found."""
@@ -153,7 +154,7 @@ class Lab:
         before = len(self.frozen_shapes)
         self.frozen_shapes = [s for s in self.frozen_shapes if s.shape_id != shape_id]
         if getattr(self, "selected_shape_id", None) == shape_id:
-            self.selected_shape_id = self.frozen_shapes[-1].shape_id if self.frozen_shapes else None
+            self.selected_shape_id = None
         return len(self.frozen_shapes) < before
 
     def clear_frozen_shapes(self) -> None:
@@ -189,8 +190,6 @@ class Lab:
         view_mat = rotation(getattr(self, "yaw", 0.0), getattr(self, "pitch", 0.0))
         aspect = getattr(self, "frame_aspect", 4.0 / 3.0)
         selected_id = getattr(self, "selected_shape_id", None)
-        if selected_id is None and shapes:
-            selected_id = shapes[-1].shape_id
 
         def _norm_to_scene(x, y, z=0.0):
             """Map FRAME_NORMALIZED (0-1) to scene (-1..1) space."""
@@ -210,7 +209,7 @@ class Lab:
 
         for fs in shapes:
             p = fs.params
-            is_selected = (fs.shape_id == selected_id) or (len(shapes) == 1)
+            is_selected = (fs.shape_id == selected_id)
 
             # Independent per-shape orientation
             fs_yaw = getattr(fs, "yaw", getattr(self, "yaw", 0.0))
@@ -228,11 +227,11 @@ class Lab:
 
             style = _STYLE.get(fs.kind, _STYLE["Cube"])
             face_col = style["face"]
-            if is_selected and len(shapes) > 1:
-                # Active target highlight border and vertices
+            if is_selected:
+                # Active target highlight border and vertices - lights up brightly!
                 edge_col = "#fbbf24" if fs.kind != "Cube" else "#38bdf8"
                 ball_col = "#fbbf24"
-                edge_w = style["edge_w"] + 1.2
+                edge_w = style["edge_w"] + 1.6
             else:
                 edge_col = style["edge"]
                 ball_col = style["ball"]
@@ -274,23 +273,93 @@ class Lab:
             elif fs.kind == "Sphere":
                 r = p.get("radius", 0.05)
                 scene_r = max(0.04, r * 2.0)
-                # Full 3D solid lighted sphere
-                balls.append(Ball(scene_c, scene_r, face_col))
-                # Equator and meridian rings rotated in 3D
-                n_seg = 24
-                for plane in ("xy", "xz"):
-                    pts = []
-                    for i in range(n_seg):
-                        a = 2 * math.pi * i / n_seg
-                        if plane == "xy":
-                            v_loc = (scene_r * math.cos(a), scene_r * math.sin(a), 0.0)
-                        else:
-                            v_loc = (scene_r * math.cos(a), 0.0, scene_r * math.sin(a))
-                        pts.append(_rotate_local(scene_c, v_loc))
-                    for i in range(n_seg):
-                        lines.append(Line(pts[i], pts[(i + 1) % n_seg], edge_col, edge_w))
-
                 fs_tasks = getattr(fs, "tasks", set())
+                unfold_prog = getattr(fs, "unfold_progress", 1.0 if "unfold" in fs_tasks else 0.0)
+                if "unfold" in fs_tasks and unfold_prog <= 0.001:
+                    unfold_prog = 1.0
+
+                if unfold_prog < 0.6:
+                    # 3D solid lighted sphere & coordinate meridian rings
+                    balls.append(Ball(scene_c, scene_r, face_col))
+                    n_seg = 24
+                    for plane in ("xy", "xz"):
+                        pts = []
+                        for i in range(n_seg):
+                            a = 2 * math.pi * i / n_seg
+                            if plane == "xy":
+                                v_loc = (scene_r * math.cos(a), scene_r * math.sin(a), 0.0)
+                            else:
+                                v_loc = (scene_r * math.cos(a), 0.0, scene_r * math.sin(a))
+                            pts.append(_rotate_local(scene_c, v_loc))
+                        for i in range(n_seg):
+                            lines.append(Line(pts[i], pts[(i + 1) % n_seg], edge_col, edge_w))
+
+                if unfold_prog > 0.001:
+                    # Unfolding 3D Net for Sphere: Sinusoidal gore projection petals (Múi cầu)
+                    n_gores = 6
+                    w0 = (2.0 * math.pi * scene_r) / n_gores
+                    n_lat = 16
+                    for k in range(n_gores):
+                        xk = (k - (n_gores - 1) / 2.0) * w0
+                        lam_mid = -math.pi + (k + 0.5) * (2.0 * math.pi / n_gores)
+                        lam_left = lam_mid - math.pi / n_gores
+                        lam_right = lam_mid + math.pi / n_gores
+
+                        pts_left, pts_right = [], []
+                        for i in range(n_lat + 1):
+                            phi = -math.pi / 2.0 + math.pi * i / n_lat
+                            y_flat = scene_r * phi
+                            hw_flat = 0.5 * w0 * math.cos(phi)
+
+                            p3d_left = (
+                                scene_r * math.cos(phi) * math.sin(lam_left),
+                                scene_r * math.sin(phi),
+                                scene_r * math.cos(phi) * math.cos(lam_left),
+                            )
+                            p3d_right = (
+                                scene_r * math.cos(phi) * math.sin(lam_right),
+                                scene_r * math.sin(phi),
+                                scene_r * math.cos(phi) * math.cos(lam_right),
+                            )
+                            pflat_left = (xk - hw_flat, y_flat, 0.0)
+                            pflat_right = (xk + hw_flat, y_flat, 0.0)
+
+                            u = unfold_prog
+                            cur_left = (
+                                (1.0 - u) * p3d_left[0] + u * pflat_left[0],
+                                (1.0 - u) * p3d_left[1] + u * pflat_left[1],
+                                (1.0 - u) * p3d_left[2] + u * pflat_left[2],
+                            )
+                            cur_right = (
+                                (1.0 - u) * p3d_right[0] + u * pflat_right[0],
+                                (1.0 - u) * p3d_right[1] + u * pflat_right[1],
+                                (1.0 - u) * p3d_right[2] + u * pflat_right[2],
+                            )
+                            pts_left.append(_rotate_local(scene_c, cur_left))
+                            pts_right.append(_rotate_local(scene_c, cur_right))
+
+                        gore_col = "#0ea5e9" if k % 2 == 0 else "#0284c7"
+                        for i in range(n_lat):
+                            faces.append(Face(pts_left[i], pts_right[i], pts_right[i + 1], gore_col))
+                            faces.append(Face(pts_left[i], pts_right[i + 1], pts_left[i + 1], gore_col))
+                            faces.append(Face(pts_left[i], pts_right[i + 1], pts_right[i], gore_col))
+                            faces.append(Face(pts_left[i], pts_left[i + 1], pts_right[i + 1], gore_col))
+                            lines.append(Line(pts_left[i], pts_left[i + 1], "#7dd3fc", 2.0))
+                            lines.append(Line(pts_right[i], pts_right[i + 1], "#7dd3fc", 2.0))
+
+                        # Equator hinge marker across gore
+                        mid_idx = n_lat // 2
+                        lines.append(Line(pts_left[mid_idx], pts_right[mid_idx], "#f59e0b", 2.5))
+
+                    labels.append((
+                        _rotate_local(scene_c, (0, scene_r * (math.pi / 2) + 0.06, 0)),
+                        f"Bung mặt phẳng: Múi cầu (Gores) | S_tp = 4πR² = {4.0 * math.pi * (scene_r ** 2):.2f}"
+                    ))
+                    labels.append((
+                        _rotate_local(scene_c, (0, -scene_r * (math.pi / 2) - 0.06, 0)),
+                        "Định lý Gauss: K > 0 (không thể trải phẳng hoàn toàn không biến dạng)"
+                    ))
+
                 if "distance" in fs_tasks:
                     p_edge = _rotate_local(scene_c, (scene_r, 0, 0))
                     lines.append(Line(scene_c, p_edge, "#38bdf8", 3.5))
@@ -398,29 +467,122 @@ class Lab:
                 # Isotropic cube side in scene units (uniform across X, Y, Z)
                 side = p.get("size", 0.15)
                 hs = max(0.06, side)
-                local_corners = [
-                    (sx * hs, sy * hs, sz * hs)
-                    for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)
-                ]
-                sc_pts = [_rotate_local(scene_c, lv) for lv in local_corners]
-                _CUBE_FACES = [
-                    (0, 1, 3), (0, 3, 2),  # x = -1
-                    (4, 6, 7), (4, 7, 5),  # x = +1
-                    (0, 4, 5), (0, 5, 1),  # y = -1
-                    (2, 3, 7), (2, 7, 6),  # y = +1
-                    (0, 2, 6), (0, 6, 4),  # z = -1
-                    (1, 5, 7), (1, 7, 3),  # z = +1
-                ]
-                for i1, i2, i3 in _CUBE_FACES:
-                    faces.append(Face(sc_pts[i1], sc_pts[i2], sc_pts[i3], face_col))
-                _CUBE_EDGES = [
-                    (0, 1), (0, 2), (0, 4), (1, 3), (1, 5), (2, 3),
-                    (2, 6), (3, 7), (4, 5), (4, 6), (5, 7), (6, 7),
-                ]
-                for a, b in _CUBE_EDGES:
-                    lines.append(Line(sc_pts[a], sc_pts[b], edge_col, edge_w))
-                for pt in sc_pts:
-                    balls.append(Ball(pt, 0.022, ball_col))
+                fs_tasks = getattr(fs, "tasks", set())
+                unfold_prog = getattr(fs, "unfold_progress", 1.0 if "unfold" in fs_tasks else 0.0)
+                if "unfold" in fs_tasks and unfold_prog <= 0.001:
+                    unfold_prog = 1.0
+
+                if unfold_prog <= 0.001:
+                    local_corners = [
+                        (sx * hs, sy * hs, sz * hs)
+                        for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)
+                    ]
+                    sc_pts = [_rotate_local(scene_c, lv) for lv in local_corners]
+                    _CUBE_FACES = [
+                        (0, 1, 3), (0, 3, 2),  # x = -1
+                        (4, 6, 7), (4, 7, 5),  # x = +1
+                        (0, 4, 5), (0, 5, 1),  # y = -1
+                        (2, 3, 7), (2, 7, 6),  # y = +1
+                        (0, 2, 6), (0, 6, 4),  # z = -1
+                        (1, 5, 7), (1, 7, 3),  # z = +1
+                    ]
+                    for i1, i2, i3 in _CUBE_FACES:
+                        faces.append(Face(sc_pts[i1], sc_pts[i2], sc_pts[i3], face_col))
+                    _CUBE_EDGES = [
+                        (0, 1), (0, 2), (0, 4), (1, 3), (1, 5), (2, 3),
+                        (2, 6), (3, 7), (4, 5), (4, 6), (5, 7), (6, 7),
+                    ]
+                    for a, b in _CUBE_EDGES:
+                        lines.append(Line(sc_pts[a], sc_pts[b], edge_col, edge_w))
+                    for pt in sc_pts:
+                        balls.append(Ball(pt, 0.022, ball_col))
+                else:
+                    # Unfolding 3D Net for Cube: 6 faces unfolding via Latin Cross net
+                    th = unfold_prog * (math.pi / 2.0)
+                    sin_th, cos_th = math.sin(th), math.cos(th)
+                    sin_2th, cos_2th = math.sin(2.0 * th), math.cos(2.0 * th)
+
+                    # 1. Bottom face (Đáy) at z = -hs
+                    vb = [
+                        (-hs, -hs, -hs), (hs, -hs, -hs), (hs, hs, -hs), (-hs, hs, -hs)
+                    ]
+                    # 2. South face (Mặt sau) hinged at y = -hs, z = -hs
+                    vs = [
+                        (-hs, -hs, -hs), (hs, -hs, -hs),
+                        (hs, -hs - 2 * hs * sin_th, -hs + 2 * hs * cos_th),
+                        (-hs, -hs - 2 * hs * sin_th, -hs + 2 * hs * cos_th),
+                    ]
+                    # 3. North face (Mặt trước) hinged at y = hs, z = -hs
+                    vn = [
+                        (-hs, hs, -hs), (hs, hs, -hs),
+                        (hs, hs + 2 * hs * sin_th, -hs + 2 * hs * cos_th),
+                        (-hs, hs + 2 * hs * sin_th, -hs + 2 * hs * cos_th),
+                    ]
+                    # 4. West face (Mặt trái) hinged at x = -hs, z = -hs
+                    vw = [
+                        (-hs, -hs, -hs), (-hs, hs, -hs),
+                        (-hs - 2 * hs * sin_th, hs, -hs + 2 * hs * cos_th),
+                        (-hs - 2 * hs * sin_th, -hs, -hs + 2 * hs * cos_th),
+                    ]
+                    # 5. East face (Mặt phải) hinged at x = hs, z = -hs
+                    ve = [
+                        (hs, -hs, -hs), (hs, hs, -hs),
+                        (hs + 2 * hs * sin_th, hs, -hs + 2 * hs * cos_th),
+                        (hs + 2 * hs * sin_th, -hs, -hs + 2 * hs * cos_th),
+                    ]
+                    # 6. Top face (Mặt nắp) hinged at outer edge of North face
+                    y_edge = hs + 2 * hs * sin_th
+                    z_edge = -hs + 2 * hs * cos_th
+                    y_top = y_edge - 2 * hs * cos_2th
+                    z_top = z_edge + 2 * hs * sin_2th
+                    vt = [
+                        (-hs, y_edge, z_edge), (hs, y_edge, z_edge),
+                        (hs, y_top, z_top), (-hs, y_top, z_top),
+                    ]
+
+                    cube_net_faces = [
+                        (vb, "#0284c7", "Mặt đáy"),
+                        (vn, "#0ea5e9", "Mặt trước"),
+                        (vs, "#0ea5e9", "Mặt sau"),
+                        (vw, "#06b6d4", "Mặt trái"),
+                        (ve, "#06b6d4", "Mặt phải"),
+                        (vt, "#38bdf8", "Mặt nắp"),
+                    ]
+
+                    for quad_local, f_col, f_lbl in cube_net_faces:
+                        sc_q = [_rotate_local(scene_c, q) for q in quad_local]
+                        faces.append(Face(sc_q[0], sc_q[1], sc_q[2], f_col))
+                        faces.append(Face(sc_q[0], sc_q[2], sc_q[3], f_col))
+                        faces.append(Face(sc_q[0], sc_q[2], sc_q[1], f_col))
+                        faces.append(Face(sc_q[0], sc_q[3], sc_q[2], f_col))
+                        for i in range(4):
+                            lines.append(Line(sc_q[i], sc_q[(i + 1) % 4], edge_col, edge_w))
+                            balls.append(Ball(sc_q[i], 0.02, ball_col))
+                        c_quad = (
+                            sum(pt[0] for pt in sc_q) / 4.0,
+                            sum(pt[1] for pt in sc_q) / 4.0,
+                            sum(pt[2] for pt in sc_q) / 4.0,
+                        )
+                        labels.append((c_quad, f_lbl))
+
+                    hinges_local = [
+                        (vb[0], vb[1]),
+                        (vb[3], vb[2]),
+                        (vb[0], vb[3]),
+                        (vb[1], vb[2]),
+                        (vn[3], vn[2]),
+                    ]
+                    for h_a, h_b in hinges_local:
+                        p_ha = _rotate_local(scene_c, h_a)
+                        p_hb = _rotate_local(scene_c, h_b)
+                        lines.append(Line(p_ha, p_hb, "#f59e0b", 3.5))
+                        balls.append(Ball(p_ha, 0.024, "#fbbf24"))
+                        balls.append(Ball(p_hb, 0.024, "#fbbf24"))
+
+                    labels.append((
+                        _rotate_local(scene_c, (0, 0, hs + 0.12)),
+                        f"Bung mặt phẳng: Khối lập phương | S_tp = 6a² = {6 * (hs * 2)**2:.2f}"
+                    ))
 
                 fs_tasks = getattr(fs, "tasks", set())
                 side_val = hs * 2
@@ -469,32 +631,124 @@ class Lab:
                 w = max(0.06, p.get("width", 0.18))
                 h = max(0.06, p.get("height", 0.14))
                 depth = max(0.06, p.get("size", (w + h) / 2))
-                local_corners = [
-                    (sx * w, sy * h, sz * depth)
-                    for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)
-                ]
-                sc_pts = [_rotate_local(scene_c, lv) for lv in local_corners]
-                _BOX_FACES = [
-                    (0, 1, 3), (0, 3, 2),  # x = -1
-                    (4, 6, 7), (4, 7, 5),  # x = +1
-                    (0, 4, 5), (0, 5, 1),  # y = -1
-                    (2, 3, 7), (2, 7, 6),  # y = +1
-                    (0, 2, 6), (0, 6, 4),  # z = -1
-                    (1, 5, 7), (1, 7, 3),  # z = +1
-                ]
-                for i1, i2, i3 in _BOX_FACES:
-                    faces.append(Face(sc_pts[i1], sc_pts[i2], sc_pts[i3], face_col))
-                _BOX_EDGES = [
-                    (0, 1), (0, 2), (0, 4), (1, 3), (1, 5), (2, 3),
-                    (2, 6), (3, 7), (4, 5), (4, 6), (5, 7), (6, 7),
-                ]
-                for a, b in _BOX_EDGES:
-                    lines.append(Line(sc_pts[a], sc_pts[b], edge_col, edge_w))
-                for pt in sc_pts:
-                    balls.append(Ball(pt, 0.022, ball_col))
-
                 fs_tasks = getattr(fs, "tasks", set())
+                unfold_prog = getattr(fs, "unfold_progress", 1.0 if "unfold" in fs_tasks else 0.0)
+                if "unfold" in fs_tasks and unfold_prog <= 0.001:
+                    unfold_prog = 1.0
+
                 l_val, h_val, w_val = w * 2, h * 2, depth * 2
+                if unfold_prog <= 0.001:
+                    local_corners = [
+                        (sx * w, sy * h, sz * depth)
+                        for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)
+                    ]
+                    sc_pts = [_rotate_local(scene_c, lv) for lv in local_corners]
+                    _BOX_FACES = [
+                        (0, 1, 3), (0, 3, 2),  # x = -1
+                        (4, 6, 7), (4, 7, 5),  # x = +1
+                        (0, 4, 5), (0, 5, 1),  # y = -1
+                        (2, 3, 7), (2, 7, 6),  # y = +1
+                        (0, 2, 6), (0, 6, 4),  # z = -1
+                        (1, 5, 7), (1, 7, 3),  # z = +1
+                    ]
+                    for i1, i2, i3 in _BOX_FACES:
+                        faces.append(Face(sc_pts[i1], sc_pts[i2], sc_pts[i3], face_col))
+                    _BOX_EDGES = [
+                        (0, 1), (0, 2), (0, 4), (1, 3), (1, 5), (2, 3),
+                        (2, 6), (3, 7), (4, 5), (4, 6), (5, 7), (6, 7),
+                    ]
+                    for a, b in _BOX_EDGES:
+                        lines.append(Line(sc_pts[a], sc_pts[b], edge_col, edge_w))
+                    for pt in sc_pts:
+                        balls.append(Ball(pt, 0.022, ball_col))
+                else:
+                    # Unfolding 3D Net for Box
+                    th = unfold_prog * (math.pi / 2.0)
+                    sin_th, cos_th = math.sin(th), math.cos(th)
+                    sin_2th, cos_2th = math.sin(2.0 * th), math.cos(2.0 * th)
+
+                    # 1. Bottom face (Đáy) at z = -depth
+                    vb = [
+                        (-w, -h, -depth), (w, -h, -depth), (w, h, -depth), (-w, h, -depth)
+                    ]
+                    # 2. South face (Mặt sau) hinged at y = -h, z = -depth
+                    vs = [
+                        (-w, -h, -depth), (w, -h, -depth),
+                        (w, -h - 2 * depth * sin_th, -depth + 2 * depth * cos_th),
+                        (-w, -h - 2 * depth * sin_th, -depth + 2 * depth * cos_th),
+                    ]
+                    # 3. North face (Mặt trước) hinged at y = h, z = -depth
+                    vn = [
+                        (-w, h, -depth), (w, h, -depth),
+                        (w, h + 2 * depth * sin_th, -depth + 2 * depth * cos_th),
+                        (-w, h + 2 * depth * sin_th, -depth + 2 * depth * cos_th),
+                    ]
+                    # 4. West face (Mặt trái) hinged at x = -w, z = -depth
+                    vw = [
+                        (-w, -h, -depth), (-w, h, -depth),
+                        (-w - 2 * depth * sin_th, h, -depth + 2 * depth * cos_th),
+                        (-w - 2 * depth * sin_th, -h, -depth + 2 * depth * cos_th),
+                    ]
+                    # 5. East face (Mặt phải) hinged at x = w, z = -depth
+                    ve = [
+                        (w, -h, -depth), (w, h, -depth),
+                        (w + 2 * depth * sin_th, h, -depth + 2 * depth * cos_th),
+                        (w + 2 * depth * sin_th, -h, -depth + 2 * depth * cos_th),
+                    ]
+                    # 6. Top face (Mặt nắp) hinged at outer edge of North face
+                    y_edge = h + 2 * depth * sin_th
+                    z_edge = -depth + 2 * depth * cos_th
+                    y_top = y_edge - 2 * h * cos_2th
+                    z_top = z_edge + 2 * h * sin_2th
+                    vt = [
+                        (-w, y_edge, z_edge), (w, y_edge, z_edge),
+                        (w, y_top, z_top), (-w, y_top, z_top),
+                    ]
+
+                    box_net_faces = [
+                        (vb, "#c2410c", "Mặt đáy"),
+                        (vn, "#ea580c", "Mặt trước"),
+                        (vs, "#ea580c", "Mặt sau"),
+                        (vw, "#f97316", "Mặt trái"),
+                        (ve, "#f97316", "Mặt phải"),
+                        (vt, "#fb923c", "Mặt nắp"),
+                    ]
+
+                    for quad_local, f_col, f_lbl in box_net_faces:
+                        sc_q = [_rotate_local(scene_c, q) for q in quad_local]
+                        faces.append(Face(sc_q[0], sc_q[1], sc_q[2], f_col))
+                        faces.append(Face(sc_q[0], sc_q[2], sc_q[3], f_col))
+                        faces.append(Face(sc_q[0], sc_q[2], sc_q[1], f_col))
+                        faces.append(Face(sc_q[0], sc_q[3], sc_q[2], f_col))
+                        for i in range(4):
+                            lines.append(Line(sc_q[i], sc_q[(i + 1) % 4], edge_col, edge_w))
+                            balls.append(Ball(sc_q[i], 0.02, ball_col))
+                        c_quad = (
+                            sum(pt[0] for pt in sc_q) / 4.0,
+                            sum(pt[1] for pt in sc_q) / 4.0,
+                            sum(pt[2] for pt in sc_q) / 4.0,
+                        )
+                        labels.append((c_quad, f_lbl))
+
+                    hinges_local = [
+                        (vb[0], vb[1]),
+                        (vb[3], vb[2]),
+                        (vb[0], vb[3]),
+                        (vb[1], vb[2]),
+                        (vn[3], vn[2]),
+                    ]
+                    for h_a, h_b in hinges_local:
+                        p_ha = _rotate_local(scene_c, h_a)
+                        p_hb = _rotate_local(scene_c, h_b)
+                        lines.append(Line(p_ha, p_hb, "#f59e0b", 3.5))
+                        balls.append(Ball(p_ha, 0.024, "#fbbf24"))
+                        balls.append(Ball(p_hb, 0.024, "#fbbf24"))
+
+                    s_tp = 2 * (l_val * h_val + l_val * w_val + h_val * w_val)
+                    labels.append((
+                        _rotate_local(scene_c, (0, 0, depth + 0.12)),
+                        f"Bung mặt phẳng: Hộp chữ nhật | S_tp = {s_tp:.2f}"
+                    ))
                 if "distance" in fs_tasks:
                     lines.append(Line(_rotate_local(scene_c, (-w, -h, -depth)), _rotate_local(scene_c, (w, -h, -depth)), "#38bdf8", 4.0))
                     labels.append((_rotate_local(scene_c, (0, -h - 0.03, -depth)), f"L={l_val:.2f}"))
@@ -562,28 +816,113 @@ class Lab:
                     b2_3d = _rotate_local(scene_c, b2_lv)
                     b3_3d = _rotate_local(scene_c, b3_lv)
 
-                    faces.append(Face(b1_3d, b2_3d, b3_3d, face_col))
-                    faces.append(Face(b1_3d, b3_3d, b2_3d, face_col))
-                    faces.append(Face(b1_3d, b2_3d, apex_3d, face_col))
-                    faces.append(Face(b2_3d, b3_3d, apex_3d, face_col))
-                    faces.append(Face(b3_3d, b1_3d, apex_3d, face_col))
-                    faces.append(Face(b1_3d, apex_3d, b2_3d, face_col))
-                    faces.append(Face(b2_3d, apex_3d, b3_3d, face_col))
-                    faces.append(Face(b3_3d, apex_3d, b1_3d, face_col))
-
-                    lines.append(Line(b1_3d, b2_3d, edge_col, edge_w))
-                    lines.append(Line(b2_3d, b3_3d, edge_col, edge_w))
-                    lines.append(Line(b3_3d, b1_3d, edge_col, edge_w))
-                    lines.append(Line(b1_3d, apex_3d, edge_col, edge_w))
-                    lines.append(Line(b2_3d, apex_3d, edge_col, edge_w))
-                    lines.append(Line(b3_3d, apex_3d, edge_col, edge_w))
-
-                    balls.append(Ball(apex_3d, 0.026, ball_col))
-                    balls.append(Ball(b1_3d, 0.02, ball_col))
-                    balls.append(Ball(b2_3d, 0.02, ball_col))
-                    balls.append(Ball(b3_3d, 0.02, ball_col))
-
                     fs_tasks = getattr(fs, "tasks", set())
+                    unfold_prog = getattr(fs, "unfold_progress", 1.0 if "unfold" in fs_tasks else 0.0)
+                    if "unfold" in fs_tasks and unfold_prog <= 0.001:
+                        unfold_prog = 1.0
+
+                    if unfold_prog <= 0.001:
+                        faces.append(Face(b1_3d, b2_3d, b3_3d, face_col))
+                        faces.append(Face(b1_3d, b3_3d, b2_3d, face_col))
+                        faces.append(Face(b1_3d, b2_3d, apex_3d, face_col))
+                        faces.append(Face(b2_3d, b3_3d, apex_3d, face_col))
+                        faces.append(Face(b3_3d, b1_3d, apex_3d, face_col))
+                        faces.append(Face(b1_3d, apex_3d, b2_3d, face_col))
+                        faces.append(Face(b2_3d, apex_3d, b3_3d, face_col))
+                        faces.append(Face(b3_3d, apex_3d, b1_3d, face_col))
+
+                        lines.append(Line(b1_3d, b2_3d, edge_col, edge_w))
+                        lines.append(Line(b2_3d, b3_3d, edge_col, edge_w))
+                        lines.append(Line(b3_3d, b1_3d, edge_col, edge_w))
+                        lines.append(Line(b1_3d, apex_3d, edge_col, edge_w))
+                        lines.append(Line(b2_3d, apex_3d, edge_col, edge_w))
+                        lines.append(Line(b3_3d, apex_3d, edge_col, edge_w))
+
+                        balls.append(Ball(apex_3d, 0.026, ball_col))
+                        balls.append(Ball(b1_3d, 0.02, ball_col))
+                        balls.append(Ball(b2_3d, 0.02, ball_col))
+                        balls.append(Ball(b3_3d, 0.02, ball_col))
+                    else:
+                        # Base face (Mặt đáy)
+                        faces.append(Face(b1_3d, b2_3d, b3_3d, "#7e22ce"))
+                        faces.append(Face(b1_3d, b3_3d, b2_3d, "#7e22ce"))
+                        c_b_3d = (
+                            (b1_3d[0] + b2_3d[0] + b3_3d[0]) / 3.0,
+                            (b1_3d[1] + b2_3d[1] + b3_3d[1]) / 3.0,
+                            (b1_3d[2] + b2_3d[2] + b3_3d[2]) / 3.0,
+                        )
+                        labels.append((c_b_3d, "Mặt đáy"))
+
+                        # Unfold 3 lateral faces outward along base edges into star net
+                        pyramid_edges = [
+                            (b1_lv, b2_lv, b3_lv, "Mặt bên 1", "#9333ea"),
+                            (b2_lv, b3_lv, b1_lv, "Mặt bên 2", "#a855f7"),
+                            (b3_lv, b1_lv, b2_lv, "Mặt bên 3", "#c084fc"),
+                        ]
+                        total_s_xq = 0.0
+                        for pA, pB, pOpp, face_lbl, face_color in pyramid_edges:
+                            # Hinge line in amber
+                            lines.append(Line(_rotate_local(scene_c, pA), _rotate_local(scene_c, pB), "#f59e0b", 3.5))
+                            balls.append(Ball(_rotate_local(scene_c, pA), 0.024, "#fbbf24"))
+                            balls.append(Ball(_rotate_local(scene_c, pB), 0.024, "#fbbf24"))
+
+                            u_edge = (pB[0] - pA[0], pB[1] - pA[1], 0.0)
+                            len_u = math.hypot(u_edge[0], u_edge[1])
+                            if len_u < 1e-6:
+                                continue
+                            t_proj = ((apex_lv[0] - pA[0]) * u_edge[0] + (apex_lv[1] - pA[1]) * u_edge[1]) / (len_u ** 2)
+                            foot = (pA[0] + t_proj * u_edge[0], pA[1] + t_proj * u_edge[1], 0.0)
+                            h_vec = (apex_lv[0] - foot[0], apex_lv[1] - foot[1], apex_lv[2] - foot[2])
+                            h_slant = math.sqrt(h_vec[0]**2 + h_vec[1]**2 + h_vec[2]**2)
+                            if h_slant < 1e-6:
+                                continue
+                            total_s_xq += 0.5 * len_u * h_slant
+                            v0 = (h_vec[0] / h_slant, h_vec[1] / h_slant, h_vec[2] / h_slant)
+
+                            # Outward normal in z=0 plane pointing away from pOpp
+                            n_cand = (-u_edge[1] / len_u, u_edge[0] / len_u, 0.0)
+                            dot_opp = n_cand[0] * (pOpp[0] - foot[0]) + n_cand[1] * (pOpp[1] - foot[1])
+                            n_out = (-n_cand[0], -n_cand[1], 0.0) if dot_opp > 0 else n_cand
+
+                            # Rotation angle from v0 to n_out
+                            cos_alpha = max(-1.0, min(1.0, v0[0] * n_out[0] + v0[1] * n_out[1] + v0[2] * n_out[2]))
+                            alpha = math.acos(cos_alpha)
+                            beta = (1.0 - unfold_prog) * alpha
+                            v_th = (
+                                math.cos(beta) * n_out[0],
+                                math.cos(beta) * n_out[1],
+                                math.sin(beta),
+                            )
+                            apex_rot = (
+                                foot[0] + h_slant * v_th[0],
+                                foot[1] + h_slant * v_th[1],
+                                foot[2] + h_slant * v_th[2],
+                            )
+
+                            pA_3d = _rotate_local(scene_c, pA)
+                            pB_3d = _rotate_local(scene_c, pB)
+                            apex_rot_3d = _rotate_local(scene_c, apex_rot)
+
+                            faces.append(Face(pA_3d, pB_3d, apex_rot_3d, face_color))
+                            faces.append(Face(pA_3d, apex_rot_3d, pB_3d, face_color))
+                            lines.append(Line(pA_3d, apex_rot_3d, edge_col, edge_w))
+                            lines.append(Line(pB_3d, apex_rot_3d, edge_col, edge_w))
+                            balls.append(Ball(apex_rot_3d, 0.024, ball_col))
+
+                            c_face_3d = (
+                                (pA_3d[0] + pB_3d[0] + apex_rot_3d[0]) / 3.0,
+                                (pA_3d[1] + pB_3d[1] + apex_rot_3d[1]) / 3.0,
+                                (pA_3d[2] + pB_3d[2] + apex_rot_3d[2]) / 3.0,
+                            )
+                            labels.append((c_face_3d, face_lbl))
+
+                        u_b = np.array([b2_lv[0] - b1_lv[0], b2_lv[1] - b1_lv[1], 0.0])
+                        v_b = np.array([b3_lv[0] - b1_lv[0], b3_lv[1] - b1_lv[1], 0.0])
+                        s_b = 0.5 * float(np.linalg.norm(np.cross(u_b, v_b)))
+                        labels.append((
+                            _rotate_local(scene_c, (0, 0, apex_h + 0.12)),
+                            f"Bung mặt phẳng: Chóp tam giác | S_tp = {s_b + total_s_xq:.2f}"
+                        ))
                     if "distance" in fs_tasks:
                         lines.append(Line(b1_3d, b2_3d, "#38bdf8", 4.0))
                         mid12 = ((b1_3d[0] + b2_3d[0]) / 2, (b1_3d[1] + b2_3d[1]) / 2, (b1_3d[2] + b2_3d[2]) / 2)

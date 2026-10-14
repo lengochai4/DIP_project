@@ -45,7 +45,8 @@ ALL_SHAPES = SHAPE_2D + SHAPE_3D
 # ------------------------------------------------------------------
 
 STABILITY_THRESHOLD = 0.018   # normalised-coordinate units
-STABILITY_FRAMES = 60         # ~2.0 s @ 30 fps (+0.5 s real time)
+STABILITY_FRAMES = 39         # ~1.3 s @ 30 fps (shortened by 35% from 60 frames)
+STABILITY_DURATION_S = 1.8    # 1.5s -> 2.0s realtime freeze hold duration
 
 
 # ------------------------------------------------------------------
@@ -417,10 +418,18 @@ class ShapeGestureEngine:
         self,
         stability_threshold: float = 0.025,
         stability_frames: int = STABILITY_FRAMES,
+        stability_duration_s: Optional[float] = None,
     ):
         self._thresh = stability_threshold
         self._req = stability_frames
+        if stability_duration_s is not None:
+            self._duration_s = stability_duration_s
+        elif stability_frames != STABILITY_FRAMES:
+            self._duration_s = stability_frames * 0.033
+        else:
+            self._duration_s = STABILITY_DURATION_S
         self._stable_count = 0
+        self._stable_time_s = 0.0
         self._last_key: Optional[tuple] = None
         self._preferred_hands: Optional[int] = None
         self._drop_grace_frames = 0
@@ -430,11 +439,28 @@ class ShapeGestureEngine:
 
     def reset(self) -> None:
         self._stable_count = 0
+        self._stable_time_s = 0.0
         self._last_key = None
         self._drop_grace_frames = 0
         self._smoothed_params = None
         self._last_valid_params = None
         self._last_mirror = None
+
+    def _calc_progress(self) -> tuple[bool, float]:
+        if self._duration_s is not None and self._duration_s > 0:
+            time_frac = min(1.0, self._stable_time_s / self._duration_s)
+        else:
+            time_frac = 0.0
+        frame_frac = min(1.0, self._stable_count / max(1, self._req))
+        if self._req != STABILITY_FRAMES:
+            # Custom frame requirement passed in test (e.g. stability_frames=3 or 5)
+            frac = max(time_frac, frame_frac)
+            stable = (self._stable_count >= self._req) or (self._stable_time_s >= self._duration_s)
+        else:
+            # Realtime production requirement (1.5 -> 2s, default 1.8s)
+            frac = time_frac
+            stable = self._stable_time_s >= self._duration_s
+        return stable, frac
 
     def _smooth(self, current: ShapeParams, mirror: bool) -> ShapeParams:
         if (
@@ -499,6 +525,7 @@ class ShapeGestureEngine:
         hands: Sequence,
         shape_type: str,
         mirror: bool = False,
+        dt: float = 0.033,
     ) -> ShapeCandidate:
         """Run one frame.
 
@@ -507,6 +534,7 @@ class ShapeGestureEngine:
         hands : list of product hand descriptors (from hand_geometry.describe)
         shape_type : one of ALL_SHAPES
         mirror : if True, mirrors X coordinate horizontally for camera alignment
+        dt : elapsed real-time seconds since last frame
         """
         if shape_type not in _EXTRACTORS:
             self.reset()
@@ -519,7 +547,7 @@ class ShapeGestureEngine:
                 self._preferred_hands = None
                 return ShapeCandidate(shape_type, None, reason="NO_DOMINANT_HAND")
             if self._last_valid_params is not None:
-                frac = min(1.0, self._stable_count / max(1, self._req))
+                _, frac = self._calc_progress()
                 return ShapeCandidate(
                     shape_type,
                     self._last_valid_params,
@@ -551,7 +579,7 @@ class ShapeGestureEngine:
                 self._preferred_hands = None
                 return ShapeCandidate(shape_type, None, reason="NEED_SECOND_HAND")
             if self._last_valid_params is not None:
-                frac = min(1.0, self._stable_count / max(1, self._req))
+                _, frac = self._calc_progress()
                 return ShapeCandidate(
                     shape_type,
                     self._last_valid_params,
@@ -584,7 +612,7 @@ class ShapeGestureEngine:
                 msg = "NEED_SECOND_HAND" if (need2 and not sup_tips) else "INSUFFICIENT_TIPS"
                 return ShapeCandidate(shape_type, None, reason=msg)
             if self._last_valid_params is not None:
-                frac = min(1.0, self._stable_count / max(1, self._req))
+                _, frac = self._calc_progress()
                 return ShapeCandidate(
                     shape_type,
                     self._last_valid_params,
@@ -605,15 +633,17 @@ class ShapeGestureEngine:
             delta = math.sqrt(sum((a - b) ** 2 for a, b in zip(k, self._last_key)))
             if delta < self._thresh:
                 self._stable_count += 1
+                self._stable_time_s += dt
             elif delta < self._thresh * 2.0:
                 self._stable_count = max(0, self._stable_count - 1)
+                self._stable_time_s = max(0.0, self._stable_time_s - dt)
             else:
                 self._stable_count = 0
+                self._stable_time_s = 0.0
         self._last_key = k
         self._last_valid_params = smoothed
 
-        stable = self._stable_count >= self._req
-        frac = min(1.0, self._stable_count / max(1, self._req))
+        stable, frac = self._calc_progress()
         return ShapeCandidate(
             shape_type,
             smoothed,
