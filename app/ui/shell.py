@@ -85,7 +85,16 @@ _SHAPE_RULES = {
     "Pyramid": "Bắt buộc 2 tay (mỗi tay 3 ngón trỏ, cái, giữa): tay trỏ-cái ngắn hơn = đỉnh, tay kia = 3 đỉnh đáy.",
 }
 
-PAGES = ("Home", "Explore", "Analyze", "Evidence", "Calibrate", "Settings", "Help")
+PAGES = (
+    "Home",
+    "Explore",
+    "Analyze",
+    "Evidence",
+    "Calibrate",
+    "Settings",
+    "Help",
+    "Extensions",
+)
 
 
 def heading(layout, title, subtitle=""):
@@ -347,9 +356,20 @@ class ProductWindow(QMainWindow):
                 self.navigate(PAGES[index]) if 0 <= index < len(PAGES) else None
             )
         )
+        from app.extensions.hub.manager import ExtensionManager
+        from app.extensions.interactive_3d.module import InteractiveStemExtension
+        from app.extensions.presentation.module import PresentationSupportExtension
+        from app.extensions.physics_2d.module import Physics2DSimulationExtension
+
+        self.extension_manager = ExtensionManager()
+        self.extension_manager.register(InteractiveStemExtension())
+        self.extension_manager.register(PresentationSupportExtension())
+        self.extension_manager.register(Physics2DSimulationExtension())
+
         self.pages = {}
         self._home()
         self._explore(software)
+        self._extensions()
         self._analyze()
         self._evidence()
         self._calibration()
@@ -420,6 +440,12 @@ class ProductWindow(QMainWindow):
         layout.addWidget(self.recent)
         layout.addStretch()
         self._add("Home", widget)
+
+    def _extensions(self):
+        from app.ui.extension_hub import ExtensionHubPage
+
+        self.extension_hub_page = ExtensionHubPage(self.extension_manager, self)
+        self._add("Extensions", self.extension_hub_page)
 
     def _explore(self, software):
         widget, layout = page()
@@ -2183,6 +2209,15 @@ class ProductWindow(QMainWindow):
             camera.mirror = self.settings.mirror
             camera.product_landmarks = filtered
             camera.set_packet(packet, frame)
+
+        if hasattr(self, "extension_manager"):
+            self.extension_manager.dispatch_frame(
+                hands=hands,
+                interaction_state=legacy,
+                screen_size=(self.width(), self.height()),
+                timestamp_s=frame.timestamp_s if frame else 0.0,
+            )
+
         focused = (
             QApplication.applicationState() == Qt.ApplicationState.ApplicationActive
         )
@@ -3038,6 +3073,8 @@ class ProductWindow(QMainWindow):
                 self.timer.start(16)
                 QTimer.singleShot(1000, self.close)
                 return
+        if hasattr(self, "extension_manager"):
+            self.extension_manager.shutdown_all()
         self.close_journal()
         self.registry.close()
         if isinstance(self.viewport, Viewport):
