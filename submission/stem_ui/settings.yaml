@@ -1,0 +1,21 @@
+window: [1360, 860]
+render_fps: 60
+max_hands: 2
+association_max_distance: 0.25
+association_ambiguity_margin: 0.02
+stale_after_s: 0.75
+finger_enter_angle: 160
+finger_exit_angle: 145
+thumb_enter_angle: 135
+thumb_exit_angle: 120
+thumb_enter_spread: 0.45
+thumb_exit_spread: 0.35
+live_fit_width: 3.0
+world_width: 5.0
+relative_z_gain: 4.0
+display_thickness: 0.65
+pose_response_hz: 8.0
+grab_min_scale: 0.45
+grab_max_scale: 2.0
+grab_min_span: 0.10
+mirror: true

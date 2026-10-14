@@ -2,11 +2,41 @@
 
 ## Current task update — 2026-10-14
 
-Current priority is to finish the Core evidence and Vietnamese editable Word
-report. The user explicitly postponed UI work until after this report.
-Existing UI branches remain untouched. The later approved UI direction is
-a minimal 3D object interface, live fingertip attachment, optional camera
-view and hideable guidance; its implementation is not claimed complete.
+Core/report source was committed as c79abbc and pushed on
+feat/submission-round2. The user now authorized the final clean UI task on
+feat/submission-ui-clean. Existing UI branches remain untouched. Direction:
+minimal 3D object interface, automatic live extended-fingertip geometry for
+one/two hands of one operator, optional camera view, fullscreen and hideable
+guidance. The user then prioritized functional correctness and responsive
+one/two-hand interaction inspired by VR grab behavior over visual polish.
+
+Executed UI verification: 18 new automated tests, full suite 472 passed.
+Physical camera opened, processed 10 frames and stopped cleanly without
+requiring new operator hand actions (ui-20261014-144142-466858). Real recorded
+one-hand source smoke rendered both live geometry and solid modes. A
+synthetic mirrored two-hand fixture was processed by the real provider,
+rendering 2 hands / up to 10 extended fingertips over 60 observed frames
+(ui-20261014-143939-582158). This is not simultaneous physical two-hand
+pose validation. Hide/show help/camera, all four solids, resize and fullscreen
+restore were executed. Exclusive fullscreen failed on this Windows display;
+desktop-sized borderless mode replaced it and the controls smoke passed.
+
+Change: additive submission presentation scope and snapshot boundary.
+Reason: user requested all fingertips/two hands and a clean 3D submission UI.
+Canonical sections: 01 section 7, 02 section 5; research algorithms unchanged.
+Modules: submission UI composition/runtime and renderer, outside src.
+Algorithmic impact: existing Core components reused without modification;
+presentation provider max two hands and slot association are demo behavior.
+The renderer's separate grab controller uses pinch engagement, one-hand
+local palm orientation and x/y translation; two-hand midpoint/span/twist
+control position/scale/rotation. Identity/count changes rebase without snap.
+This is application behavior, not a replacement for the canonical gesture
+mapping or a new research comparison. Display pose smoothing is UI-only.
+Experimental impact: separate UI run identities; no new RQ1/RQ2 result.
+Compatibility impact: no existing public Core contract or logger changes.
+Tests: coordinate/mirror mapping, fingertip selection, identity/loss safety,
+mesh geometry, worker lifecycle and recorded-source UI smoke.
+Existing results invalidated: no; research code/config/replay unchanged.
 
 ROUND2 collection: six planned normal-light sources were completed, along
 with two intended challenging-light sources. The operator then confirmed

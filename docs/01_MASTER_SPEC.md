@@ -112,6 +112,16 @@ The term **3D** means interaction with a rendered 3D scene. MediaPipe/model-rela
 
 ## 7. DIP Core vs 3D Extension
 
+### Submission presentation scope — authorized 2026-10-14
+
+After the Core report, the user authorized a clean, minimal desktop UI.
+It may visualize extended fingertips of one or two hands of the same
+operator, automatically creating live geometric content. This is an
+application demonstration, not multi-user tracking or a replacement for
+the frozen one-hand research baseline. Its separate presentation runtime
+and snapshot boundary are specified in 02. Two-hand demo observations
+are not mixed into G7/ROUND2 research results. Metric depth remains excluded.
+
 The project has two architectural zones:
 
 - **DIP Core** — the research/processing path.

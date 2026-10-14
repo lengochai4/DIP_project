@@ -167,6 +167,34 @@ Consumes `InteractionState` only. It MAY manage renderer/scene/application behav
 
 ## 5. Dependency direction
 
+### Additive submission presentation boundary — 2026-10-14
+
+The new submission composition root may reuse public Core components
+in a separate application runtime with a provider configured for up to
+two hands of one operator. Existing RealtimeRuntime, ReplayRuntime,
+InteractionState and one-hand provider semantics are unchanged.
+
+The composition root converts provider results to validated project-owned
+LandmarkObservation objects, maintains separate filters/gesture engines per
+associated hand, and produces an immutable presentation snapshot containing:
+frame identity/time, a non-shared BGR preview copy, valid filtered landmark
+tuples per hand, InteractionState per hand, and explicit illumination/ROI
+diagnostics. The renderer consumes this snapshot and application geometry,
+never provider objects or mutable algorithm state. Unavailable hands produce
+no geometry; identity discontinuity/loss clears that presentation slot.
+
+The application runtime may process sequential frames on one worker while
+the UI consumes the latest complete snapshot. Dropped presentation snapshots
+do not skip input frames inside that worker's filter. Stop/retry must not
+create overlapping camera workers. Only this presentation runtime uses
+latest-snapshot delivery; research replay remains synchronous/deterministic.
+
+Preview mirroring is display-only: x becomes 1-x consistently for landmarks
+and image. FRAME_NORMALIZED to WORLD_RENDER is explicit. Any extrusion is a
+display thickness, and model-relative z is never camera depth. Separate UI
+metadata/logs identify the two-hand configuration and cannot be presented
+as the one-hand experiment schema.
+
 Allowed conceptual direction:
 
 ```text
