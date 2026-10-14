@@ -52,11 +52,11 @@ def test_collinear_fingertips_do_not_make_invalid_faces():
     tips=[Tip(0,i,(float(i),0,0)) for i in range(3)]
     assert not live_mesh(tips,.5).faces
 
-def test_live_mesh_preserves_nodes_and_extrusion_is_positive_volume():
+def test_live_mesh_preserves_every_observed_node_without_added_vertices():
     tips=[Tip(0,i,p) for i,p in enumerate(((0,0,0),(1,0,.1),(1,1,.2),(0,1,0),(.5,.5,.1)))]
     mesh=live_mesh(tips,.65)
-    assert len(tips)==5 and len(mesh.vertices)==8
-    assert min(v[2] for v in mesh.vertices)<min(t.position[2] for t in tips)
+    assert len(mesh.vertices)==len(tips)==5
+    assert mesh.vertices==tuple(t.position for t in tips)
     assert all(len(face)>=3 for face in mesh.faces)
 
 @pytest.mark.parametrize('kind',('cube','tetra','octa','sphere'))

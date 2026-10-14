@@ -44,7 +44,7 @@ class CameraChemistryView:
             gl.glDeleteTextures([self.camera_texture,self.panel_texture])
             del self.camera_texture
 
-    def _upload(self,texture,data,size,previous,fmt):
+    def _upload(self,texture,data,size,previous,fmt,mipmaps=False):
         gl.glBindTexture(gl.GL_TEXTURE_2D,texture)
         gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MIN_FILTER,gl.GL_LINEAR)
         gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MAG_FILTER,gl.GL_LINEAR)
@@ -52,6 +52,12 @@ class CameraChemistryView:
         internal=gl.GL_RGB if fmt==gl.GL_BGR else fmt
         if size!=previous: gl.glTexImage2D(gl.GL_TEXTURE_2D,0,internal,*size,0,fmt,gl.GL_UNSIGNED_BYTE,data)
         else: gl.glTexSubImage2D(gl.GL_TEXTURE_2D,0,0,0,*size,fmt,gl.GL_UNSIGNED_BYTE,data)
+        if mipmaps and bool(gl.glGenerateMipmap):
+            gl.glGenerateMipmap(gl.GL_TEXTURE_2D)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MIN_FILTER,gl.GL_LINEAR_MIPMAP_LINEAR)
+            extensions=gl.glGetString(gl.GL_EXTENSIONS) or b''
+            if b'GL_EXT_texture_filter_anisotropic' in extensions:
+                gl.glTexParameterf(gl.GL_TEXTURE_2D,0x84FE,min(self.settings['panel_anisotropy'],float(gl.glGetFloatv(0x84FF))))
 
     def _font(self,size):
         # Panel fonts are cached separately from the window font sizes.
@@ -63,28 +69,41 @@ class CameraChemistryView:
     def _panel(self):
         scene=self.scene; control=self.input
         panel=SpatialPanel(control.page=='table',self.space)
-        surface=glass(panel.pixels,self.settings['crystal_panel_opacity'],26,True).copy()
+        surface=glass(panel.pixels,self.settings['crystal_panel_opacity'],26,True,self.settings['ui_card_supersample']).copy()
         w,h=panel.pixels; hover=set(control.hover.values())
+        labels=[]
         def text(value,pos,size=30,color=INK):
-            surface.blit(self._font(size).render(value,True,color),pos)
+            labels.append((value,pos,size,color,False))
+        def finish():
+            # Render glyphs at their projected pixel size instead of shrinking
+            # an already-rasterized, oversized text bitmap on the GPU.
+            corners=[self.space.project(panel.world(x,y)) for x,y in ((0,0),(panel.pixels[0],0),(panel.pixels[0],panel.pixels[1]),(0,panel.pixels[1]))]
+            pixels=np.ptp(np.array(corners),axis=0)*np.array(self.content[2:])
+            scale=max(.1,min(pixels[0]/panel.pixels[0],pixels[1]/panel.pixels[1]))
+            size=tuple(max(1,round(v*scale)) for v in panel.pixels)
+            native=pygame.transform.smoothscale(surface,size)
+            for value,pos,font,color,centered in labels:
+                glyph=self._font(max(6,round(font*scale))).render(value,True,color)
+                position=tuple(round(v*scale) for v in pos)
+                native.blit(glyph,glyph.get_rect(center=position) if centered else position)
+            return panel,native
         def button(label,rect,action,selected=False,color=None):
             x,y,bw,bh=rect
-            surface.blit(glass((bw,bh),238,14,action in hover or selected),(x,y))
+            surface.blit(glass((bw,bh),238,14,action in hover or selected,self.settings['ui_card_supersample']),(x,y))
             if color: pygame.draw.rect(surface,color,rect,2,border_radius=14)
             pygame.draw.rect(surface,ACCENT if action in hover or selected else (115,158,179,190),rect,2,border_radius=14)
             if action in hover:
                 pygame.draw.line(surface,GOLD,(x+16,y+bh-2),(x+bw-16,y+bh-2),3)
             font=42 if action.startswith('element:') else 30
             while font>16 and self._font(font).size(label)[0]>bw-20: font-=2
-            rendered=self._font(font).render(label,True,INK)
-            surface.blit(rendered,rendered.get_rect(center=(x+bw//2,y+bh//2)))
+            labels.append((label,(x+bw//2,y+bh//2),font,INK,True))
             panel.targets.append((tuple(rect),action))
         if control.page=='compact':
             panel.pixels=(720,150); panel.size=np.array((1.6,.36))
             panel.center=self.space.point(.21,.2,.3)
-            surface=glass(panel.pixels,self.settings['crystal_panel_opacity'],26,True).copy()
+            surface=glass(panel.pixels,self.settings['crystal_panel_opacity'],26,True,self.settings['ui_card_supersample']).copy()
             button('MỞ BẢNG NGUYÊN TỐ',(12,12,696,126),'elements')
-            return panel,surface
+            return finish()
         text('HÓA HỌC AR',(32,25),38,ACCENT)
         pygame.draw.line(surface,(161,213,232,150),(32,78),(w-32,78),2)
         if control.page=='home':
@@ -137,16 +156,16 @@ class CameraChemistryView:
             button('Thu bảng',(32,918,210,52),'compact')
             button('Lưu',(256,918,210,52),'save')
             button('Mở đã lưu',(480,918,208,52),'load')
-        return panel,surface
+        return finish()
 
     def _ensure_panel(self,force=False):
         key=(self.space.aspect,self.input.page,self.scene.selected,self.scene.edit,self.scene.electrons,self.scene.order,self.scene.revision,self.renderer.help_visible,
-             tuple(sorted(str(v) for v in self.input.hover.values())))
+             tuple(sorted(str(v) for v in self.input.hover.values())),self.content[2:])
         now=time.monotonic()
         if force or self.input.panel is None or (key!=self.panel_key and now-self.panel_at>=1/self.settings['chemistry_panel_fps']):
             panel,surface=self._panel(); self.input.panel=panel
-            self._upload(self.panel_texture,pygame.image.tobytes(surface,'RGBA',False),panel.pixels,self.panel_size,gl.GL_RGBA)
-            self.panel_size=panel.pixels; self.panel_key=key; self.panel_at=now
+            self._upload(self.panel_texture,pygame.image.tobytes(surface,'RGBA',False),surface.get_size(),self.panel_size,gl.GL_RGBA,mipmaps=True)
+            self.panel_size=surface.get_size(); self.panel_key=key; self.panel_at=now
 
     def mouse(self,kind,pos):
         x,y,w,h=self.content
@@ -156,6 +175,7 @@ class CameraChemistryView:
     def draw(self,snapshot,view,fresh,dt,run_id):
         aspect=snapshot.image.shape[1]/snapshot.image.shape[0] if snapshot is not None else 4/3
         self.space=CameraSpace(aspect,self.settings['world_width'],self.settings['camera_ar_fov_deg'])
+        self.content=letterbox(view,aspect)
         self._ensure_panel(force=self.panel_key is None or self.panel_key[0]!=aspect)
         self.content=letterbox(view,aspect); x,y,w,h=self.content
         window_h=self.renderer.size[1]

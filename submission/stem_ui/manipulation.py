@@ -27,6 +27,8 @@ def palm_size(hand, aspect):
 
 
 def pinch_ratio(hand, aspect):
+    raw=getattr(hand,'raw_landmarks',())
+    if raw: hand=replace(hand,landmarks=raw)
     p = {l.index: np.array((l.x, l.y / aspect)) for l in hand.landmarks}
     return float(np.linalg.norm(p[4]-p[8])) / palm_size(hand, aspect)
 

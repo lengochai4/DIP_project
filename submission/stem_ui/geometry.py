@@ -71,6 +71,9 @@ class FingerSelection:
             prefix = 'thumb' if tip == 4 else 'finger'
             limit = self.settings[prefix + ('_exit_angle' if tip in self.active else '_enter_angle')]
             spread_ok=True
+            if tip!=4:
+                reach=math.dist(p[0],p[tip])/max(math.dist(p[0],p[tip-2]),1e-12)
+                spread_ok=reach>=self.settings['finger_exit_reach' if tip in self.active else 'finger_enter_reach']
             if tip==4:
                 palm=math.dist(p[5],p[17])
                 spread=math.dist(p[4],p[5])/palm if palm>1e-12 else 0
@@ -93,10 +96,11 @@ def preview_position(landmark, rectangle, mirror=True):
     return (x + nx*w, y + landmark.y*h)
 
 def live_mesh(tips, thickness, min_depth_ratio=.06):
-    """Small 3D hull, or fitted-plane display prism when depth is insufficient.
+    """Observed vertices only: 3D hull, planar surface or segment.
 
     Provider z remains relative to each hand. This is illustrative geometry,
     not a reconstruction of camera-space distances between different hands.
+    The legacy thickness argument is accepted but no longer adds vertices.
     """
     points = np.array([t.position for t in tips],dtype=float)
     if len(points) < 3:
@@ -127,7 +131,7 @@ def live_mesh(tips, thickness, min_depth_ratio=.06):
             ordered=sorted(ids,key=lambda i:math.atan2(np.dot(points[i]-center,v),np.dot(points[i]-center,u)))
             faces[ids]=tuple(ordered)
         return Mesh(tuple(map(tuple,points)),tuple(faces.values()),'hull3d')
-    # Fallback uses the hand plane, not a permanently screen-aligned extrusion.
+    # The fitted plane orders observed tips; it never invents bottom vertices.
     normal=axes[2]
     if normal[2]<0: normal=-normal
     projected=centered@axes[:2].T
@@ -148,14 +152,9 @@ def live_mesh(tips, thickness, min_depth_ratio=.06):
         return Mesh(tuple(map(tuple,points)), (), 'segment')
     if np.dot(np.cross(points[hull[1]]-points[hull[0]],points[hull[2]]-points[hull[0]]),normal)<0:
         hull.reverse()
-    top = [points[i] for i in hull]
-    vertices = tuple(map(tuple,top + [p-thickness*normal for p in top]))
-    n = len(top)
     # Triangles handle non-coplanar fingertip z without an invalid GL polygon.
-    faces = [(0,i,i+1) for i in range(1,n-1)]
-    faces += [(n,n+i+1,n+i) for i in range(1,n-1)]
-    faces += [(i,(i+1)%n,(i+1)%n+n,i+n) for i in range(n)]
-    return Mesh(vertices, tuple(faces),'display_prism')
+    faces = [(hull[0],hull[i],hull[i+1]) for i in range(1,len(hull)-1)]
+    return Mesh(tuple(map(tuple,points)), tuple(faces),'surface')
 
 def solid_mesh(kind):
     if kind == 'cube':

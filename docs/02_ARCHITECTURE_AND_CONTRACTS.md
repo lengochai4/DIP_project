@@ -242,8 +242,9 @@ An explicit one-hand push/pull mode maps apparent palm-size ratios to
 bounded display z translation, never metric camera depth.
 
 Live geometry uses a convex 3D hull when the observed relative-z geometry
-is sufficiently nonplanar; near-planar points use an explicitly illustrative
-prism along their fitted plane normal. All selected fingertips remain nodes,
+is sufficiently nonplanar; near-planar points form a triangulated surface
+using observed fingertip vertices only. No automatic prism/extrusion is added
+(user-reported extra vertices, 2026-10-14). All selected fingertips remain nodes,
 including interior points. Within-hand skeletons may be shown as lit joint
 spheres/bones. Framing stays fixed within a continuous hand-identity session
 so hand translation and apparent size changes are not normalized away.
@@ -287,11 +288,21 @@ InteractionState and one-hand provider semantics are unchanged.
 The composition root converts provider results to validated project-owned
 LandmarkObservation objects, maintains separate filters/gesture engines per
 associated hand, and produces an immutable presentation snapshot containing:
-frame identity/time, a non-shared BGR preview copy, valid filtered landmark
-tuples per hand, InteractionState per hand, and explicit illumination/ROI
+frame identity/time, a non-shared BGR preview copy, valid raw and filtered
+landmark tuples per hand, InteractionState per hand, and explicit illumination/ROI
 diagnostics. The renderer consumes this snapshot and application geometry,
 never provider objects or mutable algorithm state. Unavailable hands produce
 no geometry; identity discontinuity/loss clears that presentation slot.
+
+Submission raw observations identify discrete pinch/extension transitions;
+filtered landmarks still drive motion geometry. Visible opening freezes motion
+on its first observation while release confirmation completes; reacquisition
+uses the displayed pose. This avoids using motion smoothing to delay release.
+Finger selection also requires fingertip reach beyond the bent joints. Joint
+spheres of unselected fingers are omitted from the default fingertip scene.
+UI schema 6 records the raw pinch-state input basis. Renderer-only antialiasing,
+cached supersampled cards and panel mipmaps may improve display quality with
+an explicit supported-context fallback; no performance/depth claim follows.
 
 The application runtime may process accepted packets sequentially on one worker while
 the UI consumes the latest complete snapshot. Dropped presentation snapshots

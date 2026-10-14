@@ -12,9 +12,12 @@ AUTHORS = 'Nhóm tác giả: 24110107 - Nguyễn Đăk Lộc | 24110103 - Trần
 
 
 @lru_cache(maxsize=40)
-def glass(size, alpha=235, radius=16, bright=False):
+def glass(size, alpha=235, radius=16, bright=False, samples=2):
     """Static gradient/facets cached by size, uploaded only when UI changes."""
     w, h = size
+    if samples>1:
+        high=glass((w*samples,h*samples),alpha,radius*samples,bright,1)
+        return pygame.transform.smoothscale(high,size)
     surface = pygame.Surface(size, pygame.SRCALPHA)
     for y in range(h):
         t = y / max(1, h - 1)
@@ -32,9 +35,26 @@ def glass(size, alpha=235, radius=16, bright=False):
     return surface
 
 
-def card(surface, rect, alpha=235, bright=False):
+def card(surface, rect, alpha=235, bright=False, samples=2):
     rect = pygame.Rect(rect)
-    surface.blit(glass(rect.size, alpha, 16, bright), rect)
+    surface.blit(glass(rect.size, alpha, 16, bright, samples), rect)
+
+
+@lru_cache(maxsize=40)
+def outline(size,color,radius=10,width=1,samples=2):
+    w,h=size
+    high=pygame.Surface((w*samples,h*samples),pygame.SRCALPHA)
+    pygame.draw.rect(high,color,high.get_rect(),width*samples,border_radius=radius*samples)
+    return pygame.transform.smoothscale(high,size) if samples>1 else high
+
+
+@lru_cache(maxsize=4)
+def atom_mark(samples=2):
+    high=pygame.Surface((42*samples,42*samples),pygame.SRCALPHA)
+    pygame.draw.ellipse(high,ACCENT,tuple(v*samples for v in (2,13,38,18)),2*samples)
+    pygame.draw.ellipse(high,GOLD,tuple(v*samples for v in (12,2,18,38)),2*samples)
+    pygame.draw.circle(high,INK,(21*samples,22*samples),4*samples)
+    return pygame.transform.smoothscale(high,(42,42)) if samples>1 else high
 
 
 def header_height(width):

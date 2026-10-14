@@ -240,7 +240,7 @@ def test_chemistry_requires_close_pinch_but_small_opening_noise_does_not_release
     for t in (1.25,1.3,1.35): c.update((partial,),t,space)
     assert 0 in c.claims
     opened=aim(nx,ny,pinch=False)
-    c.update((opened,),1.4,space); c.update((opened,),1.5,space)
+    c.update((opened,),1.4,space); c.update((opened,),1.44,space)
     assert 0 in c.claims
     c.update((opened,),1.55,space); assert not c.claims
 

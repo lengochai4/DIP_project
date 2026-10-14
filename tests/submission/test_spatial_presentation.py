@@ -34,14 +34,12 @@ def test_cube_coplanar_triangles_merge_into_six_closed_support_faces():
     assert set(edges.values())=={2}
 
 
-def test_vertical_near_planar_hand_uses_its_plane_normal_for_display_thickness():
+def test_vertical_near_planar_hand_keeps_only_observed_vertices():
     p=((0,0,0),(0,1,0),(0,1,1),(0,0,1))
     mesh=live_mesh(tips(p),.65)
-    assert mesh.mode=='display_prism'
-    top=np.array(mesh.vertices[:4]); bottom=np.array(mesh.vertices[4:])
-    delta=bottom-top
-    assert np.abs(delta[:,0])==pytest.approx([.65]*4)
-    np.testing.assert_allclose(delta[:,1:],0,atol=1e-12)
+    assert mesh.mode=='surface' and len(mesh.vertices)==4
+    np.testing.assert_allclose(mesh.vertices,p)
+    assert len(mesh.faces)==2
 
 
 def test_hull_keeps_interior_fingertip_as_node_without_invalid_surface():

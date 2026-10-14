@@ -110,10 +110,10 @@ Chạy phát lại riêng với `--mode chemistry`.
   báo phía trên cảnh cho biết đang giữ một/hai tay, đang buông hay tạm mất tay.
 - **Đầu ngón**: các đầu ngón duỗi của một hoặc hai tay tạo đỉnh sống tự động.
   Không cần thêm điểm. Một đỉnh là điểm, hai đỉnh nối đoạn, từ ba đỉnh tạo
-  mặt; các đỉnh không đồng phẳng tạo hình bao 3D. Khi đầu ngón gần đồng phẳng,
-  thêm độ dày minh họa theo mặt phẳng tay, có dòng trạng thái phân biệt.
-  Các điểm nằm trong đường bao vẫn giữ nút. Khớp và xương ngón có thể tích,
-  ánh sáng và kiểm tra độ sâu giúp thấy hướng gập/duỗi. Khung giữ mốc trong
+  mặt; các đỉnh không đồng phẳng tạo hình bao 3D. Đầu ngón gần đồng phẳng tạo
+  mặt ngay trên các đỉnh đó; không tự thêm đáy hay đỉnh khác. Các điểm nằm
+  trong đường bao vẫn giữ nút. Mặc định chỉ hiện các đầu ngón đang duỗi,
+  tránh nhầm khớp/xương của ngón gập với đỉnh hình. Khung giữ mốc trong
   phiên tay liên tục để chuyển động và thay đổi cỡ tay không bị tự căn mất.
 - Có lập phương, tứ diện, bát diện, cầu. Menu khối và phím 1–4 chọn vật thể.
 - Kéo chuột đổi góc nhìn, cuộn thu/phóng, R đặt lại; Tab qua ba chế độ;
@@ -155,13 +155,13 @@ UI_INTERACTION; không đưa vào số liệu báo cáo G7/ROUND2 và không g�
 Điểm x/y và hình camera dùng cùng phép mirror; overlay camera có letterbox,
 không kéo giãn sai tỷ lệ. Khối đầu ngón vừa khung khi bắt đầu phiên; thêm/bớt
 tay hoặc gập hết ngón không căn lại liên tục. Giá trị z là tương
-đối của mô hình; độ dày khối do trình bày thêm. Xoay lòng bàn tay là hướng
+đối của mô hình; hình đầu ngón không tự thêm độ dày. Xoay lòng bàn tay là hướng
 minh họa từ hình học điểm mốc; chuyển vị trí dùng mặt phẳng x/y, không gọi
 là vị trí vật lý của tay trong không gian. Không dùng z để đo khoảng cách
 giữa hai bàn tay; hình bao chung là minh họa. Hai tay của cùng một người không
 phải chức năng nhiều người dùng.
 
-Nhận ngón duỗi dùng góc khớp và hysteresis, là quy tắc trình bày có thể sai
+Nhận ngón duỗi dùng góc khớp, độ vươn khỏi lòng tay và hysteresis, có thể sai
 khi bị che, ngón ở sát nhau hoặc góc nhìn khó. Không có cam kết nhận đủ mọi
 ngón trong mọi khung hình. Các tham số UI nằm trong settings.yaml; metadata
 ghi lại cấu hình. Camera và dữ liệu ghi từ nghiên cứu không bị thay đổi.
@@ -229,6 +229,33 @@ phóng/thu bằng hai tay, mất tay ngắn và nút/F11/Esc ở cả ba chế �
 (`ui-20261014-173237-405165`). Không suy ra FPS hay độ trễ tay thật từ các
 lượt này. Schema UI 5 ghi thêm trạng thái dwell/claim/group thực tế trong
 `chemistry_controls`; bộ dữ liệu/báo cáo Core không đổi.
+
+Đợt sửa răng cưa/buông/đỉnh thừa: chụm và duỗi đọc điểm mốc gốc hợp lệ,
+còn chuyển động dùng điểm đã lọc. Khi thấy mở ngón, vật thể đóng băng ngay
+trong lúc chờ xác nhận buông; không để bộ lọc chuyển động giữ trạng thái chụm
+thêm. Hình đầu ngón luôn có đúng một đỉnh cho mỗi ngón được chọn. Không thêm
+đỉnh đáy hoặc hiện toàn bộ khớp ngón mặc định.
+
+Render yêu cầu MSAA, có đường dự phòng khi không tạo được context; giá trị
+thực tế ghi trong nhật ký. Windows yêu cầu DPI awareness trước khi mở cửa
+sổ. Card/logo được vẽ lớn, thu một lần và cache; chữ bảng nổi dựng theo kích
+thước pixel chiếu thực tế, có mipmap/anisotropic khi được hỗ trợ. UI tĩnh
+không tải lại texture khi electron chạy; camera/tiến trình/vật thể cập nhật riêng.
+
+Đã chạy 111 kiểm tra UI và 565 kiểm tra toàn dự án đạt. Lượt GL 76 khung tổng
+hợp kiểm tra mở ngón khi điểm đã lọc vẫn chụm, đúng hai đỉnh khi chỉ hai ngón
+duỗi, cache overlay và context dự phòng với lỗi được tiêm để kiểm tra. Context
+mặc định trên máy báo 4 mẫu; context dự phòng báo 0. Lượt 139 khung kiểm tra
+lại cửa sổ/chọn/thu-phóng và lượt 697 khung kiểm tra đồ thị hóa học. Provider
+thật phát lại 60 khung nhận hai tay/tối đa 10 đầu ngón, dừng sạch
+(`ui-20261014-175453-431303`). Schema UI 6 ghi cơ sở trạng thái ngón là raw hợp
+lệ và hình chỉ dùng đỉnh quan sát; không sửa dữ liệu/báo cáo Core. Đây không
+phải phiên thao tác thật mới hay số đo độ trễ vật lý.
+
+Tham khảo render:
+https://www.pygame.org/docs/ref/display.html
+https://wiki.libsdl.org/SDL2/SDL_HINT_WINDOWS_DPI_AWARENESS
+https://wikis.khronos.org/opengl/Multisample
 
 Tham khảo tiến trình và hủy dwell:
 https://learn.microsoft.com/en-us/windows/mixed-reality/design/gaze-and-dwell

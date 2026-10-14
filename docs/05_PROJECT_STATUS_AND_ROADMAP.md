@@ -2,6 +2,32 @@
 
 ## Current task update — 2026-10-14
 
+Latest reported defect fix: aliased/blurry rendering, delayed chemical release
+and extra fingertip vertices. Change: immutable HandView adds validated raw
+landmarks beside filtered motion landmarks; UI pinch/extension use raw input,
+opening freezes before timed release. Reach guards exclude straight segments
+folded back toward the palm. Live surfaces/hulls retain observed vertices only;
+no prism extrusion or default skeleton joint markers. Renderer requests MSAA
+with context-error fallback, DPI-aware windows, cached supersampled cards/logo,
+native-sized panel glyphs and mipmap/anisotropy. Stable chemistry overlays reuse
+their texture. Reason: user's reported live defects. Canonical section: 02/5;
+code: submission runtime/manipulation/geometry/renderer/chemistry_view/theme/
+app/settings and submission tests. Algorithmic impact: presentation only;
+canonical Core gestures/filter equations unchanged. Experimental impact: UI
+schema 6 identifies raw discrete-state basis and observed-only vertices;
+actual renderer samples are diagnostics. Compatibility: UI HandView raw tuple
+is optional for older synthetic fixtures. Tests updated for observed-only
+near-planar faces and quicker release; new cases cover delayed filtered release,
+two-to-one-hand rebase, 0–10 vertices and backward-folded fingers.
+Existing results invalidated: no; Core/report/baseline profiles untouched.
+Executed: 111 submission tests, 565 full tests passed. 76-frame synthetic GL
+acceptance verifies raw opening while filtered points stay closed, two-tip
+nodes, overlay reuse and injected context-failure fallback (actual default
+4 samples, fallback 0). 139-frame window/interaction and 697-frame chemistry
+graph regressions reran. Provider replay 60 frames observed 2 hands/up to 10
+tips and stopped cleanly (ui-20261014-175453-431303). Screenshots inspected.
+No new live session or physical latency/FPS claim.
+
 Current authorized refinement completed: visual refresh from the user's
 submission design/assets, exact author badge, responsive glass/cyan/gold UI,
 sharper lit atoms, chemistry 3-second observed hover confirmation and close

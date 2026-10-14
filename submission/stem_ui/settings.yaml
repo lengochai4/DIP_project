@@ -1,4 +1,9 @@
 window: [1360, 860]
+render_msaa_samples: 4
+windows_dpi_awareness: permonitorv2
+ui_card_supersample: 2
+panel_anisotropy: 4.0
+show_hand_skeleton: false
 render_fps: 60
 overlay_fps: 30
 camera_shutdown_timeout_s: 5.0
@@ -8,6 +13,8 @@ association_ambiguity_margin: 0.02
 stale_after_s: 0.75
 finger_enter_angle: 160
 finger_exit_angle: 145
+finger_enter_reach: 1.08
+finger_exit_reach: 1.03
 thumb_enter_angle: 135
 thumb_exit_angle: 120
 thumb_enter_spread: 0.45
@@ -23,7 +30,7 @@ hand_bone_radius: 0.032
 tip_radius: 0.09
 world_width: 5.0
 relative_z_gain: 4.0
-display_thickness: 0.65
+display_thickness: 0.0
 pose_response_hz: 5.0
 rotation_response_hz: 4.0
 scale_response_hz: 5.0
@@ -63,9 +70,9 @@ chemistry_dwell_s: 3.0
 chemistry_dwell_max_gap_s: 0.25
 chemistry_dwell_rearm_distance: 0.035
 chemistry_grip_press_ratio: 0.28
-chemistry_grip_release_ratio: 0.55
+chemistry_grip_release_ratio: 0.45
 chemistry_grip_press_s: 0.035
-chemistry_grip_release_s: 0.12
+chemistry_grip_release_s: 0.065
 chemistry_grip_loss_grace_s: 0.25
 crystal_panel_opacity: 218
 # Conservative neutral covalent editing rules; not general chemistry valences.

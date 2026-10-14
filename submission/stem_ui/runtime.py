@@ -33,6 +33,7 @@ class HandView:
     interaction: object
     label: str | None
     generation: int = 0
+    raw_landmarks: tuple = ()
 
 @dataclass(frozen=True)
 class Snapshot:
@@ -165,7 +166,9 @@ class CaptureWorker:
                 revision=None
                 dirty=None
             (folder/'metadata.json').write_text(json.dumps({'kind':'submission_presentation_only',
-                'presentation_schema':'5',
+                'presentation_schema':'6',
+                'discrete_gesture_basis':'validated_raw_landmarks',
+                'fingertip_geometry':'observed_vertices_only',
                 'chemistry_data_sha256':hashlib.sha256((Path(__file__).with_name('data')/'pubchem-periodic-table.json').read_bytes()).hexdigest(),
                 'acquisition_policy':'ordered_replay' if self.replay else 'latest_camera_single_slot',
                 'run_id':self.run_id,'core_config':cfg,'ui_settings':self.settings,'camera_index':self.camera_index,
@@ -226,7 +229,7 @@ class CaptureWorker:
                         timings=StageTimings(preprocess_ms,tracking_ms,filtering_ms,0,
                                             preprocess_ms+tracking_ms+filtering_ms),events=diagnostics.events)
                     interaction = gestures[s].update(frame)
-                    hands.append(HandView(s,filtered,interaction,observation.handedness_label,generations[s]))
+                    hands.append(HandView(s,filtered,interaction,observation.handedness_label,generations[s],observation.landmarks))
                 previous.update(centers)
                 for s in centers: last_seen[s]=packet.timestamp_s
                 if observations:

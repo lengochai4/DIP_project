@@ -1,5 +1,6 @@
 """One-window OpenGL scene with Vietnamese, responsive presentation controls."""
 import math
+import os
 from pathlib import Path
 import time
 from functools import lru_cache
@@ -12,7 +13,7 @@ from .geometry import (Tip, FingerSelection, live_mesh, solid_mesh,
 from .geometry import bone_transforms
 from .manipulation import GrabController
 from .chemistry_view import CameraChemistryView
-from .theme import BG, PANEL, INK, MUTED, ACCENT, GOLD, AUTHORS, card, glass, header_height, scene_rect
+from .theme import BG, PANEL, INK, MUTED, ACCENT, GOLD, AUTHORS, card, glass, outline, atom_mark, header_height, scene_rect
 
 COLORS = ((.20,.72,.90),(.28,.46,.82),(.48,.87,.94),(.47,.60,.79))
 KINDS = ('cube','tetra','octa','sphere')
@@ -54,6 +55,7 @@ class SubmissionRenderer:
         self.chemistry=CameraChemistryView(settings,self)
 
     def open(self):
+        os.environ.setdefault('SDL_WINDOWS_DPI_AWARENESS',self.settings['windows_dpi_awareness'])
         pygame.init()
         pygame.display.gl_set_attribute(pygame.GL_DEPTH_SIZE,24)
         self._set_display()
@@ -89,13 +91,23 @@ class SubmissionRenderer:
         # Desktop-sized borderless window avoids exclusive display-mode
         # switching, which fails on some Windows drivers/remote sessions.
         flags = pygame.OPENGL | pygame.DOUBLEBUF | (pygame.NOFRAME if self.fullscreen else pygame.RESIZABLE)
-        pygame.display.set_mode(self.size,flags)
+        for samples in (self.settings['render_msaa_samples'],0):
+            pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLEBUFFERS,int(samples>0))
+            pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLESAMPLES,samples)
+            try:
+                pygame.display.set_mode(self.size,flags)
+                break
+            except pygame.error:
+                if not samples: raise
+        self.actual_msaa_samples=int(gl.glGetIntegerv(gl.GL_SAMPLES))
+        if self.actual_msaa_samples: gl.glEnable(gl.GL_MULTISAMPLE)
         self.size=pygame.display.get_window_size()
         self.buttons=[]
         self.texture = gl.glGenTextures(1)
         gl.glBindTexture(gl.GL_TEXTURE_2D,self.texture)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MIN_FILTER,gl.GL_LINEAR)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MAG_FILTER,gl.GL_LINEAR)
+        # Overlay is exactly one texture pixel per drawable pixel.
+        gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MIN_FILTER,gl.GL_NEAREST)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MAG_FILTER,gl.GL_NEAREST)
         gl.glTexImage2D(gl.GL_TEXTURE_2D,0,gl.GL_RGBA,*self.size,0,gl.GL_RGBA,gl.GL_UNSIGNED_BYTE,None)
         self.overlay_surface=pygame.Surface(self.size,pygame.SRCALPHA)
         self.last_overlay_at=0.0; self.last_overlay_key=None
@@ -126,6 +138,8 @@ class SubmissionRenderer:
         if hasattr(self,'unit_bone'): gl.glDeleteLists(self.unit_bone,1)
         self._label.cache_clear()
         glass.cache_clear()
+        outline.cache_clear()
+        atom_mark.cache_clear()
         pygame.quit()
 
     def reset(self):
@@ -251,12 +265,15 @@ class SubmissionRenderer:
     def _button(self,surface,label,rect,action,active=False):
         rect=pygame.Rect(rect)
         hovered=rect.collidepoint(pygame.mouse.get_pos())
-        surface.blit(glass(rect.size,250,10,active or hovered),rect)
-        pygame.draw.rect(surface,ACCENT if active else (83,119,139),rect,1,border_radius=10)
+        surface.blit(glass(rect.size,250,10,active or hovered,self.settings['ui_card_supersample']),rect)
+        surface.blit(outline(rect.size,ACCENT if active else (83,119,139),samples=self.settings['ui_card_supersample']),rect)
         if active: pygame.draw.line(surface,GOLD,(rect.x+14,rect.bottom-2),(rect.right-14,rect.bottom-2),2)
         rendered=self._label(label,14,INK)
         surface.blit(rendered,rendered.get_rect(center=rect.center))
         self.buttons.append((rect,action))
+
+    def _card(self,surface,rect,alpha=235,bright=False):
+        card(surface,rect,alpha,bright,self.settings['ui_card_supersample'])
 
     def draw(self,snapshot,status,*,active=False,error=None,run_id='',camera_index=0,replay=False):
         w,h=self.size
@@ -303,7 +320,7 @@ class SubmissionRenderer:
                 # Angle hysteresis cannot transfer to a new hand generation.
                 if hand.generation not in (getattr(self,'selector_generation',{}).get(hand.slot),):
                     self.selectors[hand.slot].reset()
-                self.selectors[hand.slot].update(hand.landmarks,snapshot.image.shape[1]/snapshot.image.shape[0])
+                self.selectors[hand.slot].update(hand.raw_landmarks or hand.landmarks,snapshot.image.shape[1]/snapshot.image.shape[0])
             if self.mode=='solid' and fresh:
                 self.grab.update(hands,snapshot.timestamp_s,snapshot.image.shape[1]/snapshot.image.shape[0],view_rotation)
         if not fresh or self.mode!='solid':
@@ -357,7 +374,7 @@ class SubmissionRenderer:
             if self.fit_center is not None:
                 fit=self.fit_scale
                 gl.glScalef(fit,fit,fit); gl.glTranslatef(*(-self.fit_center))
-            self._hands3d(hands,fit)
+            if self.settings['show_hand_skeleton']: self._hands3d(hands,fit)
             depth_limit=self.settings['live_depth_exit_ratio'] if getattr(self,'live_mesh_mode','')=='hull3d' else self.settings['live_depth_ratio']
             mesh=live_mesh(tips,self.settings['display_thickness'],depth_limit)
             self.live_mesh_mode=mesh.mode
@@ -413,14 +430,20 @@ class SubmissionRenderer:
             for slot in self.last_slots-present: self.selectors[slot].reset()
             for hand in hands:
                 if getattr(self,'selector_generation',{}).get(hand.slot)!=hand.generation: self.selectors[hand.slot].reset()
-                self.selectors[hand.slot].update(hand.landmarks,snapshot.image.shape[1]/snapshot.image.shape[0])
+                self.selectors[hand.slot].update(hand.raw_landmarks or hand.landmarks,snapshot.image.shape[1]/snapshot.image.shape[0])
             self.last_identity=identity; self.last_slots=present
             self.selector_generation={hand.slot:hand.generation for hand in hands}
         count=sum(len(self.selectors[hand.slot].active) for hand in hands)
         self.chemistry.draw(snapshot,view,fresh,dt,run_id)
-        if now-self.last_overlay_at>=1/self.settings['overlay_fps'] or self.last_overlay_key!='chemistry':
+        control=self.chemistry.input; scene=self.chemistry.scene
+        overlay_key=('chemistry',self.size,self.fullscreen,self.camera_visible,self.help_visible,active,error,status,
+            tuple(self.chemistry.labels),scene.revision,scene.selected,scene.edit,scene.electrons,scene.message,len(hands),
+            tuple((str(key),c.kind,c.paused) for key,c in control.claims.items()),
+            tuple((key,v['controller'].suspended) for key,v in control.groups.items()),
+            pygame.mouse.get_pos(),snapshot.frame_id if snapshot and self.camera_visible else None)
+        if overlay_key!=self.last_overlay_key and (now-self.last_overlay_at>=1/self.settings['overlay_fps'] or not isinstance(self.last_overlay_key,tuple) or self.last_overlay_key[0]!='chemistry'):
             overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,view,hands,[None]*count,fresh,[])
-            self.last_overlay_at=now; self.last_overlay_key='chemistry'
+            self.last_overlay_at=now; self.last_overlay_key=overlay_key
         else: overlay=None
         self._overlay(overlay)
         if self.capture_path:
@@ -432,19 +455,16 @@ class SubmissionRenderer:
     def _draw_ui(self,snapshot,status,active,error,run_id,camera_index,replay,view,hands,tips,fresh,world_labels):
         w,h=self.size; vx,vy,vw,vh=view; hh=header_height(w)
         overlay=self.overlay_surface; overlay.fill((0,0,0,0)); self.buttons=[]
-        card(overlay,(10,8,w-20,hh-4),255,True)
+        self._card(overlay,(10,8,w-20,hh-4),255,True)
         # Vector atom mark stays crisp at every window size.
-        center=(39,hh//2+6)
-        pygame.draw.ellipse(overlay,ACCENT,(20,center[1]-9,38,18),2)
-        pygame.draw.ellipse(overlay,GOLD,(30,center[1]-20,18,40),2)
-        pygame.draw.circle(overlay,INK,center,4)
+        overlay.blit(atom_mark(self.settings['ui_card_supersample']),(18,hh//2-16))
         self._text(overlay,'DIP TOUCHLESS STEM',(68,24),17 if w>=1120 else 14,INK)
         self._text(overlay,'Không gian tương tác',(68,49),12,MUTED)
         # All names are preserved at minimum size; the badge is centered
         # in the available top-bar space, independently of the controls.
         controls=386; right=w-controls-20; left=275 if w>=1120 else 225
         badge=pygame.Rect(left,17,right-left-16,hh-20)
-        card(overlay,badge,215)
+        self._card(overlay,badge,215)
         author_lines=AUTHORS.split(' | ')
         if w>=1120:
             author_lines=[author_lines[0],author_lines[1]+' | '+author_lines[2]]
@@ -464,7 +484,7 @@ class SubmissionRenderer:
             ('Thu khung' if self.fullscreen else 'Phóng to',94,'fullscreen',self.fullscreen)):
             self._button(overlay,label,(x,cy,bw,38),action,on); x+=bw+6
         sy=hh+15
-        card(overlay,(20,sy-5,388,46),230)
+        self._card(overlay,(20,sy-5,388,46),230)
         for label,x,bw,action in (('Khối 3D',26,112,'solid'),('Đầu ngón',144,114,'tips'),('Hóa học AR',264,138,'chemistry')):
             self._button(overlay,label,(x,sy, bw,36),action,self.mode==action)
         if self.mode=='solid':
@@ -483,7 +503,7 @@ class SubmissionRenderer:
         for label,pos in world_labels: self._text(overlay,label,pos,13,INK)
         if self.camera_visible:
             pw=min(300,w//4); px=w-20-pw; py=vy
-            card(overlay,(px,py,pw,vh),245)
+            self._card(overlay,(px,py,pw,vh),245)
             self._text(overlay,'CAMERA',(px+18,py+16),13,ACCENT)
             cwmax=pw-28; chmax=min(220,int(cwmax*.75))
             if snapshot is not None and active:
@@ -520,7 +540,7 @@ class SubmissionRenderer:
                 self._wrap(overlay,'Đưa một hoặc hai tay vào khung. Tránh che đầu ngón và chồng hai lòng bàn tay.',(px+18,py+chmax+108),pw-36,15)
         if self.help_visible and self.mode!='chemistry' and not (self.camera_visible and vw<820):
             hw=min(342,vw-36); hx=vx+18; hy=vy+54
-            card(overlay,(hx,hy,hw,184),231,True)
+            self._card(overlay,(hx,hy,hw,184),231,True)
             self._text(overlay,'THAO TÁC BẰNG TAY',(hx+16,hy+15),13,ACCENT)
             instructions=('Chụm cái–trỏ để cầm; mở ngón để buông.\nMột tay di chuyển và xoay khối.\nHai tay kéo gần / xa để đổi cỡ và nghiêng.' if self.mode=='solid' else
                 'Duỗi các ngón để tạo đỉnh sống.\nDùng tất cả ngón của một hoặc hai tay.\nGập ngón để bỏ đỉnh; xoay góc nhìn bằng chuột.')
@@ -529,7 +549,7 @@ class SubmissionRenderer:
             self._text(overlay,'H: ẩn hướng dẫn  •  F11: phóng to',(hx+16,hy+157),12,MUTED)
         if self.menu and self.mode=='solid':
             for i,name in enumerate(NAMES): self._button(overlay,name,(424,sy+44+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
-        card(overlay,(20,h-55,w-40,45),248)
+        self._card(overlay,(20,h-55,w-40,45),248)
         pygame.draw.circle(overlay,ACCENT if active else MUTED,(39,h-33),4)
         readiness=(('Camera đã mở' if fresh else 'Đang nhận hình…') if active and snapshot is not None else status)+('  •  '+str(len(hands))+' tay' if hands else '')
         self._text(overlay,readiness,(52,h-43),13,INK)
