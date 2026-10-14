@@ -241,6 +241,15 @@ counts and verified small graph labels must not claim a reaction or stability.
 Electron shells are an illustrative neutral-atom model, not electron paths
 or computed quantum orbitals. No chemistry logic is added to DIP Core.
 
+The user authorized an expanded 32-preset neutral covalent library. Presets
+must be connected, have finite display positions, valid bond orders and the
+configured complete neutral valences. Identification is exact element/bond-
+order graph matching, with candidate pruning and a bounded topology cache;
+motion/display scale must not change the molecular name. Stereochemistry,
+ions and resonance remain outside this library. The spatial palette paginates
+eight entries per page so every preset remains reachable without overlapping
+existing controls. Preset coordinates are authored illustrative scene units.
+
 #### Spatial presentation and freshness refinement — 2026-10-14
 
 The user authorized further responsiveness and spatial manipulation work.

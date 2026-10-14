@@ -22,6 +22,7 @@ class ChemistryInput:
         self.scene=scene; self.settings=settings
         self.gates={}; self.claims={}; self.groups={}; self.hover={}; self.pointers={}
         self.page='home'; self.panel=None
+        self.template_page=0
         self.grab_settings={**settings,'grip_press_ratio':settings['chemistry_grip_press_ratio'],
             'grip_release_ratio':settings['chemistry_grip_release_ratio'],
             'grip_press_s':settings['chemistry_grip_press_s'],'grip_release_s':settings['chemistry_grip_release_s'],
@@ -62,6 +63,10 @@ class ChemistryInput:
         if action=='panel:blank' or action is None: return
         if action in ('home','elements','table','templates','compact'):
             self.page=action; return
+        if action in ('templates_prev','templates_next'):
+            count=(len(self.settings['chemistry_templates'])+7)//8
+            self.template_page=int(np.clip(self.template_page+(1 if action=='templates_next' else -1),0,max(0,count-1)))
+            return
         scene.freeze(tuple(scene.atoms)); scene.finish_edit()
         self.claims.clear(); self.groups.clear()
         if action=='edit': scene.edit=not scene.edit; scene.message='Ghép/tách: kéo từng nguyên tử, thả gần để ghép' if scene.edit else 'Cầm khối: giữ cả phân tử; thêm tay để xoay/đổi cỡ'

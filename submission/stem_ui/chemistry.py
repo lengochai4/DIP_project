@@ -1,7 +1,6 @@
 """Small educational molecular editor; no reaction/energy/depth simulation."""
-from collections import Counter
+from collections import Counter, OrderedDict
 from dataclasses import dataclass
-from itertools import permutations
 from pathlib import Path
 import copy
 import json
@@ -67,6 +66,29 @@ class ChemistryScene:
         self.message='Chọn bảng nguyên tố để bắt đầu'
         self.revision=0
         self._transaction=None
+        self._description_cache=OrderedDict()
+        self._templates=[]
+        for key,t in settings['chemistry_templates'].items():
+            symbols=tuple(t['symbols']); positions=np.asarray(t['positions'],dtype=float)
+            if not symbols or len(symbols)>settings['chemistry_max_atoms'] or any(s not in self.elements for s in symbols):
+                raise ValueError(f'Invalid template atoms: {key}')
+            if positions.shape!=(len(symbols),3) or not np.all(np.isfinite(positions)) or np.max(np.abs(positions))>settings['chemistry_scene_limit']-1:
+                raise ValueError(f'Invalid template positions: {key}')
+            graph=[{} for _ in symbols]
+            for a,b,n in t['bonds']:
+                if any(isinstance(v,bool) or not isinstance(v,int) for v in (a,b,n)) or not (0<=a<len(symbols) and 0<=b<len(symbols)) or a==b or n not in (1,2,3) or b in graph[a]:
+                    raise ValueError(f'Invalid template bond: {key}')
+                graph[a][b]=n; graph[b][a]=n
+            for i,s in enumerate(symbols):
+                cap=settings['chemistry_covalent_limits'].get(s)
+                if cap is None or sum(graph[i].values())!=cap:
+                    raise ValueError(f'Unsupported or incomplete neutral template valence: {key}')
+            seen={0}; todo=[0]
+            while todo:
+                for j in graph[todo.pop()]:
+                    if j not in seen: seen.add(j); todo.append(j)
+            if len(seen)!=len(symbols): raise ValueError(f'Disconnected template: {key}')
+            self._templates.append((t['label'],symbols,graph))
 
     def state(self):
         return {'schema':1,'kind':'illustrative_molecular_graph','positions_are':'display_scene_units',
@@ -225,17 +247,22 @@ class ChemistryScene:
         return ''.join(s+(str(counts[s]) if counts[s]>1 else '') for s in order)
 
     def describe(self,ids):
-        labels=self.settings['chemistry_templates']
-        actual=tuple(ids)
-        # A graph match, not formula lookup: same composition can be different molecules.
-        for template in labels.values():
-            symbols=template['symbols']; links={tuple(sorted((a,b))):n for a,b,n in template['bonds']}
-            if len(actual)!=len(symbols) or Counter(self.atoms[i].symbol for i in actual)!=Counter(symbols): continue
-            for mapped in permutations(actual):
-                if any(self.atoms[i].symbol!=s for i,s in zip(mapped,symbols)): continue
-                graph={tuple(sorted((mapped.index(a),mapped.index(b)))):n for (a,b),n in self.bonds.items() if a in actual and b in actual}
-                if graph==links: return template['label']
-        return self.formula(actual)+' • mô hình đang xây dựng'
+        actual=tuple(sorted(ids)); indices={i:n for n,i in enumerate(actual)}
+        symbols=tuple(self.atoms[i].symbol for i in actual)
+        links=tuple(sorted((indices[a],indices[b],n) for (a,b),n in self.bonds.items() if a in indices and b in indices))
+        key=(symbols,links)
+        if key in self._description_cache:
+            self._description_cache.move_to_end(key)
+            return self._description_cache[key]
+        graph=[{} for _ in symbols]
+        for a,b,n in links: graph[a][b]=n; graph[b][a]=n
+        label=self.formula(actual)+' • mô hình đang xây dựng'
+        for candidate,template_symbols,template_graph in self._templates:
+            if Counter(symbols)==Counter(template_symbols) and graph_matches(symbols,graph,template_symbols,template_graph):
+                label=candidate; break
+        self._description_cache[key]=label
+        if len(self._description_cache)>128: self._description_cache.popitem(last=False)
+        return label
 
     def add_template(self,key):
         t=self.settings['chemistry_templates'][key]
@@ -259,3 +286,30 @@ class ChemistryScene:
         state=json.loads(Path(path).read_text(encoding='utf-8'))
         before=self.state(); self.restore(state)
         self.undo_stack.append(before); self.redo_stack.clear(); self.message='Đã mở không gian đã lưu'
+
+
+def graph_matches(symbols,graph,template_symbols,template_graph):
+    """Exact colored/bond-order graph match, pruning before assignment.
+
+    Coordinates do not identify molecules. Degree/neighbor signatures avoid
+    factorial enumeration of interchangeable hydrogen atoms in larger presets.
+    This identifies connectivity only, not stereochemistry or stability.
+    """
+    if len(symbols)!=len(template_symbols): return False
+    def signatures(labels,adj):
+        return [(s,len(adj[i]),sum(adj[i].values()),tuple(sorted(Counter((labels[j],n) for j,n in adj[i].items()).items()))) for i,s in enumerate(labels)]
+    actual=signatures(symbols,graph); expected=signatures(template_symbols,template_graph)
+    if Counter(actual)!=Counter(expected): return False
+    candidates={i:tuple(j for j,signature in enumerate(actual) if signature==sig) for i,sig in enumerate(expected)}
+    order=sorted(candidates,key=lambda i:(len(candidates[i]),-len(template_graph[i])))
+    mapped={}; used=set()
+    def assign(offset):
+        if offset==len(order): return True
+        i=order[offset]
+        for j in candidates[i]:
+            if j in used or any(template_graph[i].get(k,0)!=graph[j].get(v,0) for k,v in mapped.items()): continue
+            mapped[i]=j; used.add(j)
+            if assign(offset+1): return True
+            used.remove(j); del mapped[i]
+        return False
+    return assign(0)

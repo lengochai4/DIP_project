@@ -37,6 +37,30 @@ Nguồn quy tắc liên kết đơn/đôi/ba và các trường hợp H/C/N/O/ha
 https://openstax.org/books/organic-chemistry/pages/1-4-development-of-chemical-bonding-theory
 https://openstax.org/books/chemistry-2e/pages/7-2-covalent-bonding
 
-Mẫu H₂O, CO₂, CH₄, NH₃, H₂, O₂, N₂ và HCl là đồ thị liên kết giáo khoa.
+Thư viện hiện có 32 đồ thị liên kết giáo khoa:
+
+- Cơ bản: H₂O, CO₂, CH₄, NH₃, H₂, O₂, N₂, HCl.
+- Halogen và hydrogen halide: F₂, Cl₂, Br₂, I₂, HF, HBr, HI.
+- Phân tử nhỏ khác: H₂S, H₂O₂, PH₃, HCN, CS₂.
+- Hydrocarbon: C₂H₆, C₂H₄, C₂H₂, C₃H₈.
+- Có oxygen: CH₃OH, C₂H₅OH, CH₃OCH₃, CH₂O, CH₃CHO, CH₃COCH₃,
+  HCOOH, CH₃COOH.
+
+Các đồ thị được biên soạn trực tiếp theo cấu trúc liên kết cơ bản và giới hạn
+cộng hóa trị trung hòa đã ghi ở trên. Mỗi mẫu mới có `formula` dạng đếm nguyên
+tử và `source_url` để tra tên/cấu trúc trên PubChem. Đây không phải dữ liệu 3D
+tải từ PubChem: API truy cập từ máy trả trang chặn, trang đó không được dùng.
+Ví dụ tra đối chiếu:
+
+- [Etanol](https://pubchem.ncbi.nlm.nih.gov/compound/702): C–C–O, hydrogen ghi tường minh trong mẫu.
+- [Đimetyl ete](https://pubchem.ncbi.nlm.nih.gov/compound/8254): C–O–C; cùng C₂H₆O với etanol nhưng khác đồ thị.
+- [Acetone](https://pubchem.ncbi.nlm.nih.gov/compound/180): CH₃–C(=O)–CH₃.
+- [Formaldehyde](https://pubchem.ncbi.nlm.nih.gov/compound/712): H₂C=O.
+- [Axit fomic](https://pubchem.ncbi.nlm.nih.gov/compound/284): H–C(=O)–O–H.
+
+Mẫu được kiểm tra khi khởi tạo: đủ vị trí hữu hạn, một thành phần liên thông,
+không liên kết trùng, tổng bậc liên kết đúng giới hạn trung hòa H/C/N/O/P/S/halogen.
+Nhận tên bằng đồ thị có nhãn nguyên tố và bậc liên kết; không phân biệt đồng phân
+lập thể, ion hoặc cộng hưởng. Thư viện hiện tại không thêm các trường hợp đó.
 Tọa độ đặt trong settings là hình học minh họa ở đơn vị cảnh. App không
 tính năng lượng, tối ưu cấu dạng, quỹ đạo lượng tử hay phản ứng hóa học.

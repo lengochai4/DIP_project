@@ -2,6 +2,19 @@
 
 ## Current task update — 2026-10-14
 
+Expanded chemistry library: user-authorized 32 neutral covalent presets in four
+pages of eight entries. Graphs/finite illustrative coordinates are validated at
+startup. Formula and exact element/bond-order matching distinguish ethanol from
+dimethyl ether and remain independent of atom IDs or position. Candidate pruning
+and a bounded topology cache replace factorial permutation enumeration. Semantic
+changes refresh names/labels immediately. Finger presentation clears invalid or
+misindexed observations instead of retaining vertices. Core/research parameters,
+atomic data and report results are unchanged. Executed: 196 submission tests,
+650 full-project tests passed; all 32 presets rendered with native event polling
+and forced GC; four pages/targets checked and representative screenshots inspected.
+Sources/limits are recorded in submission/stem_ui/data/README.md. No physical
+reaction, energy, depth or new real-camera accuracy result is claimed.
+
 Startup crash correction: the borrowed Pygame SDL Window wrapper is now owned
 by the renderer until display replacement/close. Pygame 2.6.1 registers its
 raw pointer as SDL window data; allowing the wrapper to die before event polling

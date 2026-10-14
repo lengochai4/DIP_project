@@ -132,9 +132,14 @@ class CameraChemistryView:
                 text(config[:46],(32,688),23,(166,189,205))
                 if 'predicted' in config.lower(): text('Cấu hình trong nguồn là dự đoán',(32,725),21,(239,196,130))
         elif control.page=='templates':
-            text('Mẫu cầu–que; hình học minh họa',(32,93),28)
-            for i,(key,t) in enumerate(self.settings['chemistry_templates'].items()):
+            templates=list(self.settings['chemistry_templates'].items())
+            pages=max(1,(len(templates)+7)//8); current=min(control.template_page,pages-1)
+            text(f'Mẫu cầu–que • Trang {current+1}/{pages}',(32,93),28)
+            for i,(key,t) in enumerate(templates[current*8:(current+1)*8]):
                 button(t['label'],(32,145+i*67,w-64,58),'template:'+key)
+            button('Trang trước',(32,693,210,52),'templates_prev')
+            button('Nguyên tố',(256,693,210,52),'elements')
+            button('Trang sau',(480,693,208,52),'templates_next')
         else:
             text('118 nguyên tố • chọn để tạo nguyên tử; dữ liệu PubChem',(32,91),31)
             for row,symbols in enumerate(PERIODS):
@@ -159,7 +164,7 @@ class CameraChemistryView:
         return finish()
 
     def _ensure_panel(self,force=False):
-        key=(self.space.aspect,self.input.page,self.scene.selected,self.scene.edit,self.scene.electrons,self.scene.order,self.scene.revision,self.renderer.help_visible,
+        key=(self.space.aspect,self.input.page,self.input.template_page,self.scene.selected,self.scene.edit,self.scene.electrons,self.scene.order,self.scene.revision,self.renderer.help_visible,
              tuple(sorted(str(v) for v in self.input.hover.values())),self.content[2:])
         now=time.monotonic()
         if force or self.input.panel is None or (key!=self.panel_key and now-self.panel_at>=1/self.settings['chemistry_panel_fps']):

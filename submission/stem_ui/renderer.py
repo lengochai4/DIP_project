@@ -495,9 +495,12 @@ class SubmissionRenderer:
             tuple((key,v['controller'].suspended) for key,v in control.groups.items()),
             pygame.mouse.get_pos(),snapshot.frame_id if snapshot and self.camera_visible else None,
             source_kind,self.droidcam_dialog,self.droidcam_host,self.droidcam_port,self.droidcam_field)
-        if overlay_key!=self.last_overlay_key and (now-self.last_overlay_at>=1/self.settings['overlay_fps'] or not isinstance(self.last_overlay_key,tuple) or self.last_overlay_key[0]!='chemistry'):
+        semantic_key=overlay_key[:9]+(scene.revision,scene.selected,scene.edit,scene.electrons,scene.message,
+            control.page,control.template_page,source_kind,self.droidcam_dialog,self.droidcam_host,self.droidcam_port,self.droidcam_field)
+        if overlay_key!=self.last_overlay_key and (semantic_key!=getattr(self,'_chemistry_semantic_key',None) or now-self.last_overlay_at>=1/self.settings['overlay_fps'] or not isinstance(self.last_overlay_key,tuple) or self.last_overlay_key[0]!='chemistry'):
             overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,[None]*count,fresh,[])
             self.last_overlay_at=now; self.last_overlay_key=overlay_key
+            self._chemistry_semantic_key=semantic_key
         else: overlay=None
         self._overlay(overlay)
         if self.capture_path:

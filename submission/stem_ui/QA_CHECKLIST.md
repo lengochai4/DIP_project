@@ -6,10 +6,12 @@ không thay thế đặc tả canonical hoặc số liệu thực nghiệm Core.
 
 | Hạng mục | Kết quả kiểm tra |
 |---|---|
-| Core, filtering, replay, cấu hình, dữ liệu và extension | Toàn bộ 580 test dự án đạt; compile Python đạt |
+| Core, filtering, replay, cấu hình, dữ liệu và extension | Toàn bộ 650 test dự án đạt; compile Python đạt |
 | Nhận ngón, 0–10 đỉnh, raw/filtered, mất tay/tái nhận | Regression đạt; hai lượt replay qua MediaPipe, mỗi lượt 30 frame, nhận hai tay/tối đa 10 ngón; không tự thêm đỉnh hoặc auto-zoom theo span |
 | Cầm bằng một/hai tay, xoay, đổi cỡ, kéo dãn, buông | Regression về hysteresis, giới hạn và rebase đạt |
 | Ghép/tách, hóa trị, công thức, tên phân tử | Đối chiếu đồ thị; sửa lỗi liên kết cũ gần nhất chặn ghép mới |
+| Thư viện phân tử | 32 mẫu/4 trang; kiểm đầy đủ liên kết, hóa trị trung hòa, công thức và nhận dạng sau đổi ID; etanol/đimetyl ete không lẫn tên; render thật cả 32 mẫu đạt |
+| Nhãn hóa học khi đổi mẫu/ghép/tách | Refresh ngay khi nội dung đổi; cache chỉ theo topology, không xét vị trí/cỡ hiển thị |
 | Lưu/mở, undo/redo | Import lỗi không ghi đè cảnh; lỗi ghi file được hiển thị, không làm UI dừng |
 | Chọn hóa học | Dwell 1 giây; có hủy khi mất tay/chuyển mục tiêu và latch chống lặp |
 | Webcam ↔ DroidCam | Test đóng nguồn chậm; nguồn mới chờ nguồn cũ đóng hoàn toàn |

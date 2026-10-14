@@ -54,7 +54,7 @@ class FingerSelection:
         self.active.clear()
 
     def update(self, landmarks, aspect=1.0):
-        if len(landmarks) != 21:
+        if len(landmarks) != 21 or {l.index for l in landmarks}!=set(range(21)) or not math.isfinite(aspect) or aspect<=0 or any(not math.isfinite(v) for l in landmarks for v in (l.x,l.y,l.z)):
             self.reset()
             return ()
         # Image y is normalized by height; z uses approximately image-x scale.
