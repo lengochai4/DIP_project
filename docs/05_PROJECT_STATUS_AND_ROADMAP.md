@@ -2,12 +2,11 @@
 
 ## Current task update — 2026-10-14
 
-The user authorized a separate supplemental evidence round, an updated
-Vietnamese Word/PDF report, a Core release decision based on verification,
-and a clean minimal 3D submission UI built from main. Existing UI branches
-remain untouched. The approved UI direction focuses on 3D geometric objects,
-live fingertip attachment, optional camera view, hideable guidance and few
-controls; additional STEM labs are deferred.
+Current priority is to finish the Core evidence and Vietnamese editable Word
+report. The user explicitly postponed UI work until after this report.
+Existing UI branches remain untouched. The later approved UI direction is
+a minimal 3D object interface, live fingertip attachment, optional camera
+view and hideable guidance; its implementation is not claimed complete.
 
 ROUND2 collection: six planned normal-light sources were completed, along
 with two intended challenging-light sources. The operator then confirmed
@@ -15,12 +14,16 @@ that ambient illumination could not be reduced. Those two sources remain
 retained, but their physical challenging-light condition is unverified.
 The guided session was interrupted before the ninth source.
 
-The user explicitly authorized simulated input dimming. Active work is a
-separately identified study under `experiments/round2/SIMULATED_PLAN.md`:
+The user explicitly authorized simulated input dimming. The completed study
+is separately identified under `experiments/round2/SIMULATED_PLAN.md`:
 three fixed-gain (0.35) derivatives of the three static normal sources,
 with the same canonical v1.2 primary metrics/profiles and fixed window.
 No synthetic attenuation result is described as real environmental
-low-light robustness. No new metric outcome is claimed before analysis.
+low-light robustness. All three normal and simulated B trials returned
+P0=P1 valid rates of 1.0 on 241 analyzed frames each. P1 was NORMAL with
+CLAHE inactive on all 723 normal frames, and DIFFICULT with CLAHE active
+on all 723 simulated frames. This validates activation, not improved
+valid rate or physical low-light robustness.
 
 Change: supplemental source-condition protocol, authorized 2026-10-14.
 Reason: physical lighting control unavailable.
@@ -40,10 +43,30 @@ are recorded for ROUND2. The unmodified main baseline passed 433 automated
 tests in this environment on 2026-10-14. Model SHA-256 matches the retained
 G7 model. This is engineering verification, not experimental superiority.
 
-Core algorithms remain unchanged pending the new evidence. UI development
-follows the data/report/Core decision, and must preserve Core/Extension
-separation. Any required addition to a public rendering contract must be
-specified with compatibility impact before implementation.
+The first static sources contained substantial real hand movement and are
+retained as acquisition-quality evidence. The user authorized three new
+supported-wrist static trials, preregistered before collection under
+`experiments/round2/HELD_STATIC_PLAN.md`. All three A1 and A2 trials have
+241 common usable frames. F1/F2 reduce A1 radial RMS versus Raw in two
+held trials and increase it slightly in trial 001; F1/F2 are nearly equal.
+F2 A2 RMSE versus Raw is lower than F1 in all three dynamic trials. Raw
+is not ground truth and this metric is not physical latency.
+
+The final research tooling suite passed 454 tests. Core algorithm/config,
+public contracts, old experiments/analysis and G7 evidence remain unchanged
+from main/g7-final, f454c6b8325c85199c0122c0e822fe8e76c1526c. The decision is
+to freeze that Core for the course submission: no algorithm upgrade is
+justified as a prerequisite by this round. This is not enterprise or
+universal robustness certification. See `docs/CORE_SUBMISSION_DECISION.md`.
+
+The updated report source is `reports/core-final/BAO_CAO_CORE.md`; the
+editable deliverable is `output/documents/Bao_cao_Core_DIP_Touchless_STEM.docx`.
+Raw videos, replay logs, plots and local analysis outputs remain local
+experiment artifacts under runs and are not committed.
+
+UI development follows the Core report and must preserve Core/Extension
+separation. Any addition to a public rendering contract must be specified
+with compatibility impact before implementation.
 
 The retained G7 release and experimental artifacts are not overwritten.
 The evidence snapshots below remain historical records; their older
