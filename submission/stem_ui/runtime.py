@@ -22,6 +22,7 @@ from dip_touchless.preprocessing import (ROIManager, IlluminationAnalyzer,
 from dip_touchless.tracking import MeasurementValidator
 from experiments.run_replay import build_landmark_filter
 from dip_touchless.interaction import DeterministicGestureEngine
+from .acquisition import LatestCamera
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -91,11 +92,12 @@ class CaptureWorker:
         self.latest = None
         self.error = None
         self.finished = False
+        self.camera_pump = None
         self.run_id = 'ui-' + datetime.now().strftime('%Y%m%d-%H%M%S-%f')
 
     @property
     def alive(self):
-        return self.thread is not None and self.thread.is_alive()
+        return (self.thread is not None and self.thread.is_alive()) or (self.camera_pump is not None and self.camera_pump.alive)
 
     def start(self):
         if self.thread is not None:
@@ -134,25 +136,40 @@ class CaptureWorker:
                 source = ReplayFrameSource(self.replay, run_id=self.run_id)
                 source.open()
             else:
-                for backend in ('default','dshow'):
-                    source = OpenCVCameraSource(run_id=self.run_id,camera_index=self.camera_index,
-                        width=cfg['camera']['width'],height=cfg['camera']['height'],
-                        requested_fps=cfg['camera']['requested_fps'],backend=backend)
-                    try:
-                        source.open(); break
-                    except RuntimeError:
-                        source.close()
-                        if backend == 'dshow':
+                def camera_factory():
+                    # Backend fallback stays inside the sole camera owner thread.
+                    class Camera:
+                        inner = None
+                        def open(camera):
+                            for backend in ('default','dshow'):
+                                camera.inner = OpenCVCameraSource(run_id=self.run_id,camera_index=self.camera_index,
+                                    width=cfg['camera']['width'],height=cfg['camera']['height'],
+                                    requested_fps=cfg['camera']['requested_fps'],backend=backend)
+                                try:
+                                    camera.inner.open(); return
+                                except RuntimeError:
+                                    camera.inner.close()
                             raise RuntimeError('Không mở được camera. Đóng ứng dụng đang dùng camera, kiểm tra quyền Camera của Windows hoặc chọn camera khác.')
+                        def read(camera): return camera.inner.read()
+                        def close(camera):
+                            if camera.inner: camera.inner.close()
+                    return Camera()
+                source = LatestCamera(camera_factory,self.stop_event,self.settings['camera_shutdown_timeout_s'])
+                self.camera_pump = source
+                source.open()
             folder.mkdir(parents=True,exist_ok=True)
             try:
                 revision=subprocess.run(['git','rev-parse','HEAD'],cwd=ROOT,capture_output=True,text=True,check=False).stdout.strip() or None
+                dirty=bool(subprocess.run(['git','status','--porcelain','--untracked-files=no'],cwd=ROOT,capture_output=True,text=True,check=False).stdout.strip())
             except OSError:
                 revision=None
+                dirty=None
             (folder/'metadata.json').write_text(json.dumps({'kind':'submission_presentation_only',
-                'presentation_schema':'2',
+                'presentation_schema':'3',
+                'acquisition_policy':'ordered_replay' if self.replay else 'latest_camera_single_slot',
                 'run_id':self.run_id,'core_config':cfg,'ui_settings':self.settings,'camera_index':self.camera_index,
                 'code_revision':revision,
+                'code_working_tree_dirty':dirty,
                 'source':str(self.replay) if self.replay else 'camera',
                 'model_sha256':hashlib.sha256(model.read_bytes()).hexdigest(),
                 'research_compatible':False,'raw_video_saved':False},ensure_ascii=False,indent=2),encoding='utf-8')
@@ -230,6 +247,8 @@ class CaptureWorker:
                     'hand_states':[{'slot':hand.slot,'generation':hand.generation,
                         'ui_pinch_ratio':pinch_ratio(hand,w/h),'canonical_pinch_active':hand.interaction.pinch_active,
                         'canonical_interaction_valid':hand.interaction.interaction_valid} for hand in hands],
+                    'camera_packets_dropped':source.dropped if not self.replay else 0,
+                    'camera_queue_wait_ms':source.last_wait_ms if not self.replay else None,
                     'compute_ms':(time.perf_counter()-compute_start)*1000})+'\n')
                 if self.replay:
                     self.stop_event.wait(1/30)

@@ -46,6 +46,13 @@ class SubmissionRenderer:
         self.live_points = {}
         self.fit_center = None
         self.fit_scale = 1.0
+        self.fit_identity = None
+        self.fit_seen_at = 0.0
+        self.hand_points = {}
+        self.preview_key = None
+        self.preview_surface = None
+        self.last_overlay_at = 0.0
+        self.last_overlay_key = None
 
     def open(self):
         pygame.init()
@@ -57,11 +64,17 @@ class SubmissionRenderer:
                       for size in (13,15,17,20,24,32)}
         self.quadric = glu.gluNewQuadric()
         self.clock = pygame.time.Clock()
+        self.unit_sphere = gl.glGenLists(1)
+        gl.glNewList(self.unit_sphere,gl.GL_COMPILE)
+        glu.gluSphere(self.quadric,1,16,12); gl.glEndList()
+        self.unit_bone=gl.glGenLists(1)
+        gl.glNewList(self.unit_bone,gl.GL_COMPILE)
+        glu.gluCylinder(self.quadric,1,1,1,10,1); gl.glEndList()
         self.solid_lists={}
         for kind in KINDS:
             display_list=gl.glGenLists(1)
             gl.glNewList(display_list,gl.GL_COMPILE)
-            self._mesh(solid_mesh(kind))
+            self._mesh(solid_mesh(kind),smooth=kind=='sphere',edges=kind!='sphere')
             gl.glEndList()
             self.solid_lists[kind]=display_list
 
@@ -70,17 +83,31 @@ class SubmissionRenderer:
             gl.glDeleteLists(display_list,1)
         if hasattr(self,'texture'):
             gl.glDeleteTextures([self.texture])
+        if hasattr(self,'unit_sphere'): gl.glDeleteLists(self.unit_sphere,1)
+        if hasattr(self,'unit_bone'): gl.glDeleteLists(self.unit_bone,1)
         # Desktop-sized borderless window avoids exclusive display-mode
         # switching, which fails on some Windows drivers/remote sessions.
         flags = pygame.OPENGL | pygame.DOUBLEBUF | (pygame.NOFRAME if self.fullscreen else pygame.RESIZABLE)
         pygame.display.set_mode(self.size,flags)
         self.texture = gl.glGenTextures(1)
+        gl.glBindTexture(gl.GL_TEXTURE_2D,self.texture)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MIN_FILTER,gl.GL_LINEAR)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MAG_FILTER,gl.GL_LINEAR)
+        gl.glTexImage2D(gl.GL_TEXTURE_2D,0,gl.GL_RGBA,*self.size,0,gl.GL_RGBA,gl.GL_UNSIGNED_BYTE,None)
+        self.overlay_surface=pygame.Surface(self.size,pygame.SRCALPHA)
+        self.last_overlay_at=0.0; self.last_overlay_key=None
         if hasattr(self,'solid_lists'):
+            self.unit_sphere=gl.glGenLists(1)
+            gl.glNewList(self.unit_sphere,gl.GL_COMPILE)
+            glu.gluSphere(self.quadric,1,16,12); gl.glEndList()
+            self.unit_bone=gl.glGenLists(1)
+            gl.glNewList(self.unit_bone,gl.GL_COMPILE)
+            glu.gluCylinder(self.quadric,1,1,1,10,1); gl.glEndList()
             self.solid_lists={}
             for kind in KINDS:
                 display_list=gl.glGenLists(1)
                 gl.glNewList(display_list,gl.GL_COMPILE)
-                self._mesh(solid_mesh(kind)); gl.glEndList()
+                self._mesh(solid_mesh(kind),smooth=kind=='sphere',edges=kind!='sphere'); gl.glEndList()
                 self.solid_lists[kind]=display_list
 
     def close(self):
@@ -90,12 +117,16 @@ class SubmissionRenderer:
             gl.glDeleteTextures([self.texture])
         if hasattr(self,'quadric'):
             glu.gluDeleteQuadric(self.quadric)
+        if hasattr(self,'unit_sphere'): gl.glDeleteLists(self.unit_sphere,1)
+        if hasattr(self,'unit_bone'): gl.glDeleteLists(self.unit_bone,1)
+        self._label.cache_clear()
         pygame.quit()
 
     def reset(self):
         self.yaw=32.; self.pitch=20.; self.zoom=1.
         self.object_yaw=self.object_pitch=0.; self.object_scale=1.
         self.grab.reset()
+        self.fit_center=None; self.fit_identity=None
 
     def events(self):
         actions = []
@@ -166,8 +197,8 @@ class SubmissionRenderer:
         self._set_display()
 
     def cycle_scale_mode(self):
-        modes=('uniform','stretch','distance')
-        self.grab.set_scale_mode(modes[(modes.index(self.grab.scale_mode)+1)%3])
+        modes=('uniform','stretch','distance','depth')
+        self.grab.set_scale_mode(modes[(modes.index(self.grab.scale_mode)+1)%len(modes)])
 
     @lru_cache(maxsize=256)
     def _label(self,text,size,color):
@@ -198,7 +229,6 @@ class SubmissionRenderer:
 
     def draw(self,snapshot,status,*,active=False,error=None,run_id='',camera_index=0,replay=False):
         w,h=self.size
-        self.buttons=[]
         panel_width=340 if self.camera_visible else 0
         view=(24,145,w-48-panel_width-(18 if panel_width else 0),h-219)
         vx,vy,vw,vh=view
@@ -224,6 +254,8 @@ class SubmissionRenderer:
         gl.glLightfv(gl.GL_LIGHT0,gl.GL_POSITION,(3,5,7,1))
         gl.glLightfv(gl.GL_LIGHT0,gl.GL_DIFFUSE,(.8,.86,1,1))
         gl.glLightModelfv(gl.GL_LIGHT_MODEL_AMBIENT,(.3,.3,.35,1))
+        gl.glMaterialfv(gl.GL_FRONT_AND_BACK,gl.GL_SPECULAR,(.35,.35,.4,1))
+        gl.glMaterialf(gl.GL_FRONT_AND_BACK,gl.GL_SHININESS,32)
         gl.glLightModeli(gl.GL_LIGHT_MODEL_TWO_SIDE,gl.GL_TRUE)
         gl.glEnable(gl.GL_COLOR_MATERIAL); gl.glEnable(gl.GL_NORMALIZE)
         self._floor()
@@ -236,17 +268,17 @@ class SubmissionRenderer:
             self.selectors[s].reset()
         if identity != self.last_identity:
             for hand in hands:
-                # Neutralized canonical interaction also clears angle hysteresis
-                # on a new identity rather than inheriting another hand's state.
-                if not hand.interaction.interaction_valid:
+                # Angle hysteresis cannot transfer to a new hand generation.
+                if hand.generation not in (getattr(self,'selector_generation',{}).get(hand.slot),):
                     self.selectors[hand.slot].reset()
-                self.selectors[hand.slot].update(hand.landmarks)
+                self.selectors[hand.slot].update(hand.landmarks,snapshot.image.shape[1]/snapshot.image.shape[0])
             if self.mode=='solid' and fresh:
                 self.grab.update(hands,snapshot.timestamp_s,snapshot.image.shape[1]/snapshot.image.shape[0],view_rotation)
         if not fresh or self.mode!='solid':
             self.grab.release()
         self.grab.advance(draw_dt)
         self.last_identity=identity; self.last_slots=present
+        self.selector_generation={hand.slot:hand.generation for hand in hands}
         for hand in hands:
             aspect=snapshot.image.shape[1]/snapshot.image.shape[0]
             for l in hand.landmarks:
@@ -255,12 +287,18 @@ class SubmissionRenderer:
         generation={hand.slot:hand.generation for hand in hands}
         targets={(tip.hand,generation[tip.hand],tip.index):np.array(tip.position) for tip in tips}
         alpha=1-math.exp(-math.tau*self.settings['live_response_hz']*max(0,draw_dt))
-        self.live_points={key:self.live_points.get(key,value)+alpha*(value-self.live_points.get(key,value))
-                          for key,value in targets.items()}
+        hand_targets={(hand.slot,hand.generation,l.index):np.array(world_position(l,snapshot.image.shape[1]/snapshot.image.shape[0],self.settings))
+                      for hand in hands for l in hand.landmarks}
+        self.hand_points={key:self.hand_points.get(key,value)+alpha*(value-self.hand_points.get(key,value))
+                          for key,value in hand_targets.items()}
+        self.live_points={key:self.hand_points[key] for key in targets}
         tips=[Tip(key[0],key[2],tuple(value)) for key,value in self.live_points.items()]
         world_labels=[]
         if self.mode=='solid':
             pose=self.grab.pose
+            vertices=np.array(solid_mesh(self.kind).vertices)*(pose.scale*pose.stretch)
+            vertices=vertices@pose.rotation.T+pose.position
+            self._shadow(vertices)
             gl.glPushMatrix(); gl.glTranslatef(*pose.position)
             matrix=np.eye(4); matrix[:3,:3]=pose.rotation
             gl.glMultMatrixf(matrix.T.astype(np.float32))
@@ -269,21 +307,29 @@ class SubmissionRenderer:
         else:
             gl.glPushMatrix()
             fit=1.0
-            if tips:
-                positions=np.array([t.position for t in tips])
+            if hands:
+                positions=np.array([t.position for t in tips]) if tips else np.array(list(self.hand_points.values()))
                 center=(positions.min(axis=0)+positions.max(axis=0))/2
                 span=max(float(np.ptp(positions[:,0])),float(np.ptp(positions[:,1])),.5)
                 fit=min(5.0,self.settings['live_fit_width']/span)
-                if self.fit_center is None:
+                changed=self.fit_identity is None or self.fit_identity[0]!=run_id or any(
+                    slot in self.fit_identity[1] and self.fit_identity[1][slot]!=value for slot,value in generation.items())
+                if self.fit_center is None or changed:
                     self.fit_center=center; self.fit_scale=fit
+                    self.fit_identity=(run_id,dict(generation))
                 else:
-                    self.fit_center+=alpha*(center-self.fit_center)
-                    self.fit_scale+=alpha*(fit-self.fit_scale)
+                    self.fit_identity[1].update(generation)
+                self.fit_seen_at=now
+            elif now-self.fit_seen_at>self.settings['grip_loss_grace_s']:
+                self.fit_center=None; self.fit_identity=None
+            if self.fit_center is not None:
                 fit=self.fit_scale
                 gl.glScalef(fit,fit,fit); gl.glTranslatef(*(-self.fit_center))
-            else:
-                self.fit_center=None
-            mesh=live_mesh(tips,self.settings['display_thickness'])
+            self._hands3d(hands,fit)
+            depth_limit=self.settings['live_depth_exit_ratio'] if getattr(self,'live_mesh_mode','')=='hull3d' else self.settings['live_depth_ratio']
+            mesh=live_mesh(tips,self.settings['display_thickness'],depth_limit)
+            self.live_mesh_mode=mesh.mode
+            self._shadow(mesh.vertices,(-1.99/fit+self.fit_center[1]) if self.fit_center is not None else -1.99)
             self._mesh(mesh)
             if len(tips)==2:
                 gl.glDisable(gl.GL_LIGHTING); gl.glColor3f(*COLORS[0]); gl.glLineWidth(3)
@@ -293,13 +339,36 @@ class SubmissionRenderer:
             gl.glEnable(gl.GL_LIGHTING)
             for tip in tips:
                 gl.glColor3f(*COLORS[tip.hand]); gl.glPushMatrix(); gl.glTranslatef(*tip.position)
-                glu.gluSphere(self.quadric,.065/fit,12,8); gl.glPopMatrix()
+                gl.glScalef(*([self.settings['tip_radius']/fit]*3))
+                gl.glCallList(self.unit_sphere); gl.glPopMatrix()
                 x,y,z=glu.gluProject(*tip.position)
                 if 0<z<1:
                     world_labels.append((f'{tip.hand+1}.{TIPS.index(tip.index)+1}',(int(x)+8,h-int(y)-10)))
             gl.glPopMatrix()
         gl.glDisable(gl.GL_SCISSOR_TEST)
-        overlay=pygame.Surface((w,h),pygame.SRCALPHA)
+        overlay_key=(self.size,self.camera_visible,self.help_visible,self.menu,self.mode,self.kind,
+                     self.fullscreen,self.grab.scale_mode,active,error,status,camera_index)
+        # UI/preview is refreshed separately; 3D following remains render-rate.
+        if overlay_key!=self.last_overlay_key or now-self.last_overlay_at>=1/self.settings['overlay_fps']:
+            overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,view,hands,tips,fresh,world_labels)
+            self.last_overlay_at=now; self.last_overlay_key=overlay_key
+        else:
+            overlay=None
+        self._overlay(overlay)
+        if self.capture_path:
+            self._capture_back(self.capture_path)
+            self.capture_path=None
+        self.last_draw_cpu_ms=(time.monotonic()-now)*1000
+        pygame.display.flip()
+        self.clock.tick(self.settings['render_fps'])
+        return len(hands),len(tips)
+
+    def _draw_ui(self,snapshot,status,active,error,run_id,camera_index,replay,view,hands,tips,fresh,world_labels):
+        w,h=self.size
+        vx,vy,vw,vh=view
+        overlay=self.overlay_surface
+        overlay.fill((0,0,0,0))
+        self.buttons=[]
         pygame.draw.rect(overlay,(*BG,255),(0,0,w,130))
         pygame.draw.line(overlay,(38,52,70),(24,86),(w-24,86))
         self._text(overlay,'DIP', (28,20),32,ACCENT)
@@ -314,7 +383,7 @@ class SubmissionRenderer:
         self._button(overlay,'Đầu ngón',(148,99,116,35),'tips',self.mode=='tips')
         if self.mode=='solid':
             self._button(overlay,NAMES[KINDS.index(self.kind)]+'  v',(280,99,150,35),'menu')
-            label={'uniform':'2 tay: cỡ đều','stretch':'2 tay: kéo dãn','distance':'1 tay: đổi cỡ'}[self.grab.scale_mode]
+            label={'uniform':'2 tay: cỡ đều','stretch':'2 tay: kéo dãn','distance':'1 tay: đổi cỡ','depth':'1 tay: tiến/lùi'}[self.grab.scale_mode]
             self._button(overlay,label,(442,99,142,35),'scale_mode',self.grab.scale_mode!='uniform')
         self._button(overlay,'Đặt lại góc nhìn',(w-170,99,146,35),'reset')
         self._text(overlay,f'{len(hands)} tay • {len(tips)} đầu ngón duỗi' if fresh else status,(vx+12,vy+12),15,ACCENT if hands else MUTED)
@@ -332,10 +401,14 @@ class SubmissionRenderer:
                 bgr=snapshot.image
                 ih,iw=bgr.shape[:2]; ratio=min(304/iw,240/ih); cw,ch=round(iw*ratio),round(ih*ratio)
                 rect=(px+18+(304-cw)//2,py+53+(240-ch)//2,cw,ch)
-                rgb=np.ascontiguousarray(cv2.cvtColor(bgr,cv2.COLOR_BGR2RGB))
-                if self.settings['mirror']: rgb=np.ascontiguousarray(rgb[:,::-1])
-                preview=pygame.image.frombuffer(rgb.tobytes(),(iw,ih),'RGB')
-                overlay.blit(pygame.transform.smoothscale(preview,(cw,ch)),rect[:2])
+                preview_key=(run_id,snapshot.frame_id,cw,ch)
+                if self.preview_key!=preview_key:
+                    small=cv2.resize(bgr,(cw,ch),interpolation=cv2.INTER_AREA)
+                    rgb=np.ascontiguousarray(cv2.cvtColor(small,cv2.COLOR_BGR2RGB))
+                    if self.settings['mirror']: rgb=np.ascontiguousarray(rgb[:,::-1])
+                    self.preview_surface=pygame.image.frombuffer(rgb.tobytes(),(cw,ch),'RGB').copy()
+                    self.preview_key=preview_key
+                overlay.blit(self.preview_surface,rect[:2])
                 if fresh:
                     for hand in hands:
                         color=ACCENT if hand.slot==0 else (108,169,255)
@@ -370,7 +443,7 @@ class SubmissionRenderer:
             hw=min(390,vw-36); hx=vx+18; hy=vy+58
             pygame.draw.rect(overlay,(22,33,47,240),(hx,hy,hw,170),border_radius=14)
             self._text(overlay,'Thử trong 3 bước',(hx+16,hy+13),20,ACCENT)
-            instructions=('1. Chụm cái–trỏ; vòng vàng báo đã giữ.\n2. Một tay dời/xoay; hai tay giữ để đổi cỡ.\n3. S đổi: cỡ đều / kéo dãn / một tay đổi cỡ.' if self.mode=='solid' else
+            instructions=('1. Chụm cái–trỏ; vòng vàng báo đã giữ.\n2. Một tay dời/xoay; hai tay đổi cỡ và nghiêng.\n3. S đổi: cỡ / dãn / một tay cỡ / tiến-lùi.' if self.mode=='solid' else
                 '1. Duỗi các ngón để tạo các đỉnh sống.\n2. Một hoặc hai tay đều tự tạo hình.\n3. Gập ngón để bỏ đỉnh; kéo chuột để xem chiều sâu.')
             y=hy+48
             for line in instructions.split('\n'):
@@ -383,29 +456,74 @@ class SubmissionRenderer:
             pygame.draw.rect(overlay,(62,35,37,245),(vx+12,h-127,vw-24,68),border_radius=12)
             self._wrap(overlay,error,(vx+24,h-118),vw-48,15,(246,165,134))
         self._text(overlay,'Kéo chuột: đổi góc nhìn   •   Cuộn: góc nhìn gần/xa   •   R: đặt lại',(24,h-48),15,MUTED)
-        detail='Z tương đối của mô hình • độ dày khối là minh họa' if self.mode=='tips' else 'Cảnh 3D có chiếu phối cảnh • thao tác tay được lọc F2'
+        detail=('Bao 3D từ đầu ngón • z tương đối của từng tay' if getattr(self,'live_mesh_mode','')=='hull3d'
+                else 'Đầu ngón gần đồng phẳng • độ dày là minh họa') if self.mode=='tips' else 'Cảnh 3D có chiếu phối cảnh • tiến/lùi là thao tác biểu kiến'
         self._text(overlay,detail,(24,h-25),13,MUTED)
         if replay:
             self._text(overlay,'PHÁT LẠI • dữ liệu đã ghi',(w-295,h-47),15,(237,185,110))
-        self._overlay(overlay)
-        if self.capture_path:
-            self._capture_back(self.capture_path)
-            self.capture_path=None
-        pygame.display.flip()
-        self.clock.tick(self.settings['render_fps'])
-        return len(hands),len(tips)
+        return overlay
 
-    def _mesh(self,mesh):
+    def _hands3d(self,hands,fit):
+        """Illustrative joint/bone volume, no invented missing landmarks."""
+        gl.glEnable(gl.GL_LIGHTING)
+        chains=((0,1,2,3,4),(0,5,6,7,8),(5,9,10,11,12),(9,13,14,15,16),(13,17,18,19,20),(0,17))
+        for hand in hands:
+            p={i:self.hand_points[(hand.slot,hand.generation,i)] for i in range(21)}
+            gl.glColor3f(*(.55*np.array(COLORS[hand.slot])))
+            palm=(0,5,9,13,17)
+            for a,b in zip(palm[1:-1],palm[2:]):
+                n=np.cross(p[a]-p[0],p[b]-p[0]); length=np.linalg.norm(n)
+                if length<1e-10: continue
+                gl.glBegin(gl.GL_TRIANGLES); gl.glNormal3fv(n/length)
+                for i in (0,a,b): gl.glVertex3f(*p[i])
+                gl.glEnd()
+            for i in range(21):
+                gl.glPushMatrix(); gl.glTranslatef(*p[i])
+                gl.glScalef(*([self.settings['hand_joint_radius']/fit]*3))
+                gl.glCallList(self.unit_sphere); gl.glPopMatrix()
+            for chain in chains:
+                for a,b in zip(chain,chain[1:]):
+                    d=p[b]-p[a]; length=np.linalg.norm(d)
+                    if length<1e-8: continue
+                    z=d/length
+                    reference=np.array((0.,1.,0.)) if abs(z[1])<.9 else np.array((1.,0.,0.))
+                    x=np.cross(reference,z); x/=np.linalg.norm(x); y=np.cross(z,x)
+                    matrix=np.eye(4); matrix[:3,:3]=np.column_stack((x,y,z))
+                    gl.glPushMatrix(); gl.glTranslatef(*p[a]); gl.glMultMatrixf(matrix.T.astype(np.float32))
+                    radius=self.settings['hand_bone_radius']/fit
+                    gl.glScalef(radius,radius,length); gl.glCallList(self.unit_bone); gl.glPopMatrix()
+
+    def _shadow(self,vertices,floor_y=-1.99):
+        """Floor cue projected from display geometry, not a physical contact test."""
+        if not len(vertices): return
+        p=np.asarray(vertices,dtype=float)
+        center=p.mean(axis=0)
+        radius=max(float(np.ptp(p[:,0]))*.42,.12)
+        depth=max(float(np.ptp(p[:,2]))*.42,.12)
+        gl.glDisable(gl.GL_LIGHTING); gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glColor4f(0,0,0,.28); gl.glDepthMask(gl.GL_FALSE)
+        gl.glBegin(gl.GL_TRIANGLE_FAN); gl.glVertex3f(center[0],floor_y,center[2])
+        for i in range(33):
+            angle=math.tau*i/32
+            gl.glVertex3f(center[0]+radius*math.cos(angle),floor_y,center[2]+depth*math.sin(angle))
+        gl.glEnd(); gl.glDepthMask(gl.GL_TRUE); gl.glDisable(gl.GL_BLEND); gl.glEnable(gl.GL_LIGHTING)
+
+    def _mesh(self,mesh,smooth=False,edges=True):
         gl.glEnable(gl.GL_LIGHTING); gl.glEnable(gl.GL_POLYGON_OFFSET_FILL); gl.glPolygonOffset(1,1)
         for i,face in enumerate(mesh.faces):
             a,b,c=(np.asarray(mesh.vertices[k],dtype=float) for k in face[:3])
             n=np.cross(b-a,c-a); length=np.linalg.norm(n)
             if length<1e-10: continue
-            gl.glColor3f(*COLORS[i%len(COLORS)])
+            gl.glColor3f(*COLORS[0 if smooth else i%len(COLORS)])
             gl.glBegin(gl.GL_POLYGON); gl.glNormal3fv(n/length)
-            for index in face: gl.glVertex3f(*mesh.vertices[index])
+            for index in face:
+                if smooth:
+                    v=np.asarray(mesh.vertices[index]); gl.glNormal3fv(v/max(np.linalg.norm(v),1e-8))
+                gl.glVertex3f(*mesh.vertices[index])
             gl.glEnd()
         gl.glDisable(gl.GL_POLYGON_OFFSET_FILL); gl.glDisable(gl.GL_LIGHTING)
+        if not edges: return
         gl.glColor3f(.65,.83,.9); gl.glLineWidth(1.2)
         edges=set()
         for face in mesh.faces:
@@ -429,9 +547,8 @@ class SubmissionRenderer:
         gl.glMatrixMode(gl.GL_PROJECTION); gl.glLoadIdentity(); gl.glOrtho(0,w,h,0,-1,1)
         gl.glMatrixMode(gl.GL_MODELVIEW); gl.glLoadIdentity()
         gl.glEnable(gl.GL_TEXTURE_2D); gl.glBindTexture(gl.GL_TEXTURE_2D,self.texture)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MIN_FILTER,gl.GL_LINEAR)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MAG_FILTER,gl.GL_LINEAR)
-        gl.glTexImage2D(gl.GL_TEXTURE_2D,0,gl.GL_RGBA,w,h,0,gl.GL_RGBA,gl.GL_UNSIGNED_BYTE,pygame.image.tobytes(surface,'RGBA',False))
+        if surface is not None:
+            gl.glTexSubImage2D(gl.GL_TEXTURE_2D,0,0,0,w,h,gl.GL_RGBA,gl.GL_UNSIGNED_BYTE,pygame.image.tobytes(surface,'RGBA',False))
         gl.glEnable(gl.GL_BLEND); gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA); gl.glColor4f(1,1,1,1)
         gl.glBegin(gl.GL_QUADS)
         for (u,v),(x,y) in zip(((0,0),(1,0),(1,1),(0,1)),((0,0),(w,0),(w,h),(0,h))):

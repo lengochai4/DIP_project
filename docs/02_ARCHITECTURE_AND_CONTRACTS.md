@@ -169,6 +169,34 @@ Consumes `InteractionState` only. It MAY manage renderer/scene/application behav
 
 ### Additive submission presentation boundary — 2026-10-14
 
+#### Spatial presentation and freshness refinement — 2026-10-14
+
+The user authorized further responsiveness and spatial manipulation work.
+Only the submission live camera may use an acquisition thread with one
+replaceable pending packet. Unprocessed camera packets may be dropped;
+accepted packets retain increasing original frame IDs and timestamps.
+The filter derives dt from those timestamps. Replay never uses this pump
+and preserves every source packet in order. Capture and close belong to
+the acquisition thread; stop/retry must not overlap camera owners.
+UI schema 3 records dropped packets and acquisition-to-processing wait,
+not physical sensor-to-photon latency. Missing hands remain explicit.
+
+Presentation-only render response may increase within configured bounds
+as pose error grows; it must not predict absent hands. Within-hand model z
+may be smoothed for illustrative orientation/geometry separately from Core
+outputs, which retain their original z semantics. Two-hand rotation may
+combine screen-plane baseline twist with the average valid palm tilt.
+An explicit one-hand push/pull mode maps apparent palm-size ratios to
+bounded display z translation, never metric camera depth.
+
+Live geometry uses a convex 3D hull when the observed relative-z geometry
+is sufficiently nonplanar; near-planar points use an explicitly illustrative
+prism along their fitted plane normal. All selected fingertips remain nodes,
+including interior points. Within-hand skeletons may be shown as lit joint
+spheres/bones. Framing stays fixed within a continuous hand-identity session
+so hand translation and apparent size changes are not normalized away.
+Geometry and display filtering are submission-only, not research outputs.
+
 #### Interaction continuity refinement — 2026-10-14
 
 The user requested fixing intermittent grab, scaling and stretching.
@@ -213,11 +241,12 @@ diagnostics. The renderer consumes this snapshot and application geometry,
 never provider objects or mutable algorithm state. Unavailable hands produce
 no geometry; identity discontinuity/loss clears that presentation slot.
 
-The application runtime may process sequential frames on one worker while
+The application runtime may process accepted packets sequentially on one worker while
 the UI consumes the latest complete snapshot. Dropped presentation snapshots
-do not skip input frames inside that worker's filter. Stop/retry must not
+do not skip accepted packets inside that worker's filter. The live acquisition
+pump above may replace pending packets before processing. Stop/retry must not
 create overlapping camera workers. Only this presentation runtime uses
-latest-snapshot delivery; research replay remains synchronous/deterministic.
+latest-packet/snapshot delivery; research replay remains synchronous/deterministic.
 
 Preview mirroring is display-only: x becomes 1-x consistently for landmarks
 and image. FRAME_NORMALIZED to WORLD_RENDER is explicit. Any extrusion is a

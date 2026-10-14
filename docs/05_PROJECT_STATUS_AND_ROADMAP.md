@@ -2,6 +2,43 @@
 
 ## Current task update — 2026-10-14
 
+Spatial/freshness refinement (following the continuity fix):
+
+Change: live-only single-slot acquisition, bounded error-adaptive display
+following, smoothed illustrative palm z, two-hand palm tilt plus baseline
+twist, explicit one-hand push/pull, nonplanar fingertip 3D convex hull with
+fitted-plane display-prism fallback, volumetric hand joints/bones and stable
+session framing. Reuse overlay surfaces/textures and cache preview thumbnails;
+overlay refresh and render following run at independent configured cadences.
+Sphere poles were corrected to closed, nondegenerate faces; sphere uses
+smooth lighting without the dense wire grid. Floor shadows are display cues.
+Reason: user reported flat fingertip geometry and lingering delay.
+Canonical file/section changed: 02 section 5 presentation boundary.
+Code/modules affected: submission/stem_ui acquisition/runtime/manipulation/
+geometry/renderer/app/settings and submission tests.
+Algorithmic impact: UI only; Core x/y filtering and model z pass-through
+contracts remain unchanged. Dropped live packets keep original times/IDs.
+Experimental impact: UI schema 3 identifies latest_camera_single_slot vs
+ordered_replay and logs actual dropped packets/queue wait. Rotation, mesh mode
+and CPU draw cost excluding swap/frame cap are presentation diagnostics.
+Compatibility impact: submission behavior/config/schema changed; no public
+Core contract change. Replay and baseline configs remain unchanged.
+Existing results invalidated: no; no G7/ROUND2 code/config/data changes.
+Tests added/updated: acquisition ownership, newest-packet delivery, buffer
+copy, explicit failure/stop/blocked driver, convex support faces, tilted plane,
+interior nodes, closed sphere, out-of-plane two-hand tilt, push/pull,
+default depth neutrality, bounded following and non-mutating display z.
+Executed: 50 submission tests and full regression suite 504 passed. Mode
+cycling explicitly reaches all four manipulation modes. The new camera pump opened the physical
+webcam, delivered 12 observed snapshots and stopped cleanly without operator
+actions (ui-20261014-160021-783314). Real provider replay on the mirrored
+two-hand fixture rendered 60 observed frames / 2 hands / up to 10 tips
+(ui-20261014-155909-732680). Synthetic OpenGL acceptance exercised 130 frames
+with out-of-plane tilt, push/pull, 3D fingertip hull and fixed framing; existing
+205-frame manipulation and window controls checks also passed. Screenshots
+were inspected. These checks do not certify all live physical hand poses,
+physical depth, sensor-to-photon latency or equivalence to VR headsets.
+
 Active refinement: the user reported intermittent grab and failed size
 changes, requested XR references and functional smoothing fixes. Inspection
 found immediate slot/filter resets on any missing frame, frame-source-only

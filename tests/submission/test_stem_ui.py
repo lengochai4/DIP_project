@@ -139,7 +139,7 @@ def test_worker_uses_validated_snapshots_and_closes_resources_on_loss(tmp_path,m
     packets=[FramePacket('test',i,i/30,image,ColorSpace.BGR,'fixture') for i in range(3)]
     class Source:
         closed=False
-        def __init__(self,**kwargs): self.i=0
+        def __init__(self,*args,**kwargs): self.i=0
         def open(self): pass
         def read(self):
             if self.i==3: return None
@@ -158,9 +158,9 @@ def test_worker_uses_validated_snapshots_and_closes_resources_on_loss(tmp_path,m
     def snapshot(*args):
         value=real_snapshot(*args); snapshots.append(value); return value
     monkeypatch.setattr(runtime,'Snapshot',snapshot)
-    monkeypatch.setattr(runtime,'OpenCVCameraSource',Source)
+    monkeypatch.setattr(runtime,'ReplayFrameSource',Source)
     monkeypatch.setattr(runtime.mp.tasks.vision.HandLandmarker,'create_from_options',lambda options:Landmarker())
-    worker=runtime.CaptureWorker(SETTINGS); worker._run()
+    worker=runtime.CaptureWorker(SETTINGS,replay='fixture.avi'); worker._run()
     assert worker.error is None and worker.finished
     assert Source.closed and Landmarker.closed
     assert not snapshots[1].hands

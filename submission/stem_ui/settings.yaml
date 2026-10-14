@@ -1,5 +1,7 @@
 window: [1360, 860]
 render_fps: 60
+overlay_fps: 30
+camera_shutdown_timeout_s: 5.0
 max_hands: 2
 association_max_distance: 0.25
 association_ambiguity_margin: 0.02
@@ -12,12 +14,24 @@ thumb_enter_spread: 0.45
 thumb_exit_spread: 0.35
 live_fit_width: 3.0
 live_response_hz: 6.0
+live_depth_ratio: 0.06
+live_depth_exit_ratio: 0.04
+hand_joint_radius: 0.055
+hand_bone_radius: 0.032
+tip_radius: 0.09
 world_width: 5.0
 relative_z_gain: 4.0
 display_thickness: 0.65
 pose_response_hz: 5.0
 rotation_response_hz: 4.0
 scale_response_hz: 5.0
+orientation_z_response_hz: 8.0
+pose_response_gain: 4.0
+rotation_response_gain: 3.0
+scale_response_gain: 5.0
+display_response_max_hz: 16.0
+depth_translation_gain: 2.0
+depth_translation_limit: 2.0
 grip_press_ratio: 0.55
 grip_release_ratio: 0.85
 grip_press_s: 0.04

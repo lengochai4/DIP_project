@@ -1,5 +1,6 @@
 """Renderer-owned geometry and explicit display coordinate mapping."""
 from dataclasses import dataclass
+from itertools import combinations
 import math
 import numpy as np
 
@@ -16,6 +17,7 @@ class Tip:
 class Mesh:
     vertices: tuple[tuple[float, float, float], ...]
     faces: tuple[tuple[int, ...], ...]
+    mode: str = 'solid'
 
 def angle(a, b, c):
     u = np.array(a, dtype=float) - b
@@ -34,11 +36,12 @@ class FingerSelection:
     def reset(self):
         self.active.clear()
 
-    def update(self, landmarks):
+    def update(self, landmarks, aspect=1.0):
         if len(landmarks) != 21:
             self.reset()
             return ()
-        p = {l.index: (l.x, l.y, l.z) for l in landmarks}
+        # Image y is normalized by height; z uses approximately image-x scale.
+        p = {l.index: (l.x, l.y/aspect, l.z) for l in landmarks}
         for tip in TIPS:
             joints = (1, 2, 3, 4) if tip == 4 else (tip-3, tip-2, tip-1, tip)
             value = min(angle(p[joints[0]], p[joints[1]], p[joints[2]]),
@@ -72,19 +75,49 @@ def preview_position(landmark, rectangle, mirror=True):
     nx = 1-landmark.x if mirror else landmark.x
     return (x + nx*w, y + landmark.y*h)
 
-def live_mesh(tips, thickness):
-    """Convex footprint prism; live top vertices retain model-relative z.
+def live_mesh(tips, thickness, min_depth_ratio=.06):
+    """Small 3D hull, or fitted-plane display prism when depth is insufficient.
 
-    All fingertips remain visible as nodes, including interior hull points.
-    Bottom vertices are display extrusion, never additional measurements.
+    Provider z remains relative to each hand. This is illustrative geometry,
+    not a reconstruction of camera-space distances between different hands.
     """
-    points = [t.position for t in tips]
+    points = np.array([t.position for t in tips],dtype=float)
     if len(points) < 3:
-        return Mesh(tuple(points), ())
-    order = sorted(range(len(points)), key=lambda i: (points[i][0], points[i][1]))
+        return Mesh(tuple(map(tuple,points)), (), 'points')
+    centered = points-points.mean(axis=0)
+    _,singular,axes = np.linalg.svd(centered,full_matrices=False)
+    if singular[0]<1e-10 or singular[1]<1e-8*singular[0]:
+        return Mesh(tuple(map(tuple,points)), (), 'segment')
+    if len(points)>=4 and singular[2]/singular[0]>=min_depth_ratio:
+        triples=np.array(list(combinations(range(len(points)),3)))
+        a,b,c=(points[triples[:,i]] for i in range(3))
+        normals=np.cross(b-a,c-a)
+        lengths=np.linalg.norm(normals,axis=1)
+        valid=lengths>1e-10
+        normals=normals[valid]/lengths[valid,None]; a=a[valid]
+        distances=np.einsum('tnd,td->tn',points[None,:,:]-a[:,None,:],normals)
+        epsilon=singular[0]*1e-7
+        faces={}
+        for normal,d in zip(normals,distances):
+            if d.max()<=epsilon: outward=normal
+            elif d.min()>=-epsilon: outward=-normal
+            else: continue
+            ids=tuple(np.flatnonzero(np.abs(d)<=epsilon))
+            if ids in faces: continue
+            center=points[list(ids)].mean(axis=0)
+            u=points[ids[0]]-center; u/=np.linalg.norm(u)
+            v=np.cross(outward,u)
+            ordered=sorted(ids,key=lambda i:math.atan2(np.dot(points[i]-center,v),np.dot(points[i]-center,u)))
+            faces[ids]=tuple(ordered)
+        return Mesh(tuple(map(tuple,points)),tuple(faces.values()),'hull3d')
+    # Fallback uses the hand plane, not a permanently screen-aligned extrusion.
+    normal=axes[2]
+    if normal[2]<0: normal=-normal
+    projected=centered@axes[:2].T
+    order = sorted(range(len(points)), key=lambda i: tuple(projected[i]))
     def cross(a,b,c):
-        return ((points[b][0]-points[a][0])*(points[c][1]-points[a][1])
-                -(points[b][1]-points[a][1])*(points[c][0]-points[a][0]))
+        return ((projected[b][0]-projected[a][0])*(projected[c][1]-projected[a][1])
+                -(projected[b][1]-projected[a][1])*(projected[c][0]-projected[a][0]))
     halves = []
     for ids in (order, order[::-1]):
         hull = []
@@ -95,15 +128,17 @@ def live_mesh(tips, thickness):
         halves.append(hull[:-1])
     hull = halves[0]+halves[1]
     if len(hull) < 3:
-        return Mesh(tuple(points), ())
+        return Mesh(tuple(map(tuple,points)), (), 'segment')
+    if np.dot(np.cross(points[hull[1]]-points[hull[0]],points[hull[2]]-points[hull[0]]),normal)<0:
+        hull.reverse()
     top = [points[i] for i in hull]
-    vertices = tuple(top + [(x,y,z-thickness) for x,y,z in top])
+    vertices = tuple(map(tuple,top + [p-thickness*normal for p in top]))
     n = len(top)
     # Triangles handle non-coplanar fingertip z without an invalid GL polygon.
     faces = [(0,i,i+1) for i in range(1,n-1)]
     faces += [(n,n+i+1,n+i) for i in range(1,n-1)]
     faces += [(i,(i+1)%n,(i+1)%n+n,i+n) for i in range(n)]
-    return Mesh(vertices, tuple(faces))
+    return Mesh(vertices, tuple(faces),'display_prism')
 
 def solid_mesh(kind):
     if kind == 'cube':
@@ -118,12 +153,14 @@ def solid_mesh(kind):
         return Mesh(((1.4,0,0),(-1.4,0,0),(0,1.4,0),(0,-1.4,0),(0,0,1.4),(0,0,-1.4)),
                     ((0,2,4),(2,1,4),(1,3,4),(3,0,4),(2,0,5),(1,2,5),(3,1,5),(0,3,5)))
     # UV sphere, actual 3D vertices and lighting normals.
-    vertices = []
-    for j in range(13):
+    vertices = [(0.,1.,0.),(0.,-1.,0.)]
+    for j in range(1,12):
         phi = math.pi*j/12
         for i in range(24):
             theta = math.tau*i/24
             vertices.append((math.sin(phi)*math.cos(theta),math.cos(phi),math.sin(phi)*math.sin(theta)))
-    faces = tuple((j*24+i,j*24+(i+1)%24,(j+1)*24+(i+1)%24,(j+1)*24+i)
-                  for j in range(12) for i in range(24))
-    return Mesh(tuple(vertices), faces)
+    faces=[(0,2+(i+1)%24,2+i) for i in range(24)]
+    faces += [(1,2+10*24+i,2+10*24+(i+1)%24) for i in range(24)]
+    faces += [(2+j*24+i,2+j*24+(i+1)%24,2+(j+1)*24+(i+1)%24,2+(j+1)*24+i)
+              for j in range(10) for i in range(24)]
+    return Mesh(tuple(vertices), tuple(faces))

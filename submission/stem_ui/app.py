@@ -57,7 +57,10 @@ def main():
                 interaction_log.write(json.dumps({'frame_id':snapshot.frame_id,'timestamp_s':snapshot.timestamp_s,
                     'held_slots':list(grip.slots),'suspended':grip.suspended,'scale_mode':grip.scale_mode,
                     'scale':grip.pose.scale,'stretch':grip.pose.stretch.tolist(),
-                    'position':grip.pose.position.tolist(),'feedback':grip.feedback},ensure_ascii=False)+'\n')
+                    'position':grip.pose.position.tolist(),'rotation':grip.pose.rotation.tolist(),
+                    'mode':renderer.mode,'live_mesh_mode':getattr(renderer,'live_mesh_mode',None),
+                    'draw_cpu_ms_excluding_swap_and_cap':renderer.last_draw_cpu_ms,
+                    'feedback':grip.feedback},ensure_ascii=False)+'\n')
                 logged_frame=snapshot.frame_id
             max_hands=max(max_hands,hands); max_tips=max(max_tips,tips)
             if snapshot: seen.add(snapshot.frame_id)
