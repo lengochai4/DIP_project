@@ -12,13 +12,9 @@ from .geometry import (Tip, FingerSelection, live_mesh, solid_mesh,
 from .geometry import bone_transforms
 from .manipulation import GrabController
 from .chemistry_view import CameraChemistryView
+from .theme import BG, PANEL, INK, MUTED, ACCENT, GOLD, AUTHORS, card, glass, header_height, scene_rect
 
-BG = (12,20,31)
-PANEL = (22,33,47)
-INK = (226,237,246)
-MUTED = (142,165,185)
-ACCENT = (80,216,184)
-COLORS = ((.31,.85,.72),(.42,.66,1.0),(.93,.69,.33),(.64,.5,.9))
+COLORS = ((.20,.72,.90),(.28,.46,.82),(.48,.87,.94),(.47,.60,.79))
 KINDS = ('cube','tetra','octa','sphere')
 NAMES = ('Lập phương','Tứ diện','Bát diện','Hình cầu')
 
@@ -64,12 +60,12 @@ class SubmissionRenderer:
         pygame.display.set_caption('DIP Touchless STEM • Đồ án')
         font_path = Path('C:/Windows/Fonts/segoeui.ttf')
         self.fonts = {size:pygame.font.Font(str(font_path) if font_path.is_file() else None,size)
-                      for size in (13,15,17,20,24,32)}
+                      for size in (12,13,14,15,17,20,24,28,32)}
         self.quadric = glu.gluNewQuadric()
         self.clock = pygame.time.Clock()
         self.unit_sphere = gl.glGenLists(1)
         gl.glNewList(self.unit_sphere,gl.GL_COMPILE)
-        glu.gluSphere(self.quadric,1,16,12); gl.glEndList()
+        glu.gluSphere(self.quadric,1,32,24); gl.glEndList()
         self.unit_bone=gl.glGenLists(1)
         gl.glNewList(self.unit_bone,gl.GL_COMPILE)
         glu.gluCylinder(self.quadric,1,1,1,10,1); gl.glEndList()
@@ -94,6 +90,8 @@ class SubmissionRenderer:
         # switching, which fails on some Windows drivers/remote sessions.
         flags = pygame.OPENGL | pygame.DOUBLEBUF | (pygame.NOFRAME if self.fullscreen else pygame.RESIZABLE)
         pygame.display.set_mode(self.size,flags)
+        self.size=pygame.display.get_window_size()
+        self.buttons=[]
         self.texture = gl.glGenTextures(1)
         gl.glBindTexture(gl.GL_TEXTURE_2D,self.texture)
         gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MIN_FILTER,gl.GL_LINEAR)
@@ -105,7 +103,7 @@ class SubmissionRenderer:
             self.chemistry.open()
             self.unit_sphere=gl.glGenLists(1)
             gl.glNewList(self.unit_sphere,gl.GL_COMPILE)
-            glu.gluSphere(self.quadric,1,16,12); gl.glEndList()
+            glu.gluSphere(self.quadric,1,32,24); gl.glEndList()
             self.unit_bone=gl.glGenLists(1)
             gl.glNewList(self.unit_bone,gl.GL_COMPILE)
             glu.gluCylinder(self.quadric,1,1,1,10,1); gl.glEndList()
@@ -127,6 +125,7 @@ class SubmissionRenderer:
         if hasattr(self,'unit_sphere'): gl.glDeleteLists(self.unit_sphere,1)
         if hasattr(self,'unit_bone'): gl.glDeleteLists(self.unit_bone,1)
         self._label.cache_clear()
+        glass.cache_clear()
         pygame.quit()
 
     def reset(self):
@@ -142,7 +141,7 @@ class SubmissionRenderer:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 actions.append('quit')
-            elif event.type == pygame.VIDEORESIZE and not self.fullscreen:
+            elif event.type == pygame.VIDEORESIZE and not self.fullscreen and (event.w,event.h)!=self.size:
                 self.size=(max(960,event.w),max(660,event.h)); self.windowed=self.size; self._set_display()
             elif event.type == pygame.KEYDOWN:
                 key = event.key
@@ -217,6 +216,8 @@ class SubmissionRenderer:
         return actions
 
     def toggle_fullscreen(self):
+        if not self.fullscreen:
+            self.windowed=pygame.display.get_window_size()
         self.fullscreen=not self.fullscreen
         self.size=pygame.display.get_desktop_sizes()[0] if self.fullscreen else self.windowed
         self._set_display()
@@ -249,17 +250,17 @@ class SubmissionRenderer:
 
     def _button(self,surface,label,rect,action,active=False):
         rect=pygame.Rect(rect)
-        pygame.draw.rect(surface,(38,81,83) if active else (32,47,65),rect,border_radius=10)
-        if active:
-            pygame.draw.rect(surface,ACCENT,rect,1,border_radius=10)
-        rendered=self._label(label,15,ACCENT if active else INK)
+        hovered=rect.collidepoint(pygame.mouse.get_pos())
+        surface.blit(glass(rect.size,250,10,active or hovered),rect)
+        pygame.draw.rect(surface,ACCENT if active else (83,119,139),rect,1,border_radius=10)
+        if active: pygame.draw.line(surface,GOLD,(rect.x+14,rect.bottom-2),(rect.right-14,rect.bottom-2),2)
+        rendered=self._label(label,14,INK)
         surface.blit(rendered,rendered.get_rect(center=rect.center))
         self.buttons.append((rect,action))
 
     def draw(self,snapshot,status,*,active=False,error=None,run_id='',camera_index=0,replay=False):
         w,h=self.size
-        panel_width=340 if self.camera_visible else 0
-        view=(24,145,w-48-panel_width-(18 if panel_width else 0),h-219)
+        view=scene_rect(self.size,self.camera_visible)
         vx,vy,vw,vh=view
         now=time.monotonic()
         draw_dt=0 if self.last_draw_at is None else now-self.last_draw_at
@@ -284,9 +285,9 @@ class SubmissionRenderer:
         gl.glEnable(gl.GL_LIGHTING); gl.glEnable(gl.GL_LIGHT0)
         gl.glLightfv(gl.GL_LIGHT0,gl.GL_POSITION,(3,5,7,1))
         gl.glLightfv(gl.GL_LIGHT0,gl.GL_DIFFUSE,(.8,.86,1,1))
-        gl.glLightModelfv(gl.GL_LIGHT_MODEL_AMBIENT,(.3,.3,.35,1))
-        gl.glMaterialfv(gl.GL_FRONT_AND_BACK,gl.GL_SPECULAR,(.35,.35,.4,1))
-        gl.glMaterialf(gl.GL_FRONT_AND_BACK,gl.GL_SHININESS,32)
+        gl.glLightModelfv(gl.GL_LIGHT_MODEL_AMBIENT,(.20,.24,.29,1))
+        gl.glMaterialfv(gl.GL_FRONT_AND_BACK,gl.GL_SPECULAR,(.85,.91,1,1))
+        gl.glMaterialf(gl.GL_FRONT_AND_BACK,gl.GL_SHININESS,80)
         gl.glLightModeli(gl.GL_LIGHT_MODEL_TWO_SIDE,gl.GL_TRUE)
         gl.glEnable(gl.GL_COLOR_MATERIAL); gl.glEnable(gl.GL_NORMALIZE)
         self._floor()
@@ -429,116 +430,131 @@ class SubmissionRenderer:
         return len(hands),count
 
     def _draw_ui(self,snapshot,status,active,error,run_id,camera_index,replay,view,hands,tips,fresh,world_labels):
-        w,h=self.size
-        vx,vy,vw,vh=view
-        overlay=self.overlay_surface
-        overlay.fill((0,0,0,0))
-        self.buttons=[]
-        pygame.draw.rect(overlay,(*BG,255),(0,0,w,130))
-        pygame.draw.line(overlay,(38,52,70),(24,86),(w-24,86))
-        self._text(overlay,'DIP', (28,20),32,ACCENT)
-        self._text(overlay,'TOUCHLESS STEM',(99,23),24)
-        self._text(overlay,'Không gian hình học • webcam RGB',(99,54),13,MUTED)
-        x=w-510
-        self._button(overlay,'Dừng camera' if active else 'Mở camera',(x,23,132,42),'toggle',active)
-        self._button(overlay,'Camera',(x+144,23,88,42),'camera',self.camera_visible)
-        self._button(overlay,'Hướng dẫn',(x+244,23,104,42),'help',self.help_visible)
-        self._button(overlay,'Thu khung' if self.fullscreen else 'Toàn màn',(x+360,23,124,42),'fullscreen',self.fullscreen)
-        self._button(overlay,'Khối 3D',(24,99,116,35),'solid',self.mode=='solid')
-        self._button(overlay,'Đầu ngón',(148,99,116,35),'tips',self.mode=='tips')
-        self._button(overlay,'Hóa học AR',(276,99,140,35),'chemistry',self.mode=='chemistry')
+        w,h=self.size; vx,vy,vw,vh=view; hh=header_height(w)
+        overlay=self.overlay_surface; overlay.fill((0,0,0,0)); self.buttons=[]
+        card(overlay,(10,8,w-20,hh-4),255,True)
+        # Vector atom mark stays crisp at every window size.
+        center=(39,hh//2+6)
+        pygame.draw.ellipse(overlay,ACCENT,(20,center[1]-9,38,18),2)
+        pygame.draw.ellipse(overlay,GOLD,(30,center[1]-20,18,40),2)
+        pygame.draw.circle(overlay,INK,center,4)
+        self._text(overlay,'DIP TOUCHLESS STEM',(68,24),17 if w>=1120 else 14,INK)
+        self._text(overlay,'Không gian tương tác',(68,49),12,MUTED)
+        # All names are preserved at minimum size; the badge is centered
+        # in the available top-bar space, independently of the controls.
+        controls=386; right=w-controls-20; left=275 if w>=1120 else 225
+        badge=pygame.Rect(left,17,right-left-16,hh-20)
+        card(overlay,badge,215)
+        author_lines=AUTHORS.split(' | ')
+        if w>=1120:
+            author_lines=[author_lines[0],author_lines[1]+' | '+author_lines[2]]
+        else:
+            author_lines[0]=author_lines[0].replace('Nhóm tác giả: ','')
+        fs=13 if w>=1120 else 12
+        line_h=17; y=badge.centery-len(author_lines)*line_h//2
+        for line in author_lines:
+            label=self._label(line,fs,INK)
+            overlay.blit(label,label.get_rect(center=(badge.centerx,y+line_h//2))); y+=line_h
+        if w<1120: self._text(overlay,'Nhóm tác giả:',(badge.x+10,badge.y-12),12,MUTED)
+        x=right; cy=hh//2-11
+        for label,bw,action,on in (
+            ('Dừng camera' if active else 'Bật camera',110,'toggle',active),
+            ('Camera',70,'camera',self.camera_visible),
+            ('Hướng dẫn',94,'help',self.help_visible),
+            ('Thu khung' if self.fullscreen else 'Phóng to',94,'fullscreen',self.fullscreen)):
+            self._button(overlay,label,(x,cy,bw,38),action,on); x+=bw+6
+        sy=hh+15
+        card(overlay,(20,sy-5,388,46),230)
+        for label,x,bw,action in (('Khối 3D',26,112,'solid'),('Đầu ngón',144,114,'tips'),('Hóa học AR',264,138,'chemistry')):
+            self._button(overlay,label,(x,sy, bw,36),action,self.mode==action)
         if self.mode=='solid':
-            self._button(overlay,NAMES[KINDS.index(self.kind)]+'  v',(428,99,150,35),'menu')
-            label={'uniform':'2 tay: cỡ đều','stretch':'2 tay: kéo dãn','distance':'1 tay: đổi cỡ','depth':'1 tay: tiến/lùi'}[self.grab.scale_mode]
-            self._button(overlay,label,(590,99,142,35),'scale_mode',self.grab.scale_mode!='uniform')
-        self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại góc nhìn',(w-170,99,146,35),'reset')
-        self._text(overlay,f'{len(hands)} tay • {len(tips)} đầu ngón duỗi' if fresh else status,(vx+12,vy+12),15,ACCENT if hands else MUTED)
-        if self.mode=='solid' and fresh:
-            self._text(overlay,self.grab.feedback,(vx+12,vy+38),15,ACCENT if self.grab.slots else MUTED)
-        for label,pos in world_labels:
-            self._text(overlay,label,pos,13,INK)
-        if self.mode=='tips' and not tips:
-            self._text(overlay,'Đưa bàn tay vào camera và duỗi các ngón',(vx+28,vy+vh//2),20,MUTED)
+            self._button(overlay,NAMES[KINDS.index(self.kind)],(424,sy,130,36),'menu')
+            pygame.draw.polygon(overlay,MUTED,((539,sy+15),(547,sy+15),(543,sy+20)))
+            label={'uniform':'Hai tay: đổi cỡ','stretch':'Hai tay: kéo dãn','distance':'Một tay: đổi cỡ','depth':'Một tay: tiến/lùi'}[self.grab.scale_mode]
+            self._button(overlay,label,(566,sy,152,36),'scale_mode',self.grab.scale_mode!='uniform')
+        self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại góc nhìn',(w-168,sy,148,36),'reset')
+        # Scene frame is only an outline, leaving the camera unobstructed.
+        pygame.draw.rect(overlay,(53,105,124,190),view,1,border_radius=18)
+        pygame.draw.line(overlay,ACCENT,(vx+20,vy),(vx+92,vy),2)
+        pygame.draw.line(overlay,GOLD,(vx+vw-92,vy+vh-1),(vx+vw-20,vy+vh-1),2)
+        if self.mode!='chemistry':
+            feedback=self.grab.feedback if self.mode=='solid' and self.grab.slots else ('Đưa tay vào camera để bắt đầu' if not hands else 'Duỗi ngón để tạo hình' if self.mode=='tips' else 'Chụm cái–trỏ để cầm khối')
+            self._text(overlay,feedback,(vx+18,vy+16),15,ACCENT if hands else MUTED)
+        for label,pos in world_labels: self._text(overlay,label,pos,13,INK)
         if self.camera_visible:
-            px=w-364; py=145
-            pygame.draw.rect(overlay,(*PANEL,255),(px,py,340,h-py-74),border_radius=16)
-            self._text(overlay,'CAMERA', (px+18,py+17),15,ACCENT)
+            pw=min(300,w//4); px=w-20-pw; py=vy
+            card(overlay,(px,py,pw,vh),245)
+            self._text(overlay,'CAMERA',(px+18,py+16),13,ACCENT)
+            cwmax=pw-28; chmax=min(220,int(cwmax*.75))
             if snapshot is not None and active:
-                bgr=snapshot.image
-                ih,iw=bgr.shape[:2]; ratio=min(304/iw,240/ih); cw,ch=round(iw*ratio),round(ih*ratio)
-                rect=(px+18+(304-cw)//2,py+53+(240-ch)//2,cw,ch)
+                bgr=snapshot.image; ih,iw=bgr.shape[:2]
+                ratio=min(cwmax/iw,chmax/ih); cw,ch=round(iw*ratio),round(ih*ratio)
+                rect=(px+(pw-cw)//2,py+47+(chmax-ch)//2,cw,ch)
                 preview_key=(run_id,snapshot.frame_id,cw,ch)
                 if self.preview_key!=preview_key:
                     small=cv2.resize(bgr,(cw,ch),interpolation=cv2.INTER_AREA)
                     rgb=np.ascontiguousarray(cv2.cvtColor(small,cv2.COLOR_BGR2RGB))
                     if self.settings['mirror']: rgb=np.ascontiguousarray(rgb[:,::-1])
-                    self.preview_surface=pygame.image.frombuffer(rgb.tobytes(),(cw,ch),'RGB').copy()
-                    self.preview_key=preview_key
+                    self.preview_surface=pygame.image.frombuffer(rgb.tobytes(),(cw,ch),'RGB').copy(); self.preview_key=preview_key
                 overlay.blit(self.preview_surface,rect[:2])
                 if fresh:
                     for hand in hands:
-                        color=ACCENT if hand.slot==0 else (108,169,255)
+                        color=ACCENT if hand.slot==0 else GOLD
                         positions={l.index:preview_position(l,rect,self.settings['mirror']) for l in hand.landmarks}
                         for chain in ((0,1,2,3,4),(0,5,6,7,8),(5,9,10,11,12),(9,13,14,15,16),(13,17,18,19,20),(0,17)):
                             pygame.draw.lines(overlay,color,False,[positions[i] for i in chain],2)
-                        for tip in self.selectors[hand.slot].active:
-                            pygame.draw.circle(overlay,color,positions[tip],6,2)
+                        for tip in self.selectors[hand.slot].active: pygame.draw.circle(overlay,color,positions[tip],5,2)
                         grip=self.grab.grips.get(hand.slot)
-                        grabbing=grip is not None and grip.held and self.mode=='solid'
-                        pygame.draw.circle(overlay,(255,203,96) if grabbing else color,positions[8],10,3)
-                        self._text(overlay,f'Tay {hand.slot+1}: '+('GIỮ' if grabbing else 'chưa giữ'),
-                                   (rect[0]+8,rect[1]+8+hand.slot*22),13,(255,203,96) if grabbing else INK)
-                ill=snapshot.illumination
-                self._text(overlay,'Đang nhận tay' if hands else 'Chưa thấy tay',(px+18,py+311),20,ACCENT if hands else MUTED)
-                light='Ánh sáng thường' if ill.state.value=='NORMAL' else 'Ánh sáng / tương phản yếu'
-                self._text(overlay,light,(px+18,py+349),15,MUTED)
-                self._text(overlay,'CLAHE: '+('đang bật' if ill.enhancement_active else 'bỏ qua'),(px+18,py+375),15,MUTED)
-                if self.mode=='solid':
-                    pose=self.grab.pose
-                    size_label=(f'Kéo dãn: {pose.stretch[0]:.2f} / {pose.stretch[1]:.2f} / {pose.stretch[2]:.2f}'
-                                if self.grab.scale_mode=='stretch' else f'Kích thước khối: {pose.scale:.2f}x')
-                    self._text(overlay,size_label,(px+18,py+400),15,ACCENT)
+                        pygame.draw.circle(overlay,GOLD if grip and grip.held else color,positions[8],9,2)
+                self._text(overlay,'Đang nhận tay' if hands else 'Chưa thấy tay',(px+18,py+chmax+65),17,ACCENT if hands else MUTED)
             else:
-                self._wrap(overlay,'Bấm Mở camera để bắt đầu. Hình từ camera chỉ xử lý trên máy.',(px+20,py+90),290,20)
-            self._wrap(overlay,'Đưa 1–2 tay vào khung, tách hai lòng bàn tay và tránh che đầu ngón.',(px+18,py+421),300,15)
-            if error:
-                self._wrap(overlay,error,(px+18,py+489),300,15,(246,165,134))
-            if not active:
-                self._button(overlay,f'Camera {camera_index} • đổi',(px+18,py+310,304,38),'next_camera')
-        if self.help_visible and self.mode!='chemistry':
-            hw=min(390,vw-36); hx=vx+18; hy=vy+58
-            pygame.draw.rect(overlay,(22,33,47,240),(hx,hy,hw,170),border_radius=14)
-            self._text(overlay,'Thử trong 3 bước',(hx+16,hy+13),20,ACCENT)
-            instructions=('1. Chụm cái–trỏ; vòng vàng báo đã giữ.\n2. Một tay dời/xoay; hai tay đổi cỡ và nghiêng.\n3. S đổi: cỡ / dãn / một tay cỡ / tiến-lùi.' if self.mode=='solid' else
-                '1. Duỗi các ngón để tạo các đỉnh sống.\n2. Một hoặc hai tay đều tự tạo hình.\n3. Gập ngón để bỏ đỉnh; kéo chuột để xem chiều sâu.')
-            y=hy+48
-            for line in instructions.split('\n'):
-                y=self._wrap(overlay,line,(hx+16,y),hw-32,15,INK)
-            self._text(overlay,'Mở ngón để buông • S đổi thao tác • H ẩn hướng dẫn',(hx+16,hy+143),13,MUTED)
+                self._wrap(overlay,'Bật camera để thao tác trực tiếp bằng tay.',(px+18,py+68),pw-36,17)
+                self._button(overlay,'Đổi camera',(px+18,py+176,pw-36,36),'next_camera')
+            if self.help_visible and self.mode!='chemistry' and vw<820:
+                y=py+chmax+108
+                self._text(overlay,'THAO TÁC',(px+18,y),13,ACCENT); y+=26
+                lines=('Chụm để cầm; mở ngón để buông.','Một tay: dời và xoay.','Hai tay: tách / khép để đổi cỡ.') if self.mode=='solid' else ('Duỗi ngón: tạo đỉnh sống.','Gập ngón: bỏ đỉnh.','Hai tay: tạo hình cùng lúc.')
+                for line in lines: y=self._wrap(overlay,line,(px+18,y),pw-36,13,INK)
+                self._text(overlay,'H: ẩn hướng dẫn',(px+18,y+4),12,MUTED)
+            else:
+                self._wrap(overlay,'Đưa một hoặc hai tay vào khung. Tránh che đầu ngón và chồng hai lòng bàn tay.',(px+18,py+chmax+108),pw-36,15)
+        if self.help_visible and self.mode!='chemistry' and not (self.camera_visible and vw<820):
+            hw=min(342,vw-36); hx=vx+18; hy=vy+54
+            card(overlay,(hx,hy,hw,184),231,True)
+            self._text(overlay,'THAO TÁC BẰNG TAY',(hx+16,hy+15),13,ACCENT)
+            instructions=('Chụm cái–trỏ để cầm; mở ngón để buông.\nMột tay di chuyển và xoay khối.\nHai tay kéo gần / xa để đổi cỡ và nghiêng.' if self.mode=='solid' else
+                'Duỗi các ngón để tạo đỉnh sống.\nDùng tất cả ngón của một hoặc hai tay.\nGập ngón để bỏ đỉnh; xoay góc nhìn bằng chuột.')
+            y=hy+45
+            for line in instructions.split('\n'): y=self._wrap(overlay,line,(hx+16,y),hw-32,15,INK)
+            self._text(overlay,'H: ẩn hướng dẫn  •  F11: phóng to',(hx+16,hy+157),12,MUTED)
         if self.menu and self.mode=='solid':
-            for i,name in enumerate(NAMES):
-                self._button(overlay,name,(428,139+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
-        if error and not self.camera_visible:
-            pygame.draw.rect(overlay,(62,35,37,245),(vx+12,h-127,vw-24,68),border_radius=12)
-            self._wrap(overlay,error,(vx+24,h-118),vw-48,15,(246,165,134))
+            for i,name in enumerate(NAMES): self._button(overlay,name,(424,sy+44+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
+        card(overlay,(20,h-55,w-40,45),248)
+        pygame.draw.circle(overlay,ACCENT if active else MUTED,(39,h-33),4)
+        readiness=(('Camera đã mở' if fresh else 'Đang nhận hình…') if active and snapshot is not None else status)+('  •  '+str(len(hands))+' tay' if hands else '')
+        self._text(overlay,readiness,(52,h-43),13,INK)
+        self._text(overlay,'Xử lý trên máy',(w-132,h-43),12,MUTED)
         if self.mode=='chemistry':
-            scene=self.chemistry.scene
-            selected=scene.selected
+            scene=self.chemistry.scene; selected=scene.selected
             label=scene.describe(scene.component(selected)) if selected in scene.atoms else scene.message
-            self._text(overlay,label,(24,h-48),17,ACCENT)
+            claims=[claim for claim in self.chemistry.input.claims.values() if claim.kind in ('atom','group')]
+            paused=any(group['controller'].suspended for group in self.chemistry.input.groups.values()) or any(claim.paused for claim in claims)
+            if paused: label='Tạm mất tay • Vật thể giữ nguyên; đưa tay trở lại để tiếp tục'
+            elif claims and scene.edit: label='Ghép/tách • Kéo xa để tháo • Mở ngón, thả gần để nối'
+            elif len(claims)>1: label='Đang giữ bằng hai tay • Tách / khép để đổi cỡ • Mở ngón để buông'
+            elif claims: label='Đang cầm • Chụm tay còn lại trong vùng trống để xoay / đổi cỡ'
+            elif scene.electrons: label+=(' • Chọn Cầm cả khối để dùng hai tay đổi cỡ' if scene.edit else ' • Cầm nguyên tử, chụm tay còn lại để đổi cỡ cả lớp e')
             for text,pos in self.chemistry.labels:
-                size=self.fonts[15].size(text)
-                pygame.draw.rect(overlay,(12,20,31,210),(pos[0]-3,pos[1]-2,size[0]+6,size[1]+4),border_radius=4)
+                label_size=self.fonts[15].size(text)
+                pygame.draw.rect(overlay,(8,20,30,205),(pos[0]-5,pos[1]-3,label_size[0]+10,label_size[1]+6),border_radius=6)
                 self._text(overlay,text,pos,15,INK)
-            # Status stays below the scene so it cannot obscure panel headings.
-        else:
-            self._text(overlay,'Kéo chuột: đổi góc nhìn   •   Cuộn: góc nhìn gần/xa   •   R: đặt lại',(24,h-48),15,MUTED)
-        detail=('Bao 3D từ đầu ngón • z tương đối của từng tay' if getattr(self,'live_mesh_mode','')=='hull3d'
-                else 'Đầu ngón gần đồng phẳng • độ dày là minh họa') if self.mode=='tips' else 'Cảnh 3D có chiếu phối cảnh • tiến/lùi là thao tác biểu kiến'
-        if self.mode=='chemistry': detail='Hình học minh họa • lớp e của nguyên tử trung hòa riêng lẻ • E: sửa • O: e • B: thu bảng • Z/Y: hoàn tác/làm lại'
-        self._text(overlay,detail,(24,h-25),13,MUTED)
-        if replay:
-            self._text(overlay,'PHÁT LẠI • dữ liệu đã ghi',(w-295,h-47),15,(237,185,110))
+        else: label='Kéo chuột để xem góc khác  •  Cuộn để gần / xa  •  R để đặt lại'
+        if error: label=error
+        if replay: label='Phát lại  •  '+label
+        # Clip long action/file errors to the footer, never into the scene.
+        overlay.set_clip(pygame.Rect(52,h-23,w-90,18))
+        self._text(overlay,label,(52,h-25),12,(245,178,137) if error else MUTED)
+        overlay.set_clip(None)
         return overlay
 
     def _hands3d(self,hands,fit):

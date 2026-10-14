@@ -8,6 +8,7 @@ from OpenGL import GL as gl,GLU as glu
 from .camera_space import CameraSpace,SpatialPanel,letterbox
 from .chemistry import ChemistryScene
 from .chemistry_input import ChemistryInput
+from .theme import ACCENT, GOLD, INK, MUTED, glass
 
 
 # Layout, not atomic data: the detached f-block is explicit.
@@ -32,6 +33,7 @@ class CameraChemistryView:
         self.content=(0,0,1,1); self.identity=None; self.run_id=None
         self.panel_key=None; self.camera_key=None; self.panel_at=0.
         self.camera_size=None; self.panel_size=None
+        self.cursor_points={}
 
     def open(self):
         self.camera_texture=gl.glGenTextures(1); self.panel_texture=gl.glGenTextures(1)
@@ -61,34 +63,39 @@ class CameraChemistryView:
     def _panel(self):
         scene=self.scene; control=self.input
         panel=SpatialPanel(control.page=='table',self.space)
-        surface=pygame.Surface(panel.pixels,pygame.SRCALPHA); surface.fill((18,31,47,246))
+        surface=glass(panel.pixels,self.settings['crystal_panel_opacity'],26,True).copy()
         w,h=panel.pixels; hover=set(control.hover.values())
-        def text(value,pos,size=30,color=(230,240,247)):
+        def text(value,pos,size=30,color=INK):
             surface.blit(self._font(size).render(value,True,color),pos)
         def button(label,rect,action,selected=False,color=None):
             x,y,bw,bh=rect
-            fill=color or ((42,97,91) if action in hover or selected else (35,54,77))
-            pygame.draw.rect(surface,fill,rect,border_radius=12)
-            if action in hover: pygame.draw.rect(surface,(255,211,101),rect,4,border_radius=12)
+            surface.blit(glass((bw,bh),238,14,action in hover or selected),(x,y))
+            if color: pygame.draw.rect(surface,color,rect,2,border_radius=14)
+            pygame.draw.rect(surface,ACCENT if action in hover or selected else (115,158,179,190),rect,2,border_radius=14)
+            if action in hover:
+                pygame.draw.line(surface,GOLD,(x+16,y+bh-2),(x+bw-16,y+bh-2),3)
             font=42 if action.startswith('element:') else 30
-            rendered=self._font(font).render(label,True,(237,246,251))
+            while font>16 and self._font(font).size(label)[0]>bw-20: font-=2
+            rendered=self._font(font).render(label,True,INK)
             surface.blit(rendered,rendered.get_rect(center=(x+bw//2,y+bh//2)))
             panel.targets.append((tuple(rect),action))
         if control.page=='compact':
             panel.pixels=(720,150); panel.size=np.array((1.6,.36))
             panel.center=self.space.point(.21,.2,.3)
-            surface=pygame.Surface(panel.pixels,pygame.SRCALPHA); surface.fill((18,31,47,246))
+            surface=glass(panel.pixels,self.settings['crystal_panel_opacity'],26,True).copy()
             button('MỞ BẢNG NGUYÊN TỐ',(12,12,696,126),'elements')
             return panel,surface
-        text('HÓA HỌC TRONG CAMERA',(32,25),36,(91,229,192))
+        text('HÓA HỌC AR',(32,25),38,ACCENT)
+        pygame.draw.line(surface,(161,213,232,150),(32,78),(w-32,78),2)
         if control.page=='home':
-            text('Trỏ vào ô → chụm cái–trỏ',(32,92),31)
+            text('Trỏ vào nút và giữ 3 giây để chọn',(32,99),29)
             button('BẢNG NGUYÊN TỐ',(32,165,w-64,130),'elements')
-            button('Mẫu phân tử 3D',(32,322,w-64,105),'templates')
+            button('MẪU PHÂN TỬ 3D',(32,322,w-64,105),'templates')
             if self.renderer.help_visible:
-                text('1. Chọn nguyên tố để tạo nguyên tử',(32,475),28)
-                text('2. Bật Ghép/tách; chụm trên nguyên tử',(32,525),27)
-                text('3. Thả gần để ghép; kéo xa để tháo',(32,575),28)
+                text('THAO TÁC BẰNG TAY',(32,475),24,ACCENT)
+                text('Chụm sát cái–trỏ trên nguyên tử để cầm',(32,522),26)
+                text('Tay thứ hai chụm rồi tách / khép để đổi cỡ',(32,565),25)
+                text('Ghép/tách: thả gần để nối, kéo xa để tháo',(32,608),26)
             else: text('H để hiện cách thao tác',(32,525),28,(166,189,205))
         elif control.page=='elements':
             text('Nguyên tố thường dùng',(32,93),31)
@@ -178,8 +185,10 @@ class CameraChemistryView:
         gl.glMatrixMode(gl.GL_MODELVIEW); gl.glLoadIdentity(); gl.glTranslatef(0,0,-self.space.distance)
         gl.glEnable(gl.GL_LIGHTING); gl.glEnable(gl.GL_LIGHT0); gl.glEnable(gl.GL_COLOR_MATERIAL); gl.glEnable(gl.GL_NORMALIZE)
         gl.glLightfv(gl.GL_LIGHT0,gl.GL_POSITION,(1,3,5,1))
-        gl.glLightModelfv(gl.GL_LIGHT_MODEL_AMBIENT,(.35,.35,.4,1))
-        gl.glMaterialfv(gl.GL_FRONT_AND_BACK,gl.GL_SPECULAR,(.5,.5,.5,1)); gl.glMaterialf(gl.GL_FRONT_AND_BACK,gl.GL_SHININESS,36)
+        gl.glLightfv(gl.GL_LIGHT0,gl.GL_DIFFUSE,(.88,.94,1,1))
+        gl.glLightfv(gl.GL_LIGHT0,gl.GL_SPECULAR,(1,1,1,1))
+        gl.glLightModelfv(gl.GL_LIGHT_MODEL_AMBIENT,(.23,.26,.3,1))
+        gl.glMaterialfv(gl.GL_FRONT_AND_BACK,gl.GL_SPECULAR,(.95,.97,1,1)); gl.glMaterialf(gl.GL_FRONT_AND_BACK,gl.GL_SHININESS,96)
         identity=(run_id,snapshot.frame_id) if fresh else None
         if run_id!=self.run_id:
             self.input.release(); self.run_id=run_id; self.identity=None
@@ -201,12 +210,37 @@ class CameraChemistryView:
         for u,v in ((0,0),(1,0),(1,1),(0,1)):
             gl.glTexCoord2f(u,v); gl.glVertex3fv(panel.world(u*panel.pixels[0],v*panel.pixels[1]))
         gl.glEnd(); gl.glDisable(gl.GL_TEXTURE_2D); gl.glDisable(gl.GL_BLEND)
+        # Animate confirmation directly in GL; do not repaint/upload the
+        # entire periodic-table texture on each progress step.
+        gl.glColor3f(*(np.array(ACCENT)/255))
+        for state in self.input.dwell.states.values():
+            if not state.progress or state.latched or state.target[0]!=self.input.page: continue
+            rect=next((rect for rect,action in panel.targets if action==state.target[1]),None)
+            if rect is None: continue
+            bx,by,bw,bh=rect; length=(bw-16)*state.progress
+            gl.glBegin(gl.GL_QUADS)
+            for px,py in ((bx+8,by+bh-10),(bx+8+length,by+bh-10),(bx+8+length,by+bh-6),(bx+8,by+bh-6)):
+                gl.glVertex3fv(panel.world(px,py)+panel.rotation[:,2]*.003)
+            gl.glEnd()
         # Cursor is display-aligned; no claim of physical finger contact depth.
-        gl.glEnable(gl.GL_LIGHTING)
-        for key,(nx,ny) in self.input.pointers.items():
-            p=self.space.point(nx,ny,.6)
-            gl.glColor3f(1,.8,.32) if key in self.input.claims else gl.glColor3f(.35,1,.75)
-            self._sphere(p,.045)
+        targets={(key,next(h.generation for h in snapshot.hands if h.slot==key)):self.space.point(nx,ny,.6)
+                 for key,(nx,ny) in self.input.pointers.items()} if fresh else {}
+        alpha=1-math.exp(-math.tau*self.settings['chemistry_cursor_response_hz']*max(0,dt))
+        self.cursor_points={key:self.cursor_points.get(key,p)+(p-self.cursor_points.get(key,p))*alpha for key,p in targets.items()}
+        gl.glDisable(gl.GL_LIGHTING); gl.glLineWidth(2)
+        for (key,generation),p in self.cursor_points.items():
+            gl.glColor3f(*(np.array(GOLD if key in self.input.claims else ACCENT)/255))
+            state=self.input.dwell.states.get(key); progress=state.progress if state else 0.
+            gl.glBegin(gl.GL_LINE_LOOP)
+            for i in range(48):
+                t=math.tau*i/48; gl.glVertex3fv(p+np.array((math.cos(t),math.sin(t),0))*.075)
+            gl.glEnd()
+            if progress:
+                gl.glColor3f(*(np.array(GOLD)/255)); gl.glLineWidth(4); gl.glBegin(gl.GL_LINE_STRIP)
+                for i in range(int(progress*64)+1):
+                    t=math.pi/2-math.tau*i/64; gl.glVertex3fv(p+np.array((math.cos(t),math.sin(t),0))*.093)
+                gl.glEnd(); gl.glLineWidth(2)
+            gl.glEnable(gl.GL_LIGHTING); self._sphere(p,.019); gl.glDisable(gl.GL_LIGHTING)
         gl.glDisable(gl.GL_SCISSOR_TEST)
 
     def _sphere(self,p,radius):

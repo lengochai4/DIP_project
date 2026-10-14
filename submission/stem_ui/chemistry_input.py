@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 from .camera_space import sphere_hit
 from .manipulation import GrabController
+from .dwell import DwellSelector
 
 
 @dataclass
@@ -21,12 +22,26 @@ class ChemistryInput:
         self.scene=scene; self.settings=settings
         self.gates={}; self.claims={}; self.groups={}; self.hover={}; self.pointers={}
         self.page='home'; self.panel=None
+        self.grab_settings={**settings,'grip_press_ratio':settings['chemistry_grip_press_ratio'],
+            'grip_release_ratio':settings['chemistry_grip_release_ratio'],
+            'grip_press_s':settings['chemistry_grip_press_s'],'grip_release_s':settings['chemistry_grip_release_s'],
+            'grip_loss_grace_s':settings['chemistry_grip_loss_grace_s']}
+        self.dwell=DwellSelector(settings['chemistry_dwell_s'],settings['chemistry_dwell_max_gap_s'],settings['chemistry_dwell_rearm_distance'])
         self.path=Path(__file__).resolve().parents[2]/'runs/ui-chemistry/workspace.json'
 
     def release(self):
         self.scene.freeze(tuple(self.scene.atoms))
         self.scene.finish_edit()
         self.gates.clear(); self.claims.clear(); self.groups.clear(); self.hover.clear(); self.pointers.clear()
+        self.dwell.reset()
+
+    def diagnostics(self):
+        """Actual UI state for local logs, never tracking confidence."""
+        return {'page':self.page,
+            'claims':{str(key):{'generation':c.generation,'kind':c.kind,'target':c.target,'paused':c.paused} for key,c in self.claims.items()},
+            'groups':{str(key):{'held_slots':list(v['controller'].slots),'suspended':v['controller'].suspended} for key,v in self.groups.items()},
+            'hover':self.hover.copy(),
+            'dwell':{str(key):{'target':state.target,'progress':state.progress,'latched':state.latched,'generation':state.generation} for key,state in self.dwell.states.items()}}
 
     def hit(self,space,nx,ny):
         origin,direction=space.ray(nx,ny)
@@ -35,6 +50,9 @@ class ChemistryInput:
         if panel: choices.append((panel[0],panel[1]))
         for i,atom in self.scene.atoms.items():
             radius=self.settings['chemistry_atom_radius']*atom.scale*(.8 if atom.symbol=='H' else 1)
+            if self.scene.electrons and i==self.scene.selected:
+                shells=self.scene.elements[atom.symbol].shells
+                radius=max(radius,(.3+.095*(len(shells)-1))*atom.scale+.023*atom.scale)
             distance=sphere_hit(origin,direction,atom.position,radius)
             if distance is not None: choices.append((distance,'atom:'+str(i)))
         return min(choices,key=lambda value:value[0])[1] if choices else None
@@ -59,8 +77,13 @@ class ChemistryInput:
             if scene.atoms:
                 scene.remember()
                 points=np.array([a.position for a in scene.atoms.values()])
-                center=(points.min(axis=0)+points.max(axis=0))/2
-                factor=min(1.,1.8/max(float(np.max(np.ptp(points,axis=0))),1e-8))
+                radii=np.array([self.settings['chemistry_atom_radius']*a.scale for a in scene.atoms.values()])
+                if scene.electrons and scene.selected in scene.atoms:
+                    selected=list(scene.atoms).index(scene.selected); atom=scene.atoms[scene.selected]
+                    radii[selected]=max(radii[selected],(.3+.095*(len(scene.elements[atom.symbol].shells)-1)+.023)*atom.scale)
+                low=(points-radii[:,None]).min(axis=0); high=(points+radii[:,None]).max(axis=0)
+                center=(low+high)/2
+                factor=min(1.,1.8/max(float(np.max(high-low)),1e-8))
                 for atom in scene.atoms.values():
                     atom.target=(atom.position-center)*factor+np.array((.8,0.,0.))
                     atom.scale=float(np.clip(atom.scale*factor,self.settings['grab_min_scale'],self.settings['grab_max_scale']))
@@ -100,7 +123,7 @@ class ChemistryInput:
                     scales={j:scene.atoms[j].scale for j in ids}
                     points=np.array([scene.atoms[j].position for j in ids])
                     max_span=max(float(np.max(np.ptp(points,axis=0))),1e-8)
-                    controller=GrabController({**self.settings,
+                    controller=GrabController({**self.grab_settings,
                         'grab_min_scale':self.settings['grab_min_scale']/min(scales.values()),
                         'grab_max_scale':min(self.settings['grab_max_scale']/max(scales.values()),2*self.settings['chemistry_scene_limit']/max_span)})
                     center=np.mean([scene.atoms[j].position for j in ids],axis=0)
@@ -130,6 +153,7 @@ class ChemistryInput:
 
     def update(self,hands,t,space):
         available={h.slot:h for h in hands}
+        self.dwell.retain(available)
         self.hover={}; self.pointers={}
         for key,hand in sorted(available.items()):
             tip=hand.landmarks[8]; nx=1-tip.x if self.settings['mirror'] else tip.x; ny=tip.y
@@ -137,16 +161,25 @@ class ChemistryInput:
             self.hover[key]=self.hit(space,nx,ny)
         for key in sorted(set(self.gates)|set(available)):
             hand=available.get(key)
-            gate=self.gates.setdefault(key,GrabController(self.settings))
+            gate=self.gates.get(key)
+            if gate is None:
+                gate=GrabController(self.grab_settings); self.gates[key]=gate
             claim=self.claims.get(key)
             if claim and hand is not None and claim.generation!=hand.generation:
                 self.end(key); gate.reset(); claim=None
             was_held=bool(gate.slots)
             gate.update((hand,) if hand is not None else (),t,space.aspect)
             held=bool(gate.slots)
-            if held and not was_held and hand is not None:
+            if held and key not in self.claims and hand is not None and not gate.suspended:
                 nx,ny=self.pointers[key]
-                self.press(key,hand.generation,self.hover[key],space,nx,ny,t,hand)
+                action=self.hover[key]
+                if action and action.startswith('atom:'):
+                    self.press(key,hand.generation,action,space,nx,ny,t,hand)
+                elif action is None and not self.scene.edit and len(self.groups)==1:
+                    # A second hand can join the held component in free space.
+                    # It need not hit the tiny nucleus/electron drawing again.
+                    value=next(iter(self.groups.values()))
+                    self.press(key,hand.generation,'atom:'+str(min(value['ids'])),space,nx,ny,t,hand)
             elif was_held and not held:
                 # Loss is cancellation; only confirmed visible opening may link.
                 self.end(key,deliberate=hand is not None)
@@ -163,6 +196,13 @@ class ChemistryInput:
                         claim.offset=atom.position-space.point(nx,ny,claim.depth)
                         claim.paused=False
                     self.scene.move_atom(claim.target,space.point(nx,ny,claim.depth)+claim.offset)
+            if hand is not None:
+                action=self.hover.get(key); nx,ny=self.pointers[key]
+                candidate=(self.page,action) if action and not action.startswith(('atom:','panel:')) and key not in self.claims else None
+                chosen=self.dwell.update(key,hand.generation,candidate,t,(nx,ny),outside=action is None or (action and action.startswith('atom:')))
+                if chosen is not None:
+                    self.press('dwell:'+str(key),hand.generation,chosen[1],space,nx,ny,t)
+                    self.end('dwell:'+str(key))
         for group,value in self.groups.items():
             selected=[available[k] for k,c in self.claims.items() if c.kind=='group' and c.target==group and k in available]
             controller=value['controller']

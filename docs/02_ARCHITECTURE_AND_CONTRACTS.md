@@ -169,6 +169,35 @@ Consumes `InteractionState` only. It MAY manage renderer/scene/application behav
 
 ### Additive submission presentation boundary — 2026-10-14
 
+#### Visual refresh and chemistry confirmation — authorized 2026-10-14
+
+The user requested a visual-only refresh using the supplied design/assets,
+an exact author badge, responsive controls, sharper 3D materials and a
+translucent crystal-styled panel. Processing/filter/performance telemetry
+stays in local logs; sample FPS values in mockups are omitted from the UI.
+Fullscreen button and F11 share one reversible borderless-desktop transition,
+restore the last window dimensions and rebuild context-owned resources.
+
+Chemistry panel actions now use configurable 3-second continuous fingertip
+hover with visible progress and a one-shot latch. Leaving the target, missing
+observations, identity change, timestamp discontinuity or stale input cancel
+progress. A just-activated target must not rearm through a page change until
+the pointer deliberately leaves the panel or moves to a different region.
+Pinch is reserved for object manipulation. Chemistry grab uses separate
+tight normalized thumb-index press/release thresholds; it is an image-space
+heuristic, not sensing physical contact. Existing chemical graph rules,
+history/save/load, Core gesture/filter/replay semantics remain unchanged.
+
+Following the user's chemistry continuity/zoom feedback, a confirmed closed
+grip may acquire an object upon entering its target. Opening hysteresis and
+short loss grace are configured separately for chemistry; missing input
+freezes motion and reacquisition rebases without extrapolation. In whole-
+component mode the second hand may join the held component from free space,
+but not through panel buttons. Selected electron view uses a selection volume
+around the illustrated shells. Nucleus, electron radii and selection volume
+share the stored object scale; framing includes the shell extents. UI schema
+5 adds actual dwell/claim/group state to local interaction diagnostics.
+
 #### Camera chemistry mode — 2026-10-14
 
 The renderer may composite the immutable mirrored BGR camera snapshot as
@@ -177,10 +206,10 @@ panel and atom/bond geometry use WORLD_RENDER. Hand targets map through the
 same letterboxed content rectangle and perspective ray; arbitrary stretch
 or a second mirror must not misalign targets and the camera image.
 The panel is display-anchored, not localized to a physical room. No physical
-hand/object occlusion or depth sensing is implied. Panel selection uses
-visible hover plus confirmed pinch, with a mouse fallback. Hover alone must
-not spawn atoms. Each hand may claim one target; generation/loss/stale input
-release claims safely. A held panel selection cannot trigger repeatedly.
+hand/object occlusion or depth sensing is implied. Panel selection uses the
+continuous observed hover contract above, with a mouse fallback. Each hand
+may claim one object; generation/loss/stale input release claims safely.
+A latched panel selection cannot trigger repeatedly.
 
 A renderer-independent chemistry scene owns sourced element data, atoms,
 bond topology, history and explicit action modes. Whole-component grab may

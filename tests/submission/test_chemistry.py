@@ -98,23 +98,22 @@ def test_invalid_import_is_atomic_and_preserves_existing_workspace(tmp_path):
     s.load(p); assert s.state()==before
 
 
-def test_confirmed_palette_pinch_spawns_once_even_when_hold_continues():
+def test_observed_three_second_hover_spawns_once_and_requires_deliberate_rearm():
     s=ChemistryScene(SETTINGS); c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
     panel=SpatialPanel(False,space); panel.targets=[((0,0,720,1000),'element:H')]; c.panel=panel
     nx,ny=space.project(panel.world(360,400))
-    for t in (1.,1.05,1.1,1.15,1.2): c.update((aim(nx,ny),),t,space)
-    assert len(s.atoms)==1 and c.claims[0].kind=='panel'
-    c.update((aim(nx,ny,pinch=False),),1.25,space)
-    c.update((aim(nx,ny,pinch=False),),1.36,space)
-    c.update((aim(nx,ny),),1.4,space); c.update((aim(nx,ny),),1.45,space)
+    for t in np.arange(1.,6.01,.05): c.update((aim(nx,ny,pinch=False),),float(t),space)
+    assert len(s.atoms)==1 and not c.claims
+    c.update((aim(nx+.06,ny,pinch=False),),6.05,space)
+    for t in np.arange(6.1,9.21,.05): c.update((aim(nx+.06,ny,pinch=False),),float(t),space)
     assert len(s.atoms)==2
 
 
-def test_hover_without_pinch_never_creates_atom():
+def test_short_hover_and_pinch_do_not_create_atom():
     s=ChemistryScene(SETTINGS); c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
     panel=SpatialPanel(False,space); panel.targets=[((0,0,720,1000),'element:O')]; c.panel=panel
     nx,ny=space.project(panel.world(360,400))
-    for t in (1,1.05,1.1): c.update((aim(nx,ny,pinch=False),),t,space)
+    for t in (1,1.05,1.1): c.update((aim(nx,ny),),t,space)
     assert not s.atoms
 
 
@@ -122,7 +121,7 @@ def test_confirmed_mode_button_is_latched_instead_of_repeatedly_toggling():
     s=ChemistryScene(SETTINGS); c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
     panel=SpatialPanel(False,space); panel.targets=[((0,0,720,1000),'edit')]; c.panel=panel
     nx,ny=space.project(panel.world(360,400))
-    for t in (1,1.05,1.1,1.15,1.2): c.update((aim(nx,ny),),t,space)
+    for t in np.arange(1.,7.01,.05): c.update((aim(nx,ny,pinch=False),),float(t),space)
     assert s.edit is True
 
 
@@ -157,7 +156,7 @@ def test_visible_confirmed_atom_release_joins_but_pending_open_does_not():
     c.update((aim(nx,ny),),1.,space); c.update((aim(nx,ny),),1.05,space)
     c.update((aim(nx,ny,pinch=False),),1.1,space)
     assert not s.bonds
-    c.update((aim(nx,ny,pinch=False),),1.21,space)
+    c.update((aim(nx,ny,pinch=False),),1.23,space)
     assert len(s.bonds)==1
 
 
@@ -221,3 +220,69 @@ def test_fast_fingertip_display_following_is_bounded_and_does_not_overshoot():
     assert np.linalg.norm(followed)>np.linalg.norm(old)
     assert np.linalg.norm(followed)<np.linalg.norm(target)
     np.testing.assert_allclose(r._follow_point(start,start,1/60),start)
+
+
+def with_ratio(h,ratio):
+    points=list(h.landmarks)
+    points[4]=replace(points[4],x=points[8].x+.24*ratio,y=points[8].y)
+    return replace(h,landmarks=tuple(points))
+
+
+def test_chemistry_requires_close_pinch_but_small_opening_noise_does_not_release():
+    s=ChemistryScene(SETTINGS); i=s.add('C',(.6,0,0)); c=ChemistryInput(s,SETTINGS)
+    space=CameraSpace(4/3); nx,ny=space.project(s.atoms[i].position)
+    partial=with_ratio(aim(nx,ny),.4)
+    c.update((partial,),1,space); c.update((partial,),1.1,space)
+    assert not c.claims
+    closed=with_ratio(aim(nx,ny),.1)
+    c.update((closed,),1.15,space); c.update((closed,),1.2,space)
+    assert c.claims[0].kind=='group'
+    for t in (1.25,1.3,1.35): c.update((partial,),t,space)
+    assert 0 in c.claims
+    opened=aim(nx,ny,pinch=False)
+    c.update((opened,),1.4,space); c.update((opened,),1.5,space)
+    assert 0 in c.claims
+    c.update((opened,),1.55,space); assert not c.claims
+
+
+def test_closed_grip_can_acquire_atom_after_moving_into_its_visible_target():
+    s=ChemistryScene(SETTINGS); i=s.add('C',(.6,0,0)); c=ChemistryInput(s,SETTINGS)
+    space=CameraSpace(4/3)
+    c.update((aim(.9,.2),),1,space); c.update((aim(.9,.2),),1.05,space)
+    assert not c.claims
+    nx,ny=space.project(s.atoms[i].position)
+    c.update((aim(nx,ny),),1.1,space); assert c.claims[0].target==i
+
+
+def test_second_hand_in_free_space_scales_single_atom_with_electron_view_and_loss_rebases():
+    s=ChemistryScene(SETTINGS); i=s.add('Na',(.6,0,0)); s.electrons=True
+    c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    nx,ny=space.project(s.atoms[i].position)
+    c.update((aim(nx,ny),),1,space); c.update((aim(nx,ny),),1.05,space); c.advance(.02)
+    both=(aim(nx,ny),aim(.9,.6,1))
+    assert c.hit(space,.9,.6) is None
+    c.update(both,1.1,space); c.update(both,1.15,space); c.advance(.02)
+    assert len(c.claims)==2 and s.atoms[i].scale==pytest.approx(1.)
+    farther=(aim(nx-.08,ny),aim(.98,.6,1))
+    c.update(farther,1.2,space); c.advance(.15)
+    larger=s.atoms[i].scale; assert larger>1 and s.electrons
+    # Electron drawing and selected-atom picking use the same stored scale.
+    shell_radius=(.3+.095*(len(s.elements['Na'].shells)-1))*larger
+    assert c.hit(space,*space.project(s.atoms[i].position+np.array((shell_radius,0,0))))=='atom:'+str(i)
+    c.update((),1.25,space); c.advance(.1); frozen=s.atoms[i].position.copy()
+    c.update((aim(nx-.1,ny),aim(.94,.6,1)),1.3,space); c.advance(.1)
+    np.testing.assert_allclose(s.atoms[i].position,frozen)
+    assert s.atoms[i].scale==pytest.approx(larger)
+    c.update((aim(nx,ny),aim(.78,.6,1)),1.35,space); c.advance(.2)
+    assert s.atoms[i].scale<larger
+
+
+def test_frame_accounts_for_enlarged_electron_shells_and_undo_restores_scale():
+    s=ChemistryScene(SETTINGS); i=s.add('Na',(4.,2.,0.)); s.atoms[i].scale=4.; s.electrons=True
+    before=s.state(); c=ChemistryInput(s,SETTINGS)
+    c.command('frame'); c.advance(.5)
+    shell_radius=(.3+.095*2+.023)*s.atoms[i].scale
+    assert shell_radius*2<=1.8+1e-9
+    assert s.atoms[i].position[0]<2
+    assert s.electrons
+    s.undo(); assert s.state()==before

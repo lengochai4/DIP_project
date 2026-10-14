@@ -62,6 +62,7 @@ def main():
                     'mode':renderer.mode,'live_mesh_mode':getattr(renderer,'live_mesh_mode',None),
                     'draw_cpu_ms_excluding_swap_and_cap':renderer.last_draw_cpu_ms,
                     'chemistry':renderer.chemistry.scene.state() if renderer.mode=='chemistry' else None,
+                    'chemistry_controls':renderer.chemistry.input.diagnostics() if renderer.mode=='chemistry' else None,
                     'feedback':grip.feedback},ensure_ascii=False)+'\n')
                 logged_frame=snapshot.frame_id
             max_hands=max(max_hands,hands); max_tips=max(max_tips,tips)

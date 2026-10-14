@@ -165,7 +165,7 @@ class CaptureWorker:
                 revision=None
                 dirty=None
             (folder/'metadata.json').write_text(json.dumps({'kind':'submission_presentation_only',
-                'presentation_schema':'4',
+                'presentation_schema':'5',
                 'chemistry_data_sha256':hashlib.sha256((Path(__file__).with_name('data')/'pubchem-periodic-table.json').read_bytes()).hexdigest(),
                 'acquisition_policy':'ordered_replay' if self.replay else 'latest_camera_single_slot',
                 'run_id':self.run_id,'core_config':cfg,'ui_settings':self.settings,'camera_index':self.camera_index,

@@ -2,6 +2,30 @@
 
 ## Current task update — 2026-10-14
 
+Current authorized refinement completed: visual refresh from the user's
+submission design/assets, exact author badge, responsive glass/cyan/gold UI,
+sharper lit atoms, chemistry 3-second observed hover confirmation and close
+pinch manipulation. Per latest user instruction, processing/performance
+telemetry is omitted from the product UI. Controls/functions remain available.
+Follow-up chemistry feedback is addressed by separate pinch hysteresis/loss
+grace, entering a target with an already-confirmed grip, render-rate cursor
+following, second-hand free-space join for whole-component scale/rotation,
+electron selection volume and shared object/electron scale. Framing includes
+electron-shell extents. Progress is rendered directly in GL without texture
+reuploads. Fullscreen button/F11/Esc restore dimensions/context resources.
+Canonical changes: 02 section 5; no algorithm/baseline/protocol changes.
+UI metadata schema 5 logs actual dwell/claim/group diagnostics; research
+schema, G7/ROUND2 data, report and Core code/config remain unchanged.
+Executed validation: 96 submission tests, full suite 550 passed. Synthetic
+OpenGL acceptance 697 frames covers palette/graph/history/window regression;
+additional 139 frames cover dwell progress, two-hand electron-atom resize,
+short-loss freeze/rebase, button/F11/Esc in all three modes and layouts at
+960x660, 1360x860 and 1920x1080. Screenshots were visually inspected. Actual
+provider replay processed 60 mirrored two-hand-fixture frames, observed
+2 hands/up to 10 tips and stopped cleanly (ui-20261014-173237-405165).
+These are recorded/synthetic validations, not new live operator validation,
+physical latency/FPS evidence or VR/commercial certification.
+
 Camera chemistry demonstration (current authorized addition):
 
 Change: isolated camera-composited mode with perspective spatial panel,

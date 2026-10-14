@@ -7,7 +7,7 @@ Chạy ở thư mục gốc với môi trường đã cài `.[dev,demo3d]`:
 ```
 
 Hoặc nhấp đúp `Chay_UI.bat`, hay chạy `Chay_UI.ps1` trong PowerShell.
-Camera chỉ mở sau khi bấm **Mở camera**. Nếu camera
+Camera chỉ mở sau khi bấm **Bật camera**. Nếu camera
 bận, đóng ứng dụng đang dùng camera rồi thử lại; có thể đổi Camera 0–3 khi
 đang dừng. Không có phiên tay mới bắt buộc khi chạy kiểm tra tự động.
 
@@ -17,20 +17,29 @@ bận, đóng ứng dụng đang dùng camera rồi thử lại; có thể đổ
 
 Chọn **Hóa học AR** (hoặc P). Camera là nền của cảnh; panel có phối cảnh
 và nằm trong cùng cảnh với các nguyên tử, không phải một cửa sổ webcam nhỏ.
-Khi mới vào, panel có nút **Bảng nguyên tố**. Trỏ ngón trỏ lên ô: viền vàng
-báo mục tiêu. Chụm cái–trỏ và mở lại để chọn. Di chuyển ngang qua một ô
-không tự kích hoạt; giữ chụm không tạo lặp. Chuột có thể chọn/kéo dự phòng.
+Khi mới vào, panel có nút **Bảng nguyên tố**. Trỏ ngón trỏ lên ô và giữ
+liên tục khoảng **3 giây**; vòng và thanh tiến trình báo đang chọn. Đi ngang
+qua ô không kích hoạt. Sau khi chọn, cần di chuyển rõ sang vùng khác hoặc
+rời mục tiêu trước khi chọn lần nữa; đổi trang không tự nhấn tiếp nút mới
+dưới cùng vị trí ngón. Mất tay hoặc ngắt thời gian hủy tiến trình. Chuột
+vẫn chọn/kéo trực tiếp làm cách dự phòng.
 
 1. Chọn H, C, N, O, F, P, S, Cl trong bảng thường dùng hoặc mở bảng tuần
    hoàn đầy đủ 118 nguyên tố. Mỗi lượt chọn tạo một nguyên tử ở vùng thao tác.
-2. Bật **Ghép/tách**, chụm ngay trên nguyên tử để kéo nó. Thả gần nguyên
+2. Bật **Ghép/tách**, chụm sát cái–trỏ ngay trên nguyên tử để kéo nó. Thả gần nguyên
    tử khác để ghép liên kết được hỗ trợ; kéo xa để tháo liên kết. Nút
    **Liên kết 1/2/3** (phím S) chọn bậc của liên kết mới.
 3. Đổi sang **Cầm cả khối** để dời/xoay cả thành phần liên thông. Hai tay
-   giữ hai nguyên tử trong cùng phân tử để xoay/đổi cỡ cả phân tử. Trong
+   thao tác: tay đầu cầm nguyên tử/phân tử, tay còn lại chụm trong vùng trống
+   của cảnh rồi tách/khép để đổi cỡ; vặn/nghiêng để xoay cả khối. Tay thứ hai
+   không cần bắt lại một nguyên tử nhỏ. Trong
    Ghép/tách, hai tay có thể kéo hai nguyên tử khác nhau độc lập.
 
 **Nguyên tử / e** (O) hiện lớp electron minh họa cho nguyên tử đang chọn.
+Đổi cỡ bằng hai tay dùng **Cầm cả khối**: hạt nhân, vòng electron và các
+electron cùng đổi cỡ. Có thể bắt trong vùng lớp e đang hiện. **Về giữa cảnh**
+tính cả kích thước lớp e khi thu mô hình quá lớn về khung. Trong Ghép/tách,
+hai tay kéo từng nguyên tử riêng; chuyển sang Cầm cả khối để thu/phóng.
 Thông tin là của nguyên tử trung hòa riêng lẻ, không phải orbital phân tử
 hay đường đi electron. Panel ghi Z, số proton/electron và cấu hình nguồn;
 không tự đoán số neutron. Mẫu 3D có H₂O, CO₂, CH₄, NH₃, H₂, O₂, N₂, HCl.
@@ -47,6 +56,23 @@ Lưu gồm nguyên tử, vị trí ở đơn vị cảnh và liên kết; không
 mở được kiểm tra trước khi thay không gian hiện tại. Chuyển chế độ vẫn giữ
 không gian đang xây. Mất tay/dừng camera kết thúc thao tác mà không tự ghép.
 Mất dấu ngắn đóng băng nguyên tử; nhận lại tay gắn mốc mới, không nhảy.
+Ngưỡng vào/ra riêng giúp chụm sát để bắt nhưng không buông vì dao động nhỏ;
+mở ngón rõ và liên tục mới buông. Đây là nhận dạng độ gần trong ảnh, không
+phải cảm biến xác nhận hai đầu ngón thật sự tiếp xúc.
+
+## Giao diện mới theo mẫu thiết kế
+
+Ba chế độ và chức năng lưu/hoàn tác/ghép/tách được giữ. Thanh tác giả hiển thị
+đúng ba tên và MSSV; bố cục xuống dòng ở cửa sổ nhỏ để không chồng nút.
+Panel kính có sắc xanh bạc, hơi trong suốt; nút/chữ có nền tương phản và
+nguyên tử dùng khối cầu nhiều mặt với vật liệu bóng. H ẩn/hiện hướng dẫn,
+C ẩn/hiện camera phụ; nút Phóng to và F11 dùng cùng đường chuyển trạng thái,
+Esc trả về kích thước cửa sổ trước đó khi đang phóng to.
+
+UI chỉ hiện trạng thái camera/tay, hướng dẫn thao tác và thông tin khoa học
+cần cho bài học. FPS, CLAHE, ROI, tham số lọc và số đo xử lý nằm trong nhật ký.
+Mặt kính/mesh/chữ được cache. Tiến trình chọn vẽ trực tiếp bằng OpenGL;
+không vẽ và tải lại cả ảnh bảng 118 nguyên tố để chạy thanh tiến trình.
 
 Giới hạn: đây là camera-composited AR minh họa trên một webcam RGB. Panel
 neo theo cảnh hiển thị; app không định vị phòng, đo chiều sâu, biết tay đang
@@ -193,6 +219,20 @@ Các lượt tổng hợp không chứng minh người dùng thật hoàn tất 
 Schema UI 4 ghi đồ thị hóa học và SHA dữ liệu nguyên tố, tách khỏi Core.
 33 kiểm tra mới trong đợt này đạt; tổng 83 kiểm tra UI và 537 kiểm tra toàn
 dự án đạt. Có cả kiểm tra bản lưu lỗi không thay thế không gian đang làm.
+
+Đợt giao diện mới/chọn bằng giữ trỏ có 96 kiểm tra UI và 550 kiểm tra toàn
+dự án đạt. OpenGL tổng hợp 697 khung xác nhận chọn/ghép/tháo/hoàn tác/bảng
+118 và cửa sổ; lượt bổ sung 139 khung xác nhận tiến trình, nguyên tử có e
+phóng/thu bằng hai tay, mất tay ngắn và nút/F11/Esc ở cả ba chế độ. Đã xem
+ảnh bố cục 960×660, 1360×860, 1920×1080. Provider thật phát lại 60 khung của
+ảnh ghép hai tay, quan sát hai tay và tối đa 10 đầu ngón, dừng sạch
+(`ui-20261014-173237-405165`). Không suy ra FPS hay độ trễ tay thật từ các
+lượt này. Schema UI 5 ghi thêm trạng thái dwell/claim/group thực tế trong
+`chemistry_controls`; bộ dữ liệu/báo cáo Core không đổi.
+
+Tham khảo tiến trình và hủy dwell:
+https://learn.microsoft.com/en-us/windows/mixed-reality/design/gaze-and-dwell
+Đây là áp dụng phản hồi dwell cho trỏ bằng ngón, không nhận ánh mắt.
 
 Đợt không gian/độ trễ bổ sung có 50 kiểm tra UI và toàn bộ 504 kiểm tra đạt;
 vòng đổi chế độ đi qua đủ bốn thao tác. Kiểm tra OpenGL 130
