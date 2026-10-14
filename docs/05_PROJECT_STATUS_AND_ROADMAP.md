@@ -1,4 +1,36 @@
-## 2. Current implementation evidence
+# 05 — Project Status and Roadmap
+
+## Current task update — 2026-10-14
+
+The user authorized a separate supplemental evidence round, an updated
+Vietnamese Word/PDF report, a Core release decision based on verification,
+and a clean minimal 3D submission UI built from main. Existing UI branches
+remain untouched. The approved UI direction focuses on 3D geometric objects,
+live fingertip attachment, optional camera view, hideable guidance and few
+controls; additional STEM labs are deferred.
+
+Active work: prepare and collect ROUND2 using
+`experiments/round2/PLAN.md` and the guided session tool. Keep canonical
+v1.2 primary metrics and profiles. No new ROUND2 experimental outcome is
+claimed yet. A real hand/camera session is required for new recorded evidence.
+
+The old `.venv` references a missing Python 3.11 executable. A separate
+Python 3.12 research environment was installed; its actual package versions
+are recorded for ROUND2. The unmodified main baseline passed 433 automated
+tests in this environment on 2026-10-14. Model SHA-256 matches the retained
+G7 model. This is engineering verification, not experimental superiority.
+
+Core algorithms remain unchanged pending the new evidence. UI development
+follows the data/report/Core decision, and must preserve Core/Extension
+separation. Any required addition to a public rendering contract must be
+specified with compatibility impact before implementation.
+
+The retained G7 release and experimental artifacts are not overwritten.
+The evidence snapshots below remain historical records; their older
+NOT STARTED labels describe the 2026-09-28 pre-evaluation state, not the
+current ROUND2 task. Later sections contain the actual retained G7 results.
+
+## 2. Historical implementation evidence
 
 As of 2026-09-28, the implementation repository has been verified
 through Gate G6.
