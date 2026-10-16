@@ -5,13 +5,15 @@ Bản ứng dụng đã chốt nằm trong `submission/stem_ui/`. DIP Core nằm
 
 ## 1. Yêu cầu
 
-- Windows 10/11, Python **3.12 64-bit** và Git.
+- Windows 10/11, Python **>=3.11 64-bit** theo `pyproject.toml` và Git.
 - Cài Python từ [python.org](https://www.python.org/downloads/windows/), bật
-  Python Launcher (`py`). Kiểm tra bằng `py -3.12 --version`.
+  thêm Python vào PATH. Kiểm tra bằng `python --version`; nếu dùng Launcher,
+  `py -3.11 --version` hoặc `py -3.12 --version` chọn phiên bản cụ thể.
 - Internet cho lần cài thư viện/model đầu tiên; webcam và driver đồ họa hỗ trợ
   OpenGL để tương tác. Webcam chạy offline sau khi cài; DroidCam dùng Wi-Fi nội bộ.
-- Hướng dẫn này kiểm tra trên Python 3.12; yêu cầu `>=3.11` của Core không có
-  nghĩa mọi phiên bản Python mới đều đã được kiểm tra với bộ thư viện UI này.
+- `>=3.11` là phiên bản tối thiểu của source; còn phải có thư viện native tương
+  thích với Python/hệ điều hành. Bộ cài không ép dùng đúng 3.12 và không tự đổi
+  model, ngưỡng hay thuật toán nghiên cứu khi chọn phiên bản Python khác.
 
 ## 2. Lấy source
 
@@ -23,7 +25,7 @@ cd DIP_project
 ```
 
 Bản nộp ngày 16/10/2026 nằm trên `main`, được đánh dấu bằng tag
-`submission-2026-10-16`. Nếu đã có repo, giữ/commit các thay đổi đang làm trước
+`submission-2026-10-16-r2`. Nếu đã có repo, giữ/commit các thay đổi đang làm trước
 khi chuyển nhánh rồi cập nhật:
 
 ```powershell
@@ -35,7 +37,7 @@ git pull --ff-only
 Để lấy đúng bản nộp đã chốt dù `main` có thay đổi về sau:
 
 ```powershell
-git clone --branch submission-2026-10-16 https://github.com/lengochai4/DIP_project.git DIP_submission
+git clone --branch submission-2026-10-16-r2 https://github.com/lengochai4/DIP_project.git DIP_submission
 cd DIP_submission
 ```
 
@@ -47,14 +49,30 @@ Các nhánh thử UI khác là lịch sử thử nghiệm, không cần merge/x�
 Nhấp đúp **Cai_dat_UI.bat**, hoặc chạy:
 
 ```powershell
-py -3.12 -X utf8 -m submission.setup_ui
+python -X utf8 -m submission.setup_ui
 ```
 
-Bộ cài tạo `.venv-ui`, cài project với phiên bản thư viện trong
-`requirements-ui.lock.txt`, tải model chính thức của Google và đối chiếu
+Nếu có nhiều Python, chọn cụ thể bằng `py -3.11 -X utf8 -m submission.setup_ui`
+hoặc `py -3.12 -X utf8 -m submission.setup_ui`. `.venv-ui` phải cùng phiên bản
+Python bạn chọn; nếu khác, dùng lại Python cũ hoặc đổi tên môi trường trước khi
+cài mới. Không cần đổi Python của hệ thống để chạy một môi trường đã tạo.
+
+Bộ cài tạo `.venv-ui`, cài theo `pyproject.toml`; pip chọn phiên bản thư viện
+có wheel tương thích với Python đang dùng. Bộ cài tải model chính thức của Google và đối chiếu
 SHA-256 với model đã dùng. Cuối cùng kiểm tra thư viện, tài nguyên và việc
 khởi tạo MediaPipe. Bộ cài không yêu cầu activate PowerShell và không mở camera.
 Thư mục `.venv-ui` và model là dữ liệu cục bộ, không đưa vào Git.
+
+Chỉ khi muốn tái hiện snapshot đã kiểm tra trên Python 3.12, dùng:
+
+```powershell
+py -3.12 -X utf8 -m submission.setup_ui --locked
+```
+
+`requirements-ui.lock.txt` là snapshot riêng của 3.12, không ép lên Python 3.11.
+Phiên bản thư viện sau cài được ghi ở `runs/ui-install/environment.json`; số liệu
+nghiên cứu cũ vẫn gắn với môi trường đã dùng để thu/phát lại, không thay bằng
+kết quả của một môi trường mới.
 
 ## 4. Mở ứng dụng
 
@@ -97,22 +115,24 @@ kết nối này. Dùng **Dùng webcam máy** để chuyển lại. Mỗi lần 
 .\.venv-ui\Scripts\python.exe -X utf8 -m pytest -q
 ```
 
-`check_setup` không mở camera hoặc cửa sổ, kiểm tra đúng bộ thư viện/model;
+`check_setup` không mở camera hoặc cửa sổ, kiểm tra thư viện theo khai báo và model;
 nó chưa xác nhận quyền webcam và khả năng dựng OpenGL trên máy khác. Bộ test có
 một regression cửa sổ Windows, có thể hiện cửa sổ ngắn để kiểm tra khởi động/F11.
 Các test tự động không thay số liệu đánh giá độ chính xác nhận tay.
+Với snapshot 3.12 có thể chạy thêm `submission.check_setup --locked`.
 
 ## 7. Khi gặp lỗi
 
 | Hiện tượng | Cách xử lý |
 |---|---|
-| Không tìm thấy `py` hoặc Python 3.12 | Cài Python 3.12 64-bit kèm Launcher, mở terminal mới |
+| Không tìm thấy `python`/`py` | Cài Python từ 3.11 64-bit kèm PATH/Launcher, mở terminal mới |
 | Thiếu pygame/OpenGL/MediaPipe | Chạy lại bộ cài; dùng đúng `.venv-ui\Scripts\python.exe` |
 | Thiếu model hoặc SHA-256 khác | Xem [models/README.md](models/README.md); giữ bản sao model cũ trước khi tải lại |
 | `failed to open/read camera` | Đóng Teams/Zoom/app Camera; bật quyền camera cho desktop apps trong Windows; thử camera index khác |
 | Không tạo được OpenGL context | Cập nhật driver đồ họa và chạy trên desktop có OpenGL; máy ảo/phiên remote có thể khác máy thật |
 | Không nối được điện thoại | Đối chiếu IP/port, cùng Wi-Fi, điện thoại đang bật stream; thử URL `/video` trong trình duyệt |
-| Cài thư viện lỗi mạng | Xem log pip, kiểm tra Internet rồi chạy lại; không đổi phiên bản khóa tùy ý để giữ môi trường so sánh |
+| Không tìm được wheel tương thích | Kiểm tra Python 64-bit và phiên bản thư viện báo lỗi; thử Python 3.11/3.12 thay vì giả định mọi bản mới đều hỗ trợ |
+| Cài thư viện lỗi mạng | Xem log pip, kiểm tra Internet rồi chạy lại; không thay model/tham số hoặc dùng môi trường mới để sửa số liệu nghiên cứu cũ |
 
 ## 8. Tài liệu và dữ liệu nộp
 
@@ -123,3 +143,18 @@ Các test tự động không thay số liệu đánh giá độ chính xác nh�
   source Git. Máy mới không cần video thực nghiệm để chạy UI.
 - `submission/README.md` lưu cách tái hiện demo G7 cũ. Để chạy giao diện đã chốt,
   dùng lệnh ở mục 4 của tài liệu này.
+
+## 9. Nộp chương trình mã code và dữ liệu kèm theo
+
+Giữ nguyên ZIP source từ GitHub `main` hoặc tag bản nộp. Không tự xóa `experiments/`:
+UI dùng `experiments.run_replay.build_landmark_filter` để tạo bộ lọc. Các thư mục
+`src/`, `submission/`, `config/` và file `pyproject.toml` phải đi cùng nhau.
+Tests, đặc tả và hồ sơ thực nghiệm giúp người chấm đối chiếu đồ án, không phải
+file tạm cần xóa. ZIP GitHub không chứa `.git/`, môi trường Python, model binary,
+video/log hoặc tài liệu ôn riêng chỉ lưu cục bộ.
+
+Dữ liệu 118 nguyên tố và mẫu phân tử đã nằm trong source. Model nhận tay được tải
+tự động theo SHA-256 khi cài; vì vậy source ZIP cần Internet ở lần cài đầu.
+Không cần đóng gói `.venv`, `.venv-research`, `.venv-ui` hoặc `__pycache__`.
+Nộp báo cáo Word riêng. Nếu thầy yêu cầu tái hiện số liệu từ video gốc, cần gửi
+thêm bộ dữ liệu thực nghiệm riêng; ZIP source không tự chứa video trong `runs/`.

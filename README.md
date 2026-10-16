@@ -5,20 +5,24 @@
 Giao diện đã chốt: `submission/stem_ui/`. Xem
 **[Hướng dẫn cài và chạy bằng tiếng Việt](HUONG_DAN_CHAY.md)**.
 
-Bản nộp ngày **16/10/2026**: nhánh `main`, tag `submission-2026-10-16`.
-Kiểm tra cài từ source sạch, model đúng SHA-256, `pip check` sạch và 659 test đạt;
-chi tiết tại [biên bản kiểm tra](submission/stem_ui/QA_CHECKLIST.md).
+Bản nộp ngày **16/10/2026**: nhánh `main`, tag `submission-2026-10-16-r2`.
+Giữ tag `submission-2026-10-16` làm bản trước khi sửa bộ cài Python.
+Chi tiết cài đặt, model SHA-256 và test tại
+[biên bản kiểm tra](submission/stem_ui/QA_CHECKLIST.md).
 
-Windows, Python **3.12 64-bit**, tại thư mục gốc source:
+Windows, Python **>=3.11 64-bit** theo `pyproject.toml`, tại thư mục gốc source:
 
 ```powershell
-py -3.12 -X utf8 -m submission.setup_ui
+python -X utf8 -m submission.setup_ui
 .\.venv-ui\Scripts\python.exe -X utf8 -m submission.stem_ui.app
 ```
 
 Hoặc nhấp đúp **Cai_dat_UI.bat** một lần, sau đó **Chay_UI.bat**.
-Bộ cài tạo môi trường riêng, cài các phiên bản đã khóa và tải model có kiểm tra
-SHA-256. Camera chỉ bật khi bấm **Bật camera**. Các phần dưới mô tả Core và quy
+Bộ cài tạo môi trường riêng, để pip chọn thư viện tương thích theo `pyproject.toml`
+và tải model có kiểm tra SHA-256. Bản snapshot 3.12 chỉ dùng khi chọn `--locked`.
+Phiên bản Python mới vẫn cần được các thư viện native hỗ trợ; bộ cài không
+cam kết mọi phiên bản tương lai đều chạy. Camera chỉ bật khi bấm **Bật camera**.
+Các phần dưới mô tả Core và quy
 trình nghiên cứu; `.[dev]` riêng lẻ chưa cài thư viện dựng giao diện.
 
 **Real-Time Touchless 3D STEM Interaction Using Adaptive Image Preprocessing and Motion Signal Filtering with a Single RGB Camera**

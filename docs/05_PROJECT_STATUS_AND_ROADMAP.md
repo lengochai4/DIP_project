@@ -1,5 +1,28 @@
 # 05 — Project Status and Roadmap
 
+## Python compatibility correction — 2026-10-16
+
+`pyproject.toml` remains the package authority with `requires-python = ">=3.11"`.
+The Windows bootstrap previously narrowed this to exactly Python 3.12; corrected
+to accept the declared floor on x64 and let pip resolve compatible wheels.
+The 3.12 dependency snapshot remains an explicit `--locked` reproduction mode,
+not a restriction on normal 3.11 installation. Setup records the actual resolved
+environment under `runs/ui-install/environment.json`.
+
+Executed a fresh Python 3.11.9 installation in an isolated source directory:
+model download/hash and initialization passed, pip check passed, 667 full tests
+passed, and all three app modes opened/closed for 30 native event iterations each
+with the camera off. All screenshots were inspected. Python 3.12.14 also passed
+667 tests. This does not assert compatibility of untested future Python versions.
+
+Core algorithms/configuration, presentation gestures/renderer and report evidence
+are unchanged. Existing experiment results remain tied to their original recorded
+environment; the new flexible installer does not regenerate or replace them.
+The corrected handoff uses tag `submission-2026-10-16-r2`; the prior tag is retained.
+The source ZIP should be submitted intact with the Word report separately.
+Raw experimental video is local and requires a separate dataset handoff only if
+the recipient needs to rerun the recorded experiments from source video.
+
 ## Submission handoff — 2026-10-16
 
 The user accepted the current UI and authorized finalizing it on `main`.

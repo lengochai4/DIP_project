@@ -1,32 +1,55 @@
-"""Validate source assets, exact installed dependencies and model without a webcam."""
+"""Validate installed dependencies and model; optional exact snapshot verification."""
 from __future__ import annotations
 
+import argparse
 import importlib
 from importlib import metadata
 import json
 import os
 from pathlib import Path
 import struct
+import subprocess
 import sys
 
-from .setup_ui import MODEL_SHA256, ROOT, sha256
+from .setup_ui import MODEL_SHA256, ROOT, sha256, validate_python
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Kiểm tra cài UI, không mở camera.")
+    parser.add_argument("--locked", action="store_true", help="Đối chiếu cả snapshot thư viện Python 3.12.")
+    args = parser.parse_args()
     errors = []
     print(f"Python: {sys.version.split()[0]} / {struct.calcsize('P') * 8}-bit\n{sys.executable}")
-    if sys.platform != "win32" or sys.version_info[:2] != (3, 12) or struct.calcsize("P") != 8:
-        errors.append("Bản cài nộp được kiểm tra trên Windows / Python 3.12 64-bit.")
-    for line in (ROOT / "requirements-ui.lock.txt").read_text(encoding="utf-8").splitlines():
-        if not line.strip() or line.startswith("#"):
-            continue
-        name, expected = line.split("==", 1)
+    try:
+        validate_python(locked=args.locked)
+    except RuntimeError as exc:
+        errors.append(str(exc))
+    if args.locked:
+        for line in (ROOT / "requirements-ui.lock.txt").read_text(encoding="utf-8").splitlines():
+            if not line.strip() or line.startswith("#"):
+                continue
+            name, expected = line.split("==", 1)
+            try:
+                installed = metadata.version(name)
+                if installed != expected:
+                    errors.append(f"{name}: {installed}; bản khóa là {expected}.")
+            except metadata.PackageNotFoundError:
+                errors.append(f"Thiếu thư viện {name}.")
+    else:
         try:
-            installed = metadata.version(name)
-            if installed != expected:
-                errors.append(f"{name}: {installed}; bản khóa là {expected}.")
-        except metadata.PackageNotFoundError:
-            errors.append(f"Thiếu thư viện {name}.")
+            from packaging.requirements import Requirement
+            # Check this project's direct requirements including installed UI/dev
+            # extras; pip check also verifies transitive dependency compatibility.
+            for text in metadata.requires("dip-touchless-stem") or ():
+                requirement = Requirement(text)
+                if requirement.marker and not any(requirement.marker.evaluate({"extra": extra}) for extra in ("", "dev", "demo3d")):
+                    continue
+                installed = metadata.version(requirement.name)
+                if installed not in requirement.specifier:
+                    errors.append(f"{requirement.name}: {installed}; yêu cầu {requirement.specifier}.")
+            subprocess.run([sys.executable, "-m", "pip", "check"], check=True)
+        except (ImportError, metadata.PackageNotFoundError, subprocess.CalledProcessError) as exc:
+            errors.append(f"Thư viện chưa đúng yêu cầu pyproject.toml: {exc}")
     os.environ.setdefault("MPLCONFIGDIR", str(ROOT / "runs" / "matplotlib-cache"))
     for name in ("cv2", "numpy", "yaml", "mediapipe", "pygame", "OpenGL.GL", "OpenGL.GLU", "dip_touchless"):
         try:
@@ -60,7 +83,9 @@ def main() -> int:
         for error in errors:
             print("[LỖI] " + error)
         return 1
-    print("[OK] Thư viện khớp bản khóa, tài nguyên đủ, model đúng SHA-256 và khởi tạo được.")
+    print("[OK] Thư viện hợp lệ, tài nguyên đủ, model đúng SHA-256 và khởi tạo được.")
+    if args.locked:
+        print("[OK] Khớp cả snapshot thư viện Python 3.12.")
     print("Kiểm tra này không mở camera/cửa sổ; quyền camera và OpenGL cần có trên máy chạy UI.")
     return 0
 

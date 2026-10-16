@@ -1,5 +1,27 @@
 # Checklist rà soát UI nộp đồ án
 
+## Bổ sung tương thích Python ngày 16/10/2026
+
+- Đối chiếu `pyproject.toml`: source khai báo `requires-python = ">=3.11"`.
+  Bộ cài thường dùng Python đang chọn từ 3.11 64-bit trên Windows, giải thư viện
+  theo pyproject và chỉ dùng wheel; không còn bắt buộc đúng 3.12. Snapshot
+  `requirements-ui.lock.txt` giữ riêng cho `--locked` trên Python 3.12.
+- Chuẩn bị runtime Python 3.11.9 riêng bằng cách giải nén core/exe/lib từ các
+  MSI chính thức của python.org vào `runs/`; không đổi Python mặc định của máy.
+  Source QA riêng tạo venv mới, cài theo pyproject, tải model đúng SHA-256;
+  checker và `pip check` đạt. Resolver chọn NumPy 2.4.6/contourpy 1.3.3 cho 3.11,
+  khác snapshot 3.12. Đây là môi trường chạy app, không thay môi trường của các
+  số liệu nghiên cứu đã ghi.
+- **667 test đạt trên Python 3.11.9**, **667 test đạt trên Python 3.12.14**.
+  Có thêm kiểm tra sàn phiên bản/kiến trúc và snapshot chỉ áp dụng khi chọn.
+- App thật trên 3.11 chạy 30 vòng sự kiện mỗi chế độ solid/tips/chemistry,
+  camera tắt, thoát sạch; đã xem cả ba ảnh. Không thu phiên tay mới.
+- Bộ cài ghi môi trường đã resolve vào `runs/ui-install/environment.json`.
+  Chưa kiểm tra thực thi mọi phiên bản Python mới hơn; `>=3.11` không bảo đảm
+  wheel/driver của mọi hệ điều hành hoặc mọi phiên bản tương lai.
+- Không đổi `src/`, config nghiên cứu, UI settings/renderer hay thuật toán thao tác.
+  Bản sửa được gắn tag `submission-2026-10-16-r2`; tag trước giữ nguyên.
+
 ## Kiểm tra cài từ source sạch ngày 16/10/2026
 
 - Export 208 file source/tài nguyên từ bản nộp sang thư mục QA, không mang theo

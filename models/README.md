@@ -7,7 +7,7 @@ Bản nộp dùng MediaPipe Hand Landmarker float16, phiên bản model 1.
 - Lưu tại `models/hand_landmarker.task`.
 - SHA-256: `fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1`.
 
-Chạy `Cai_dat_UI.bat` hoặc `py -3.12 -X utf8 -m submission.setup_ui` từ gốc repo
+Chạy `Cai_dat_UI.bat` hoặc `python -X utf8 -m submission.setup_ui` từ gốc repo
 để tải và kiểm tra tự động. Binary không đưa vào Git. Sau lần cài đầu có thể
 chạy bằng webcam offline; DroidCam cần mạng nội bộ. Không đổi model hoặc ngưỡng
 nghiên cứu để tái hiện các kết quả đã chốt.
