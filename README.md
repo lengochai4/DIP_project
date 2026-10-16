@@ -5,6 +5,10 @@
 Giao diện đã chốt: `submission/stem_ui/`. Xem
 **[Hướng dẫn cài và chạy bằng tiếng Việt](HUONG_DAN_CHAY.md)**.
 
+Bản nộp ngày **16/10/2026**: nhánh `main`, tag `submission-2026-10-16`.
+Kiểm tra cài từ source sạch, model đúng SHA-256, `pip check` sạch và 659 test đạt;
+chi tiết tại [biên bản kiểm tra](submission/stem_ui/QA_CHECKLIST.md).
+
 Windows, Python **3.12 64-bit**, tại thư mục gốc source:
 
 ```powershell

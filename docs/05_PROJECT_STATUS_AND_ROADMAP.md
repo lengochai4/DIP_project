@@ -1,5 +1,29 @@
 # 05 — Project Status and Roadmap
 
+## Submission handoff — 2026-10-16
+
+The user accepted the current UI and authorized finalizing it on `main`.
+The submission is identified by tag `submission-2026-10-16`; older UI branches
+remain historical and are not required for installation or demonstration.
+The primary recipient instructions are `HUONG_DAN_CHAY.md` and the root README.
+
+Windows/Python 3.12 x64 setup now creates a separate `.venv-ui`, installs the
+recorded dependency snapshot, downloads version 1 of the official Hand Landmarker
+model and verifies its SHA-256. No environment or model binary is committed.
+The explicit setup checker verifies imports/assets, installed versions and
+model initialization without opening a camera. Source-clean installation was
+executed in a separate directory with a new virtual environment: setup passed,
+`pip check` reported no broken requirements and all 659 tests passed. The real
+app opened/closed in solid, tips and chemistry modes for 30 native event loops
+per mode with the camera off; all three screenshots were inspected.
+
+Core source, research configuration, UI renderer/settings and interaction logic
+remain the accepted `92d0831` behavior. Report conclusions and recorded research
+data are unchanged. This handoff does not claim a new physical webcam session
+or universal driver/latency/accuracy guarantees. The Word report is submitted
+separately; generated reports, raw video/logs and private study notes are not
+part of the source repository. Future feature work should start on a new branch.
+
 ## Current task update — 2026-10-14
 
 Chemistry AR continuity refinement: inspected actual UI session diagnostics

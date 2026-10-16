@@ -18,14 +18,29 @@ Bản ứng dụng đã chốt nằm trong `submission/stem_ui/`. DIP Core nằm
 Từ PowerShell hoặc terminal VS Code:
 
 ```powershell
-git clone --branch feat/submission-ui-clean https://github.com/lengochai4/DIP_project.git
+git clone https://github.com/lengochai4/DIP_project.git
 cd DIP_project
 ```
 
-Nếu đã có repo và đang ở nhánh nộp, cập nhật bằng `git pull --ff-only`.
-Sau khi nhánh nộp được merge vào `main`, có thể clone mặc định không cần
-`--branch`, hoặc chuyển sang `main` rồi `git pull --ff-only`. Các nhánh thử UI
-khác là lịch sử thử nghiệm, không cần merge/xóa để chạy bản này.
+Bản nộp ngày 16/10/2026 nằm trên `main`, được đánh dấu bằng tag
+`submission-2026-10-16`. Nếu đã có repo, giữ/commit các thay đổi đang làm trước
+khi chuyển nhánh rồi cập nhật:
+
+```powershell
+git fetch origin --tags
+git switch main
+git pull --ff-only
+```
+
+Để lấy đúng bản nộp đã chốt dù `main` có thay đổi về sau:
+
+```powershell
+git clone --branch submission-2026-10-16 https://github.com/lengochai4/DIP_project.git DIP_submission
+cd DIP_submission
+```
+
+Clone theo tag ở trạng thái detached HEAD là bình thường khi chỉ chạy bản nộp.
+Các nhánh thử UI khác là lịch sử thử nghiệm, không cần merge/xóa để chạy bản này.
 
 ## 3. Cài một lần
 
