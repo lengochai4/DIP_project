@@ -1,5 +1,15 @@
 # UI nộp đồ án — phần ứng dụng riêng
 
+Máy mới: xem **[HUONG_DAN_CHAY.md](../../HUONG_DAN_CHAY.md)**. Cài một lần bằng
+`py -3.12 -X utf8 -m submission.setup_ui`, sau đó chạy:
+
+```powershell
+.\.venv-ui\Scripts\python.exe -X utf8 -m submission.stem_ui.app
+```
+
+Các lệnh `.venv-research` và số kiểm tra ở cuối tài liệu là hồ sơ môi trường
+phát triển. Môi trường nộp mới dùng `.venv-ui` với cùng phiên bản thư viện đã khóa.
+
 Chạy ở thư mục gốc với môi trường đã cài `.[dev,demo3d]`:
 
 ```powershell

@@ -1,5 +1,29 @@
 # Checklist rà soát UI nộp đồ án
 
+## Kiểm tra cài từ source sạch ngày 16/10/2026
+
+- Export 208 file source/tài nguyên từ bản nộp sang thư mục QA, không mang theo
+  môi trường, model hoặc log. Tạo `.venv-ui` mới bằng Python 3.12.14 64-bit.
+- Chạy `python -X utf8 -m submission.setup_ui`: cài đúng 27 thư viện trong
+  `requirements-ui.lock.txt` và project editable; tải model phiên bản 1 từ
+  Google và kiểm tra SHA-256 khớp bản nghiên cứu.
+- `submission.check_setup` đạt: import thư viện, đủ tài nguyên, model khởi tạo
+  MediaPipe VIDEO hai tay được mà không cần mở webcam.
+- `pip check`: `No broken requirements found`.
+- Toàn bộ **659 test đạt** trong môi trường mới, gồm 5 kiểm tra bổ sung về
+  checksum, không ghi đè model khác và dọn file tải dở khi có lỗi.
+- Gọi app thật ở cả `solid`, `tips`, `chemistry`, mỗi chế độ 30 vòng sự kiện,
+  camera tắt, thoát sạch. Đã xem ảnh của cả ba chế độ.
+- Không đổi `src/`, `config/`, settings, renderer hoặc logic thao tác so với
+  bản UI đã chốt `92d0831`. Không thu phiên tay thật mới hoặc công bố thêm
+  số đo FPS/latency/độ chính xác. Môi trường mới trên cùng máy kiểm tra không
+  bảo đảm mọi driver camera/OpenGL trên máy khác giống hệt.
+- Hướng dẫn cài/chạy cho người nhận: [HUONG_DAN_CHAY.md](../../HUONG_DAN_CHAY.md).
+  Word nộp riêng; không đưa môi trường, model binary, video/log và tài liệu
+  ôn cá nhân vào commit đóng gói.
+
+## Hồ sơ kiểm tra giao diện ngày 14/10/2026
+
 Kiểm tra ngày 14/10/2026 trên working tree của `feat/submission-ui-clean`,
 Python 3.12.14 trong `.venv-research`. Đây là biên bản kiểm tra phần ứng dụng;
 không thay thế đặc tả canonical hoặc số liệu thực nghiệm Core.

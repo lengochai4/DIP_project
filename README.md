@@ -1,5 +1,22 @@
 # DIP Touchless STEM
 
+## Chạy giao diện nộp đồ án
+
+Giao diện đã chốt: `submission/stem_ui/`. Xem
+**[Hướng dẫn cài và chạy bằng tiếng Việt](HUONG_DAN_CHAY.md)**.
+
+Windows, Python **3.12 64-bit**, tại thư mục gốc source:
+
+```powershell
+py -3.12 -X utf8 -m submission.setup_ui
+.\.venv-ui\Scripts\python.exe -X utf8 -m submission.stem_ui.app
+```
+
+Hoặc nhấp đúp **Cai_dat_UI.bat** một lần, sau đó **Chay_UI.bat**.
+Bộ cài tạo môi trường riêng, cài các phiên bản đã khóa và tải model có kiểm tra
+SHA-256. Camera chỉ bật khi bấm **Bật camera**. Các phần dưới mô tả Core và quy
+trình nghiên cứu; `.[dev]` riêng lẻ chưa cài thư viện dựng giao diện.
+
 **Real-Time Touchless 3D STEM Interaction Using Adaptive Image Preprocessing and Motion Signal Filtering with a Single RGB Camera**
 
 ## 1. Overview
