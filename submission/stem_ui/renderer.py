@@ -164,7 +164,7 @@ class SubmissionRenderer:
 
     def reset(self):
         if self.mode=='chemistry':
-            self.chemistry.input.command('frame'); self.chemistry.input.page='compact'; return
+            self.chemistry.input.command('frame'); self.chemistry.input.command('compact'); return
         self.yaw=32.; self.pitch=20.; self.zoom=1.
         self.object_yaw=self.object_pitch=0.; self.object_scale=1.
         self.grab.reset()
@@ -220,7 +220,7 @@ class SubmissionRenderer:
                 elif key == pygame.K_p:
                     self.enter_chemistry()
                 elif self.mode=='chemistry' and key==pygame.K_b:
-                    self.chemistry.input.command('elements' if self.chemistry.input.page=='compact' else 'compact')
+                    self.chemistry.input.command('toggle_panel')
                 elif self.mode=='chemistry' and key in (pygame.K_e,pygame.K_o,pygame.K_t,pygame.K_z,pygame.K_y,pygame.K_BACKSPACE,pygame.K_l,pygame.K_j):
                     self.chemistry.input.command({pygame.K_e:'edit',pygame.K_o:'electrons',pygame.K_t:'table',pygame.K_z:'undo',
                         pygame.K_y:'redo',pygame.K_BACKSPACE:'delete',pygame.K_l:'save',pygame.K_j:'load'}[key])
@@ -231,6 +231,7 @@ class SubmissionRenderer:
                 elif pygame.K_1 <= key <= pygame.K_4:
                     self.kind=KINDS[key-pygame.K_1]; self.mode='solid'
             elif event.type == pygame.MOUSEWHEEL:
+                if self.mode=='chemistry' and not self.droidcam_dialog: self.chemistry.wheel(event.y,pygame.mouse.get_pos())
                 if self.mode!='chemistry' and not self.droidcam_dialog: self.zoom=float(np.clip(self.zoom*math.exp(event.y*.08),.55,1.8))
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button==1:
                 action=next((a for rect,a in reversed(self.buttons) if rect.collidepoint(event.pos)),None)
@@ -258,6 +259,8 @@ class SubmissionRenderer:
                         self.toggle_fullscreen()
                     elif action=='reset':
                         self.reset()
+                    elif action in ('toggle_panel','panel_reset'):
+                        self.chemistry.input.command(action)
                     elif action=='scale_mode':
                         self.cycle_scale_mode()
                     elif action=='menu':
@@ -557,6 +560,9 @@ class SubmissionRenderer:
             pygame.draw.polygon(overlay,MUTED,((539,sy+15),(547,sy+15),(543,sy+20)))
             label={'uniform':'Hai tay: đổi cỡ','stretch':'Hai tay: kéo dãn','distance':'Một tay: đổi cỡ','depth':'Một tay: tiến/lùi'}[self.grab.scale_mode]
             self._button(overlay,label,(566,sy,152,36),'scale_mode',self.grab.scale_mode!='uniform')
+        elif self.mode=='chemistry':
+            self._button(overlay,'Thu / mở bảng',(424,sy,140,36),'toggle_panel')
+            self._button(overlay,'Đặt lại bảng',(574,sy,124,36),'panel_reset')
         self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại góc nhìn',(w-168,sy,148,36),'reset')
         # Scene frame is only an outline, leaving the camera unobstructed.
         pygame.draw.rect(overlay,(53,105,124,190),view,1,border_radius=18)

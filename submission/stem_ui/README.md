@@ -50,6 +50,24 @@ rời mục tiêu trước khi chọn lần nữa; đổi trang không tự nh�
 dưới cùng vị trí ngón. Mất tay hoặc ngắt thời gian hủy tiến trình. Chuột
 vẫn chọn/kéo trực tiếp làm cách dự phòng.
 
+**Nhấn nhanh:** duỗi trỏ vào nút một nhịp ngắn, rồi gập nhẹ ngón trỏ để chọn.
+Con trỏ giữ vị trí trước khi gập, tránh trượt sang ô khác; duỗi lại để sẵn sàng
+lượt tiếp. Không chụm cái–trỏ khi nhấn nút, vì chụm dành cho cầm/kéo. Đây là
+nhận dạng góc ngón trên ảnh RGB, không đo lực hoặc độ sâu nhấn; khi bị che tay
+hoặc không thuận góc máy, vẫn dùng giữ 1 giây hoặc chuột như trước.
+
+**Di chuyển bảng:** chụm cái–trỏ trên thanh tiêu đề rồi kéo; chụm vào góc dưới
+phải để đổi cỡ. Hai tay cùng chụm trên phần điều khiển bảng sẽ dời/đổi cỡ bảng,
+tách biệt với đổi cỡ phân tử. Chuột kéo tiêu đề/góc; lăn chuột trên bảng để
+thu/phóng. **Thu / mở bảng** trên thanh công cụ hoặc B nhớ trang đang xem;
+khi thu chỉ còn thanh tên và dấu **+**. **Đặt lại bảng** đưa bảng về vị trí/cỡ
+ban đầu, không thay đổi phân tử. Bảng luôn được giữ trong vùng nhìn khi đổi
+cỡ cửa sổ hoặc F11.
+
+Camera lấp đầy khung cảnh hóa học, giữ tỉ lệ và cắt đều phần ảnh dư ở hai cạnh
+hoặc trên/dưới. Con trỏ dùng cùng phép cắt để khớp ảnh; không kéo méo camera.
+Độ nét nền còn phụ thuộc độ phân giải/ánh sáng của nguồn camera.
+
 1. Chọn H, C, N, O, F, P, S, Cl trong bảng thường dùng hoặc mở bảng tuần
    hoàn đầy đủ 118 nguyên tố. Mỗi lượt chọn tạo một nguyên tử ở vùng thao tác.
 2. Bật **Ghép/tách**, chụm sát cái–trỏ ngay trên nguyên tử để kéo nó. Thả gần nguyên
@@ -72,10 +90,16 @@ không tự đoán số neutron. Mẫu 3D có H₂O, CO₂, CH₄, NH₃, H₂, 
 Tên mẫu được đối chiếu đồ thị liên kết; công thức cùng số nguyên tử chưa
 đủ để gọi tên phân tử. Hình học do người dùng kéo và tọa độ mẫu chỉ minh họa.
 
-**Thu bảng** (B) giữ một nút nhỏ trong cảnh để mở lại. **Về giữa cảnh** (R)
+**Thu bảng** (B) giữ thanh tên nhỏ và dấu **+** để mở lại. **Về giữa cảnh** (R)
 đưa vật thể bị kéo ra ngoài về vùng thao tác. H ẩn/hiện hướng dẫn trong
 panel. Hoàn tác/làm lại dùng Z/Y; Backspace xóa nguyên tử đang chọn trong
 Ghép/tách, hoặc cả thành phần liên thông trong Cầm cả khối.
+
+Thiết kế điều khiển bảng tham khảo
+[Microsoft Point and commit](https://learn.microsoft.com/en-us/windows/mixed-reality/design/point-and-commit)
+và [Meta Hands UI](https://developers.meta.com/vr/design/hands-ui-best-practices/).
+Nhận gập trỏ là heuristic riêng cho webcam của app, không phải bộ nhận dạng
+hay khả năng đo chạm của kính VR.
 
 **Lưu / Mở đã lưu** (L/J) dùng `runs/ui-chemistry/workspace.json` trên máy.
 Lưu gồm nguyên tử, vị trí ở đơn vị cảnh và liên kết; không lưu video. Bản

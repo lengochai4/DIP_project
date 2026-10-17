@@ -186,7 +186,8 @@ hover with visible progress and a one-shot latch. Leaving the target, missing
 observations, identity change, timestamp discontinuity or stale input cancel
 progress. A just-activated target must not rearm through a page change until
 the pointer deliberately leaves the panel or moves to a different region.
-Pinch is reserved for object manipulation. Chemistry grab uses separate
+Pinch manipulates objects or explicit panel handles (added 2026-10-17).
+Chemistry grab uses separate
 tight normalized thumb-index press/release thresholds; it is an image-space
 heuristic, not sensing physical contact. Existing chemical graph rules,
 history/save/load, Core gesture/filter/replay semantics remain unchanged.
@@ -223,13 +224,34 @@ timestamp validation; no research timing or filtering semantics change.
 The renderer may composite the immutable mirrored BGR camera snapshot as
 the scene background. A camera-aligned perspective scene, textured spatial
 panel and atom/bond geometry use WORLD_RENDER. Hand targets map through the
-same letterboxed content rectangle and perspective ray; arbitrary stretch
+same aspect-preserving center-cropped cover rectangle and perspective ray;
+the crop fills the chemistry scene panel, with source XY transformed only in
+presentation copies of hands. Core snapshots/ROI remain unchanged. Arbitrary stretch
 or a second mirror must not misalign targets and the camera image.
 The panel is display-anchored, not localized to a physical room. No physical
 hand/object occlusion or depth sensing is implied. Panel selection uses the
 continuous observed hover contract above, with a mouse fallback. Each hand
 may claim one object; generation/loss/stale input release claims safely.
 A latched panel selection cannot trigger repeatedly.
+
+The 2026-10-17 refinement adds a presentation-only index-bend selection: stable
+straight-finger aim arms a target; a confirmed bend freezes XY at the last aim
+and activates once, with extension required to rearm. It is a palm-relative
+image-space heuristic, not measured touch or forward travel. Pinch, existing
+claims, missing/invalid landmarks, generation/timestamp discontinuities or
+excessive palm movement cancel it. Tap and dwell share the activation latch,
+including across page changes. All timing/angle/scale thresholds are in the
+submission settings, not research configuration.
+
+Panel header/corner claims are exclusive with atom/component claims. A header
+pinch drags; the corner resizes; two simultaneous panel grips translate and
+uniformly scale, independently of molecular scale. Releasing or losing a panel
+hand freezes/rebases the layout. Mouse drag/corner/wheel are fallbacks. Collapse
+retains only a title bar and restore control; the last expanded page is retained.
+A permanent toolbar toggle/reset and B shortcut ensure recovery. Layout is
+clamped to the viewport after resizing/fullscreen, which cancels input claims
+before changing projection. Panel translation reuses its texture; scale uses
+quantized raster resolution and progress remains GPU geometry.
 
 A renderer-independent chemistry scene owns sourced element data, atoms,
 bond topology, history and explicit action modes. Whole-component grab may
@@ -344,6 +366,11 @@ spheres of unselected fingers are omitted from the default fingertip scene.
 UI schema 6 records the raw pinch-state input basis. Renderer-only antialiasing,
 cached supersampled cards and panel mipmaps may improve display quality with
 an explicit supported-context fallback; no performance/depth claim follows.
+
+Presentation schema 7 (2026-10-17) additionally identifies the cover viewport and
+index-bend/shared-latch selection policy. Local chemistry diagnostics include
+actual panel layout and per-hand tap phase; they remain presentation evidence,
+never a new research confidence/accuracy metric.
 
 The application runtime may process accepted packets sequentially on one worker while
 the UI consumes the latest complete snapshot. Dropped presentation snapshots

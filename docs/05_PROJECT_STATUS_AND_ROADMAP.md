@@ -1,5 +1,45 @@
 # 05 — Project Status and Roadmap
 
+## Post-defense chemistry refinement — 2026-10-17
+
+Current authorized task: chemistry first, on `feat/chemistry-spatial-ui` from
+the accepted `main` commit `82359a1`. The submission tag/main remain unchanged.
+Physics-tab work is explicitly deferred.
+
+Implemented an aspect-preserving camera-cover viewport and the matching
+presentation-only landmark XY transform. Source snapshots, detector ROI and
+Core/research configuration are unchanged. Panel text uses quantized
+supersampled raster resolution and mipmaps. Stationary projection is cached;
+translation reuses the texture. The crystal palette supports header drag,
+corner resize, two-hand panel translation/scale and mouse drag/wheel. Panel
+claims are exclusive with molecular manipulation. Collapse retains a small
+title/restore bar and remembers the page; permanent toolbar toggle/reset and
+viewport bounds retain recovery after window/fullscreen changes.
+
+The existing 1-second dwell is retained. Optional quick selection uses stable
+straight-index aim followed by a confirmed image-space bend. It anchors the
+actual displayed cursor before the bend, shares the dwell latch across pages,
+and requires extension to rearm. Cancellation and loss do not invent a press.
+Presentation schema 7 records the policy and actual tap/panel diagnostic state.
+No model, inference worker, chemistry graph rules, molecular gesture thresholds,
+element data, presets or previous report results were changed.
+
+Executed: 700 full-project tests passed on Python 3.11.9 and Python 3.12.14.
+The current checkout module path was verified in the 3.11 environment. Native
+OpenGL QA rendered 371 frames across 960x660, 1360x860, 1920x1080 and 1080x1000
+windows with recorded camera imagery and synthetic input. Repeated fullscreen,
+all panel page sizes, collapsed restore, mouse drag, one/two-hand molecular
+hold/release and one-shot anchored quick selection passed. GL error was zero;
+30 translation frames per window caused zero panel texture uploads.
+Representative screenshots were inspected; local QA artifacts are in
+`runs/chemistry-spatial-qa/` and are not committed. `git diff --check` passed.
+
+These are software regression/display checks, not a new physical-hand latency,
+accuracy or low-light evaluation. RGB camera resolution, lighting, occlusion
+and viewing angle still limit input and camera detail; dwell/mouse remain
+available when the bend is ambiguous. Core experiments/report evidence remain
+the previously accepted results.
+
 ## Python compatibility correction — 2026-10-16
 
 `pyproject.toml` remains the package authority with `requires-python = ">=3.11"`.

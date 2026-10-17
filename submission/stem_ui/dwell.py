@@ -21,6 +21,10 @@ class DwellSelector:
 
     def reset(self): self.states.clear()
 
+    def latch(self,key,generation,target,t,point):
+        """Air-tap and dwell share one activation latch across page changes."""
+        self.states[key]=Dwell(generation,target,t,t,latched=True,point=point)
+
     def update(self,key,generation,target,t,point,outside=False):
         old=self.states.get(key)
         if not math.isfinite(t): self.states.pop(key,None); return None

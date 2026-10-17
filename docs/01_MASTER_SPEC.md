@@ -114,6 +114,16 @@ The term **3D** means interaction with a rendered 3D scene. MediaPipe/model-rela
 
 ### Submission presentation scope — authorized 2026-10-14
 
+#### Post-defense chemistry refinement — authorized 2026-10-17
+
+On a new branch from the accepted submission, the user authorized a responsive
+camera-cover viewport, sharper spatial palette text, movable/resizable and
+collapsible chemistry panel, and an optional index-bend quick selection alongside
+the existing 1-second dwell. Object manipulation and chemistry graph semantics
+remain unchanged. This uses the existing RGB landmarks only, with no new model,
+physical contact/depth claims, Core changes or new research results. Physics-tab
+work is deferred until after this chemistry refinement.
+
 #### Camera chemistry demonstration — authorized 2026-10-14
 
 The user approved an additional isolated desktop camera-composited chemistry
