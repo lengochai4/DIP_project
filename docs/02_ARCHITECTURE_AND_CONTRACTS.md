@@ -295,10 +295,40 @@ existing controls. Preset coordinates are authored illustrative scene units.
 Chemistry's discrete pinch gate reuses the exact raw ratio, hysteresis,
 confirmation/loss durations and generation behavior without computing an
 unused object pose. Held components continue to use GrabController. The panel
-texture depends only on visible panel content and button highlights; hovering
+texture depends only on visible panel content and raster resolution; hovering
 atoms, moving objects or changing bond topology must not repaint an unchanged
 panel. Selection/page/control changes update immediately. Scientific graph
 labels remain owned by the scene/overlay, independently of the panel texture.
+
+#### Chemistry drag continuity — authorized 2026-10-17
+
+The user deferred quick selection and prioritized continuous panel/atom drags.
+No IndexPush policy or Core/provider/filter/other-tab behavior changes here.
+For a confirmed chemistry hand claim, capture the filtered pinch-to-palm XY
+offset. Translation follows the observed filtered palm center plus that captured
+offset; ordinary unclaimed pointing remains the index fingertip. This stabilizes
+contact-landmark noise without mutating source observations or inventing depth.
+Whole-component rotation/scale still use GrabController; presentation copies of
+the two contact XY points carry the stable anchor while raw pinch stays raw.
+
+Panel claims, like atoms/components, pause and retain ownership during the
+configured brief loss/opening-confirmation interval. Freeze the displayed pose;
+clear the panel motion target; on valid same-generation return, capture a new
+anchor and rebase at the displayed pose before continuing. With two panel grips,
+one paused owner freezes both; joining/leaving rebases the span. Confirmed
+opening, timeout, generation/source/viewport discontinuity still release safely.
+Do not link atoms on loss. A confirmed release removes the hand immediately
+from the component controller instead of treating it as a missing hand and
+stalling the remaining hand for another loss-grace interval.
+
+Chemistry-only display response rates are configurable and separate from the
+Core filter and other tabs. A held atom has one render-rate follower; component
+motion already follows in the controller and must not receive another LPF.
+Captured hands do not repeatedly hit-test the scene. Panel movement/size/hit
+geometry update every draw; during a panel claim keep the existing texture
+resolution, then refresh the final quantized resolution once when released if
+needed. Semantic content changes remain immediate. Presentation schema 9 logs
+this grip policy and uses paused claims for actual loss/opening state.
 
 #### Spatial presentation and freshness refinement — 2026-10-14
 

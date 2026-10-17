@@ -33,6 +33,7 @@ class CameraChemistryView:
         self.content=(0,0,1,1); self.identity=None; self.run_id=None
         self.panel_key=None; self.camera_key=None; self.panel_at=0.
         self.camera_size=None; self.panel_size=None
+        self.panel_raster=None; self.paint_scale=None
         self.cursor_points={}; self.press_cursors=set()
 
     def open(self):
@@ -100,7 +101,7 @@ class CameraChemistryView:
         def finish():
             # Render glyphs at their projected pixel size instead of shrinking
             # an already-rasterized, oversized text bitmap on the GPU.
-            scale=self._raster_scale(panel)
+            scale=self.paint_scale if self.paint_scale is not None else self._raster_scale(panel)
             size=tuple(max(1,round(v*scale)) for v in panel.pixels)
             native=pygame.transform.smoothscale(surface,size)
             for value,pos,font,color,centered in labels:
@@ -209,16 +210,24 @@ class CameraChemistryView:
         # The panel only displays element details on the elements page. Atom
         # movement/bond changes belong to the scene, not this static texture.
         symbol=selected.symbol if selected is not None and self.input.page=='elements' else None
+        raster=self._raster_scale(geometry)
+        # Geometry/hit testing keep following every draw. Rasterize the final
+        # resolution once on release instead of hitching at resize tier edges.
+        manipulating=any(c.kind.startswith('panel_') for c in self.input.claims.values())
+        if manipulating and self.panel_raster is not None and self.panel_key is not None and self.panel_key[1]==self.input.page:
+            raster=self.panel_raster
         semantic=(self.space.aspect,self.input.page,self.input.template_page,symbol,
                   self.scene.edit,self.scene.electrons,self.scene.order,self.renderer.help_visible,self.content[2:],
-                  self._raster_scale(geometry),self.input.layout.edge if self.input.page=='compact' else None)
+                  raster,self.input.layout.edge if self.input.page=='compact' else None)
         key=semantic+((),)
         now=time.monotonic()
         semantic_changed=self.panel_key is None or self.panel_key[:-1]!=semantic
         if force or self.input.panel is None or (key!=self.panel_key and (semantic_changed or now-self.panel_at>=1/self.settings['chemistry_panel_fps'])):
+            self.paint_scale=raster
             panel,surface=self._panel(); self.input.panel=panel
             self._upload(self.panel_texture,pygame.image.tobytes(surface,'RGBA',False),surface.get_size(),self.panel_size,gl.GL_RGBA,mipmaps=True)
             self.panel_size=surface.get_size(); self.panel_key=key; self.panel_at=now
+            self.panel_raster=raster
 
     def mouse(self,kind,pos):
         x,y,w,h=self.content

@@ -64,6 +64,10 @@ chemistry_max_atoms: 32
 chemistry_scene_limit: 8.0
 chemistry_history_limit: 40
 chemistry_response_hz: 9.0
+chemistry_drag_response_hz: 12.0
+chemistry_move_response_hz: 10.0
+chemistry_rotate_response_hz: 8.0
+chemistry_scale_response_hz: 8.0
 chemistry_atom_radius: 0.16
 chemistry_join_distance: 0.68
 chemistry_break_distance: 1.12

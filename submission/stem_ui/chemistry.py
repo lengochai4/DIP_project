@@ -236,11 +236,12 @@ class ChemistryScene:
         self.atoms.clear(); self.bonds.clear(); self.selected=None
         self.revision+=1; self.message='Đã xóa tất cả • Hoàn tác để khôi phục'
 
-    def advance(self,dt):
+    def advance(self,dt,dragged=()):
         if not math.isfinite(dt) or dt<=0: return
         for atom in self.atoms.values():
             error=float(np.linalg.norm(atom.target-atom.position))
-            hz=min(self.settings['display_response_max_hz'],self.settings['chemistry_response_hz']+error*self.settings['pose_response_gain'])
+            base=self.settings['chemistry_drag_response_hz'] if atom.id in dragged else self.settings['chemistry_response_hz']
+            hz=min(self.settings['display_response_max_hz'],base+error*self.settings['pose_response_gain'])
             atom.position+=(1-math.exp(-math.tau*hz*dt))*(atom.target-atom.position)
 
     def freeze(self,ids):

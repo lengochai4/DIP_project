@@ -90,6 +90,15 @@ hoặc trên/dưới. Con trỏ dùng cùng phép cắt để khớp ảnh; khô
    không cần bắt lại một nguyên tử nhỏ. Trong
    Ghép/tách, hai tay có thể kéo hai nguyên tử khác nhau độc lập.
 
+Khi đang cầm, điểm neo giữ độ lệch cái–trỏ/lòng bàn tay tại lúc bắt đầu và theo
+chuyển động lòng bàn tay, giúp dao động hai đầu ngón không kéo giật vật thể.
+Trỏ chọn thông thường vẫn theo đầu ngón trỏ. Mất dấu ngắn: bảng/vật thể đứng
+yên, giữ lượt cầm và đặt lại mốc khi nhận được tay; mất quá thời gian cho phép
+hoặc đổi danh tính tay sẽ hủy. Mở ngón dừng chuyển động ngay trong lúc xác nhận
+buông. Chuyển hai tay về một tay không cần chờ thêm thời gian mất dấu.
+Khi đổi cỡ bảng, hình học vẫn theo tay; texture được giữ trong lúc kéo và cập
+nhật độ nét cuối khi buông nếu cần, tránh vẽ lại chữ giữa thao tác.
+
 **Nguyên tử / e** (O) hiện lớp electron minh họa cho nguyên tử đang chọn.
 Đổi cỡ bằng hai tay dùng **Cầm cả khối**: hạt nhân, vòng electron và các
 electron cùng đổi cỡ. Có thể bắt trong vùng lớp e đang hiện. **Về giữa cảnh**

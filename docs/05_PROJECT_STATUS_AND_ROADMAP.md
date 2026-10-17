@@ -1,6 +1,51 @@
 # 05 — Project Status and Roadmap
 
-## Current chemistry follow-up — 2026-10-17
+## Current task — chemistry drag continuity, 2026-10-17
+
+Change: retain paused panel claims across brief loss/opening confirmation;
+rebase at the displayed pose on same-generation return. Use a captured
+pinch-to-palm XY offset for held chemistry motion, preserving raw pinch input.
+Explicitly remove a released hand from the component controller so two-to-one
+hand transitions do not stall for another loss-grace interval. Cancel all grips
+without linking on invalid/reversed/over-grace timestamps. Skip redundant scene
+picking for captured hands. Keep the panel texture resolution during resize,
+then update its final quantized resolution at most once on release if changed.
+Chemistry has separate configurable render-following rates for translation,
+rotation, scale and held atoms; no second LPF is applied to component poses.
+
+Reason: the user deferred the non-working quick press and prioritized smooth
+panel/atom dragging. Inspection found immediate panel-claim deletion during
+short loss and a released hand remaining inside the component controller's
+missing-hand grace. Raw contact-landmark noise could also move an otherwise
+stationary grip. Resize tier changes could trigger rasterization during a drag.
+
+Canonical files/sections changed: 02 chemistry drag continuity; this task record.
+Code/modules affected: submission chemistry input/scene/view/settings, runtime
+metadata, README and motion regressions. Algorithmic impact: presentation-only
+grip anchoring, ownership and render following. Experimental impact: none.
+Compatibility impact: presentation schema 9 identifies the new grip policy;
+the optional scene advance argument preserves existing callers. Existing
+results invalidated: no; Core/provider/Raw/Fixed/Adaptive, research configs,
+experiments and molecular data/rules remain unchanged. IndexPush, selection
+thresholds, solid/tips tabs and shared GrabController code are unchanged.
+The quick-press usability failure remains unresolved and outside this task.
+
+Tests added/updated: short/long panel loss, reacquisition away from the header,
+pending opening/bounce, two-hand loss/span rebasing, contact XY noise in atom
+and component modes, immediate two-to-one-hand continuation, timestamp
+cancellation without accidental bonding, captured hit-test reuse and deferred
+resize rasterization. Executed: 723 full-project tests passed on Python 3.12.14
+and Python 3.11.9. Native GL QA rendered 312 frames at 960x660, 1360x860 and
+1920x1080, including short-loss no-jump resume, hand release/continuation,
+resize and fullscreen. Each 60-frame active resize made zero texture uploads;
+release made zero uploads at 960x660 (same raster tier) and one at each larger
+size. All three contexts reported zero GL error; representative screenshots
+were inspected. Local artifacts: `runs/chemistry-motion-qa/` (ignored).
+`git diff --check` passed. Recorded imagery and synthetic hands were used;
+no new physical webcam trial, end-to-end latency or tracking-accuracy result
+is claimed. The accepted main and submission tag remain unchanged.
+
+## Earlier chemistry input follow-up — 2026-10-17
 
 Change: replaced the rejected 2D bend prototype with relative index push,
 bounded cursor capture and palm-relative direction/pose/noise checks. Kept

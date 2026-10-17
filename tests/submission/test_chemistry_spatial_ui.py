@@ -162,7 +162,7 @@ def test_compact_remembers_page_and_reset_does_not_change_molecules():
     assert c.page=='table' and c.layout.scale==1. and scene.state()==before
 
 
-def test_panel_lost_hand_cancels_movement_without_extrapolation():
+def test_panel_short_loss_pauses_without_extrapolation_or_losing_ownership():
     c=ChemistryInput(ChemistryScene(SETTINGS),SETTINGS); space=CameraSpace(4/3)
     panel=SpatialPanel(space=space); panel.targets=[((0,0,*panel.pixels),'panel:drag')]; c.panel=panel
     nx,ny=space.project(panel.center)
@@ -171,7 +171,7 @@ def test_panel_lost_hand_cancels_movement_without_extrapolation():
     assert c.claims[0].kind=='panel_move'
     anchor=c.layout.anchor.copy()
     c.update([],1.1,space); c.advance(.2)
-    assert not c.claims and c.layout.anchor==pytest.approx(anchor)
+    assert c.claims[0].paused and c.layout.anchor==pytest.approx(anchor)
 
 
 def test_panel_drag_does_not_upload_texture_or_mutate_scene(monkeypatch):
