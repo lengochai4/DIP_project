@@ -118,11 +118,18 @@ The term **3D** means interaction with a rendered 3D scene. MediaPipe/model-rela
 
 On a new branch from the accepted submission, the user authorized a responsive
 camera-cover viewport, sharper spatial palette text, movable/resizable and
-collapsible chemistry panel, and an optional index-bend quick selection alongside
+collapsible chemistry panel, and an optional quick selection alongside
 the existing 1-second dwell. Object manipulation and chemistry graph semantics
 remain unchanged. This uses the existing RGB landmarks only, with no new model,
 physical contact/depth claims, Core changes or new research results. Physics-tab
 work is deferred until after this chemistry refinement.
+
+Following user testing on the same date, the user rejected the index-bend
+prototype and authorized a palm-relative index-push heuristic with bounded
+cursor capture, edge-arrow docking (including drag-to-edge), in-scene controls
+instead of duplicate toolbar controls, and undoable clear-all. No RGB-only
+gesture is claimed to perfectly distinguish every shake from an intentional
+press or to match a depth-sensing VR device.
 
 #### Camera chemistry demonstration — authorized 2026-10-14
 

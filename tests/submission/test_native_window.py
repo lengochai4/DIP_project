@@ -66,6 +66,8 @@ def test_native_chemistry_cover_mouse_drag_and_collapsed_restore(tmp_path):
                 c.command(page); r.events()
                 r.draw(Snapshot(i,1+i*.05,time.monotonic(),image,(),None,None),'Native QA',active=True,run_id='qa')
                 assert r.chemistry.content==scene_rect(r.size,False)
+                assert not {'toggle_panel','panel_reset'} & {a for rect,a in r.buttons}
+                if page=='compact': assert c.panel.targets==[((0,0,128,128),'restore_panel')]
             panel=c.panel; nx,ny=r.chemistry.space.project(panel.world(180,40))
             x,y,w,h=r.chemistry.content; pos=(x+nx*w,y+ny*h)
             r.chemistry.mouse('down',pos); assert c.claims['mouse'].kind=='panel_move'

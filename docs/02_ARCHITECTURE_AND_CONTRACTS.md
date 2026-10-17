@@ -234,24 +234,44 @@ continuous observed hover contract above, with a mouse fallback. Each hand
 may claim one object; generation/loss/stale input release claims safely.
 A latched panel selection cannot trigger repeatedly.
 
-The 2026-10-17 refinement adds a presentation-only index-bend selection: stable
-straight-finger aim arms a target; a confirmed bend freezes XY at the last aim
-and activates once, with extension required to rearm. It is a palm-relative
-image-space heuristic, not measured touch or forward travel. Pinch, existing
-claims, missing/invalid landmarks, generation/timestamp discontinuities or
-excessive palm movement cancel it. Tap and dwell share the activation latch,
-including across page changes. All timing/angle/scale thresholds are in the
-submission settings, not research configuration.
+The revised 2026-10-17 interaction replaces the rejected index-bend prototype
+with a presentation-only relative index push. Stable extended-index aim arms
+the target. Model-relative tip displacement along the observed palm normal,
+normalized by apparent palm size, supplies a non-metric forward-motion cue.
+Source-space raw landmarks, not cover-cropped display coordinates, supply
+these features. Feature smoothing/noise bounds, direction, travel, observation
+count and timing gates reject ambiguous motion. Rigid hand translation is
+subtracted; lateral movement, excessive rotation/scale change, pinch, claims,
+loss/invalid input or identity/time discontinuity cancel. These are heuristics,
+not proof of physical touch or complete shake/press separability from RGB.
+
+Only a coherent press captures the actual displayed XY; confirmation provides
+brief bounded feedback, then ordinary cursor motion resumes even if the finger
+stays forward. Retraction or deliberate departure rearms. Push and dwell share
+one activation latch across page changes. Dwell remains 1 second and requires
+bounded positional stability; shaking across a large button must reset progress.
+All tunable thresholds live in submission settings, outside Core/research config.
 
 Panel header/corner claims are exclusive with atom/component claims. A header
 pinch drags; the corner resizes; two simultaneous panel grips translate and
 uniformly scale, independently of molecular scale. Releasing or losing a panel
 hand freezes/rebases the layout. Mouse drag/corner/wheel are fallbacks. Collapse
-retains only a title bar and restore control; the last expanded page is retained.
-A permanent toolbar toggle/reset and B shortcut ensure recovery. Layout is
+retains only an inward arrow on the scene edge, preserving page, expanded pose
+and scale. The arrow has priority hit testing and supports dwell/push selection.
+Moving a claimed header into the edge briefly, or throwing it beyond the edge,
+docks it there; corner resize cannot dock it. Duplicate toolbar toggle/reset
+controls are removed. Reset remains in the spatial panel; B/mouse are optional
+fallbacks. A held pinch cannot immediately reopen the docked arrow. Layout is
 clamped to the viewport after resizing/fullscreen, which cancels input claims
 before changing projection. Panel translation reuses its texture; scale uses
 quantized raster resolution and progress remains GPU geometry.
+Hover outlines are also GPU geometry and must not invalidate the text texture
+when the pointer moves between buttons. Only visible semantic content or
+quantized raster resolution changes require panel rasterization/upload.
+
+Clear-all is an explicit spatial-panel action that removes atoms/bonds and
+selection in one undoable history step. Repeating it on an empty scene is a
+no-op. It does not alter element data, bonding rules, presets or file formats.
 
 A renderer-independent chemistry scene owns sourced element data, atoms,
 bond topology, history and explicit action modes. Whole-component grab may
@@ -371,6 +391,10 @@ Presentation schema 7 (2026-10-17) additionally identifies the cover viewport an
 index-bend/shared-latch selection policy. Local chemistry diagnostics include
 actual panel layout and per-hand tap phase; they remain presentation evidence,
 never a new research confidence/accuracy metric.
+
+Presentation schema 8 supersedes the rejected bend policy with the relative
+index-push policy and includes edge docking in actual panel-layout diagnostics.
+Earlier UI runs remain historical; no Core experimental schema/result changes.
 
 The application runtime may process accepted packets sequentially on one worker while
 the UI consumes the latest complete snapshot. Dropped presentation snapshots

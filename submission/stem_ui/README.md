@@ -50,19 +50,30 @@ rời mục tiêu trước khi chọn lần nữa; đổi trang không tự nh�
 dưới cùng vị trí ngón. Mất tay hoặc ngắt thời gian hủy tiến trình. Chuột
 vẫn chọn/kéo trực tiếp làm cách dự phòng.
 
-**Nhấn nhanh:** duỗi trỏ vào nút một nhịp ngắn, rồi gập nhẹ ngón trỏ để chọn.
-Con trỏ giữ vị trí trước khi gập, tránh trượt sang ô khác; duỗi lại để sẵn sàng
-lượt tiếp. Không chụm cái–trỏ khi nhấn nút, vì chụm dành cho cầm/kéo. Đây là
-nhận dạng góc ngón trên ảnh RGB, không đo lực hoặc độ sâu nhấn; khi bị che tay
-hoặc không thuận góc máy, vẫn dùng giữ 1 giây hoặc chuột như trước.
+**Nhấn nhanh:** duỗi trỏ vào nút, chờ vòng chuyển vàng rồi đẩy riêng đầu ngón
+trỏ nhẹ về phía camera, sau đó rút về. Giữ lòng bàn tay tương đối yên và không
+chụm cái–trỏ. Con trỏ chỉ khóa trong lượt nhấn; sau phản hồi ngắn sẽ theo tay
+trở lại, kể cả khi chưa rút ngón. Mỗi lượt chỉ chọn một lần. Chỉ gập ngón trên
+mặt phẳng ảnh hoặc lắc ngang không phải tín hiệu nhấn. Giữ yên khoảng 1 giây
+vẫn chọn như cũ; di chuyển quá vùng ổn định sẽ bắt đầu lại tiến trình.
+
+App xét chuyển động tương đối với mặt lòng bàn tay, hướng và thời gian từ
+landmark RGB. Đây là heuristic có thể bỏ sót hoặc nhầm trong điều kiện khó,
+không đo lực/độ sâu thật hay bảo đảm loại mọi động tác lắc. Khi không thuận
+góc máy hoặc bị che tay, dùng giữ 1 giây; chuột là cách dự phòng tùy chọn.
 
 **Di chuyển bảng:** chụm cái–trỏ trên thanh tiêu đề rồi kéo; chụm vào góc dưới
 phải để đổi cỡ. Hai tay cùng chụm trên phần điều khiển bảng sẽ dời/đổi cỡ bảng,
 tách biệt với đổi cỡ phân tử. Chuột kéo tiêu đề/góc; lăn chuột trên bảng để
-thu/phóng. **Thu / mở bảng** trên thanh công cụ hoặc B nhớ trang đang xem;
-khi thu chỉ còn thanh tên và dấu **+**. **Đặt lại bảng** đưa bảng về vị trí/cỡ
-ban đầu, không thay đổi phân tử. Bảng luôn được giữ trong vùng nhìn khi đổi
-cỡ cửa sổ hoặc F11.
+thu/phóng. Kéo tiêu đề sát viền một nhịp hoặc ra ngoài viền để thu; cũng có thể
+chọn dấu **−** trên bảng. Khi thu chỉ còn **mũi tên ngay trên viền**: trỏ vào
+đó giữ 1 giây hoặc nhấn nhanh để mở, nhớ trang/cỡ bảng. Thả pinch trước khi
+chọn mũi tên để tránh vừa thu đã mở lại. Nút mũi tên vòng trên tiêu đề đặt lại
+bảng, không thay đổi phân tử. Hai nút thu/mở và đặt lại bảng trên thanh tab đã
+bỏ; thao tác này thực hiện trực tiếp trong cảnh. B vẫn là phím dự phòng.
+
+**Xóa tất cả** trong bảng dọn nguyên tử và liên kết; **Hoàn tác** khôi phục
+toàn bộ bằng một bước. Không xóa mẫu phân tử hay dữ liệu nguyên tố.
 
 Camera lấp đầy khung cảnh hóa học, giữ tỉ lệ và cắt đều phần ảnh dư ở hai cạnh
 hoặc trên/dưới. Con trỏ dùng cùng phép cắt để khớp ảnh; không kéo méo camera.
@@ -90,7 +101,7 @@ không tự đoán số neutron. Mẫu 3D có H₂O, CO₂, CH₄, NH₃, H₂, 
 Tên mẫu được đối chiếu đồ thị liên kết; công thức cùng số nguyên tử chưa
 đủ để gọi tên phân tử. Hình học do người dùng kéo và tọa độ mẫu chỉ minh họa.
 
-**Thu bảng** (B) giữ thanh tên nhỏ và dấu **+** để mở lại. **Về giữa cảnh** (R)
+**Thu bảng** (B) giữ mũi tên nhỏ ở viền để mở lại. **Về giữa cảnh** (R)
 đưa vật thể bị kéo ra ngoài về vùng thao tác. H ẩn/hiện hướng dẫn trong
 panel. Hoàn tác/làm lại dùng Z/Y; Backspace xóa nguyên tử đang chọn trong
 Ghép/tách, hoặc cả thành phần liên thông trong Cầm cả khối.
@@ -98,8 +109,11 @@ Ghép/tách, hoặc cả thành phần liên thông trong Cầm cả khối.
 Thiết kế điều khiển bảng tham khảo
 [Microsoft Point and commit](https://learn.microsoft.com/en-us/windows/mixed-reality/design/point-and-commit)
 và [Meta Hands UI](https://developers.meta.com/vr/design/hands-ui-best-practices/).
-Nhận gập trỏ là heuristic riêng cho webcam của app, không phải bộ nhận dạng
-hay khả năng đo chạm của kính VR.
+Nhấn tương đối tham khảo cách tách trỏ/chọn của
+[Ultraleap AirPush](https://docs.ultraleap.com/TouchFree/touchless-interfaces/interactions.html).
+Feature được tự xây cho webcam theo [ngữ nghĩa landmark MediaPipe](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker/python),
+không sử dụng SDK/cảm biến độ sâu của Ultraleap hay coi model-relative z là
+độ sâu camera đo được.
 
 **Lưu / Mở đã lưu** (L/J) dùng `runs/ui-chemistry/workspace.json` trên máy.
 Lưu gồm nguyên tử, vị trí ở đơn vị cảnh và liên kết; không lưu video. Bản

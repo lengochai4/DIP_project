@@ -71,7 +71,8 @@ class CameraChemistryView:
     def _geometry(self):
         def key():
             return (self.space.aspect,self.content[2:],self.input.page,
-                    tuple(np.round(self.input.layout.anchor,7)),round(self.input.layout.scale,6))
+                    tuple(np.round(self.input.layout.anchor,7)),round(self.input.layout.scale,6),
+                    self.input.layout.edge,round(self.input.layout.edge_position,6))
         if key()==getattr(self,'panel_geometry_key',None): return self.panel_geometry
         panel=SpatialPanel(self.input.page=='table',self.space)
         self.input.layout.place(panel,self.space,self.content,self.input.page=='compact')
@@ -91,7 +92,8 @@ class CameraChemistryView:
         panel=self._geometry()
         panel.targets=[]
         surface=glass(panel.pixels,self.settings['crystal_panel_opacity'],26,True,self.settings['ui_card_supersample']).copy()
-        w,h=panel.pixels; hover=set(control.hover.values())
+        # Hover is cheap GPU geometry; it must not rasterize/upload this panel.
+        w,h=panel.pixels; hover=set()
         labels=[]
         def text(value,pos,size=30,color=INK):
             labels.append((value,pos,size,color,False))
@@ -118,16 +120,22 @@ class CameraChemistryView:
             labels.append((label,(x+bw//2,y+bh//2),font,INK,True))
             panel.targets.append((tuple(rect),action))
         if control.page=='compact':
-            text('Bảng nguyên tố',(30,30),38,ACCENT)
-            panel.targets.append(((12,8,575,96),'panel:drag'))
-            button('+',(600,20,92,72),'restore_panel')
+            points={'left':((45,30),(85,64),(45,98)),
+                    'right':((83,30),(43,64),(83,98)),
+                    'top':((30,45),(64,85),(98,45)),
+                    'bottom':((30,83),(64,43),(98,83))}[control.layout.edge]
+            pygame.draw.lines(surface,GOLD if 'restore_panel' in hover else ACCENT,False,points,8)
+            panel.targets.append(((0,0,128,128),'restore_panel'))
             return finish()
         text('BẢNG NGUYÊN TỐ',(32,22),34,ACCENT)
-        panel.targets.append(((12,8,w-130,68),'panel:drag'))
+        panel.targets.append(((12,8,w-230,68),'panel:drag'))
+        button('',(w-195,15,72,52),'panel_reset')
+        pygame.draw.arc(surface,INK,(w-176,25,34,32),math.radians(40),math.radians(315),3)
+        pygame.draw.polygon(surface,INK,((w-143,29),(w-155,26),(w-146,39)))
         button('−',(w-103,15,72,52),'compact')
         pygame.draw.line(surface,(161,213,232,150),(32,78),(w-32,78),2)
         if control.page=='home':
-            text(f"Giữ {self.settings['chemistry_dwell_s']:g}s hoặc gập trỏ nhẹ để chọn",(32,99),29)
+            text(f"Giữ {self.settings['chemistry_dwell_s']:g}s hoặc đẩy trỏ để chọn",(32,99),29)
             button('BẢNG NGUYÊN TỐ',(32,165,w-64,130),'elements')
             button('MẪU PHÂN TỬ 3D',(32,322,w-64,105),'templates')
             if self.renderer.help_visible:
@@ -136,7 +144,8 @@ class CameraChemistryView:
                 text('Tay thứ hai chụm rồi tách / khép để đổi cỡ',(32,565),25)
                 text('Ghép/tách: thả gần để nối, kéo xa để tháo',(32,608),26)
                 text('Kéo tiêu đề: dời bảng; góc dưới: đổi cỡ',(32,655),25)
-                text('B: thu / mở bảng; lăn chuột: đổi cỡ bảng',(32,696),24)
+                text('Kéo ra viền để ẩn; trỏ mũi tên để mở',(32,696),24)
+                text('Vòng vàng: đẩy riêng trỏ rồi rút lại',(32,731),23,ACCENT)
             else: text('H để hiện cách thao tác',(32,525),28,(166,189,205))
         elif control.page=='elements':
             text('Nguyên tố thường dùng',(32,93),31)
@@ -174,13 +183,15 @@ class CameraChemistryView:
                     text(str(scene.elements[symbol].number),(x+5,y+3),15,(136,176,191))
             button('Thường dùng',(32,794,300,72),'elements')
             button('Thu bảng',(350,794,230,72),'compact')
+            button('Xóa tất cả',(600,794,230,72),'clear_all')
+            button('Hoàn tác',(850,794,230,72),'undo')
         if control.page!='table':
             button('Ghép/tách' if not scene.edit else 'Cầm cả khối',(32,760,305,64),'edit',scene.edit)
             button('Nguyên tử / e',(353,760,335,64),'electrons',scene.electrons)
             button(f'Liên kết {scene.order}',(32,838,210,62),'order')
             button('Hoàn tác',(256,838,210,62),'undo')
             button('Xóa chọn',(480,838,208,62),'delete')
-            button('Thu bảng',(32,918,210,52),'compact')
+            button('Xóa tất cả',(32,918,210,52),'clear_all')
             button('Lưu',(256,918,210,52),'save')
             button('Mở đã lưu',(480,918,208,52),'load')
         # Dedicated corner: grabbing this can never grab an atom behind it.
@@ -199,10 +210,9 @@ class CameraChemistryView:
         # movement/bond changes belong to the scene, not this static texture.
         symbol=selected.symbol if selected is not None and self.input.page=='elements' else None
         semantic=(self.space.aspect,self.input.page,self.input.template_page,symbol,
-                  self.scene.edit,self.scene.electrons,self.scene.order,self.renderer.help_visible,self.content[2:],self._raster_scale(geometry))
-        highlights=tuple(sorted({action for action in self.input.hover.values()
-                                 if action and not action.startswith(('atom:','panel:'))}))
-        key=semantic+(highlights,)
+                  self.scene.edit,self.scene.electrons,self.scene.order,self.renderer.help_visible,self.content[2:],
+                  self._raster_scale(geometry),self.input.layout.edge if self.input.page=='compact' else None)
+        key=semantic+((),)
         now=time.monotonic()
         semantic_changed=self.panel_key is None or self.panel_key[:-1]!=semantic
         if force or self.input.panel is None or (key!=self.panel_key and (semantic_changed or now-self.panel_at>=1/self.settings['chemistry_panel_fps'])):
@@ -212,7 +222,8 @@ class CameraChemistryView:
 
     def mouse(self,kind,pos):
         x,y,w,h=self.content
-        if kind=='up' or (x<=pos[0]<x+w and y<=pos[1]<y+h):
+        dragging='mouse' in self.input.claims and self.input.claims['mouse'].kind.startswith('panel_')
+        if kind=='up' or dragging or (x<=pos[0]<x+w and y<=pos[1]<y+h):
             self.input.mouse(kind,(pos[0]-x)/w,(pos[1]-y)/h,self.space)
 
     def wheel(self,amount,pos):
@@ -225,7 +236,7 @@ class CameraChemistryView:
         """Freeze the actually displayed cursor, including its last follow step."""
         active=set()
         for slot,state in self.input.tap.states.items():
-            if state.phase not in ('press','latched'): continue
+            if not state.locked: continue
             key=(slot,state.generation); active.add(key)
             if key not in self.press_cursors and state.phase=='press':
                 previous=self.cursor_points.get(key)
@@ -281,7 +292,8 @@ class CameraChemistryView:
             self.input.release(); self.run_id=run_id; self.identity=None
         if not fresh and (self.identity is not None or self.input.gates): self.input.release()
         elif identity!=self.identity:
-            self.input.update(tuple(cover.hand(hand) for hand in snapshot.hands),snapshot.timestamp_s,self.space)
+            self.input.update(tuple(cover.hand(hand) for hand in snapshot.hands),snapshot.timestamp_s,self.space,
+                              gesture_hands=snapshot.hands,source_aspect=source_aspect)
             self._anchor_press_cursor()
         self.identity=identity; self.input.advance(dt)
         self._ensure_panel(force=self.input.panel.full!=(self.input.page=='table'))
@@ -292,12 +304,24 @@ class CameraChemistryView:
             if 0<pz<1 and x<=px<=x+w and window_h-y-h<=py<=window_h-y:
                 self.labels.append((atom.symbol,(int(px)+9,window_h-int(py)-18)))
         panel=self.input.panel
+        if self.input.page=='compact': gl.glDisable(gl.GL_DEPTH_TEST)
         gl.glDisable(gl.GL_LIGHTING); gl.glEnable(gl.GL_TEXTURE_2D); gl.glBindTexture(gl.GL_TEXTURE_2D,self.panel_texture)
         gl.glEnable(gl.GL_BLEND); gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA); gl.glColor4f(1,1,1,1)
         gl.glBegin(gl.GL_QUADS)
         for u,v in ((0,0),(1,0),(1,1),(0,1)):
             gl.glTexCoord2f(u,v); gl.glVertex3fv(panel.world(u*panel.pixels[0],v*panel.pixels[1]))
         gl.glEnd(); gl.glDisable(gl.GL_TEXTURE_2D); gl.glDisable(gl.GL_BLEND)
+        if self.input.page!='compact': gl.glEnable(gl.GL_DEPTH_TEST)
+        # Moving between tiles, including noisy borders, never uploads text.
+        gl.glColor3f(*(np.array(ACCENT)/255)); gl.glLineWidth(2)
+        hovered={a for a in self.input.hover.values() if a and not a.startswith(('atom:','panel:'))}
+        for rect,action in panel.targets:
+            if action not in hovered: continue
+            bx,by,bw,bh=rect
+            gl.glBegin(gl.GL_LINE_LOOP)
+            for px,py in ((bx+2,by+2),(bx+bw-2,by+2),(bx+bw-2,by+bh-2),(bx+2,by+bh-2)):
+                gl.glVertex3fv(panel.world(px,py)+panel.rotation[:,2]*.006)
+            gl.glEnd()
         # Animate confirmation directly in GL; do not repaint/upload the
         # entire periodic-table texture on each progress step.
         gl.glColor3f(*(np.array(ACCENT)/255))
@@ -311,18 +335,21 @@ class CameraChemistryView:
                 gl.glVertex3fv(panel.world(px,py)+panel.rotation[:,2]*.003)
             gl.glEnd()
         # Cursor is display-aligned; no claim of physical finger contact depth.
+        gl.glEnable(gl.GL_DEPTH_TEST)
         generations={hand.slot:hand.generation for hand in snapshot.hands} if fresh else {}
         targets={(key,generations[key]):self.space.point(nx,ny,.6)
                  for key,(nx,ny) in self.input.pointers.items() if key in generations}
         alpha=1-math.exp(-math.tau*self.settings['chemistry_cursor_response_hz']*max(0,dt))
-        self.cursor_points={key:(p if key[0] in self.input.tap.states and self.input.tap.states[key[0]].phase in ('press','latched')
+        self.cursor_points={key:(p if key[0] in self.input.tap.states and self.input.tap.states[key[0]].locked
             else self.cursor_points.get(key,p)+(p-self.cursor_points.get(key,p))*alpha) for key,p in targets.items()}
         gl.glDisable(gl.GL_LIGHTING); gl.glLineWidth(2)
         for (key,generation),p in self.cursor_points.items():
             tap=self.input.tap.states.get(key)
-            pressed=key in self.input.claims or (tap and tap.phase in ('press','latched'))
+            pressed=key in self.input.claims or (tap and tap.phase in ('armed','press','latched'))
             gl.glColor3f(*(np.array(GOLD if pressed else ACCENT)/255))
             state=self.input.dwell.states.get(key); progress=state.progress if state else 0.
+            if tap and tap.phase=='press':
+                progress=max(progress,float(np.clip((tap.depth-tap.baseline)/self.settings['chemistry_push_travel_ratio'],0,1)))
             gl.glBegin(gl.GL_LINE_LOOP)
             for i in range(48):
                 t=math.tau*i/48; gl.glVertex3fv(p+np.array((math.cos(t),math.sin(t),0))*.075)

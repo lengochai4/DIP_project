@@ -230,6 +230,12 @@ class ChemistryScene:
         self.bonds={pair:n for pair,n in self.bonds.items() if not any(i in ids for i in pair)}
         self.selected=None; self.revision+=1; self.message='Đã xóa đối tượng đang chọn'
 
+    def clear_all(self):
+        if not self.atoms: return
+        self.finish_edit(); self.remember()
+        self.atoms.clear(); self.bonds.clear(); self.selected=None
+        self.revision+=1; self.message='Đã xóa tất cả • Hoàn tác để khôi phục'
+
     def advance(self,dt):
         if not math.isfinite(dt) or dt<=0: return
         for atom in self.atoms.values():

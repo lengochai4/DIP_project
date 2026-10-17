@@ -560,9 +560,6 @@ class SubmissionRenderer:
             pygame.draw.polygon(overlay,MUTED,((539,sy+15),(547,sy+15),(543,sy+20)))
             label={'uniform':'Hai tay: đổi cỡ','stretch':'Hai tay: kéo dãn','distance':'Một tay: đổi cỡ','depth':'Một tay: tiến/lùi'}[self.grab.scale_mode]
             self._button(overlay,label,(566,sy,152,36),'scale_mode',self.grab.scale_mode!='uniform')
-        elif self.mode=='chemistry':
-            self._button(overlay,'Thu / mở bảng',(424,sy,140,36),'toggle_panel')
-            self._button(overlay,'Đặt lại bảng',(574,sy,124,36),'panel_reset')
         self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại góc nhìn',(w-168,sy,148,36),'reset')
         # Scene frame is only an outline, leaving the camera unobstructed.
         pygame.draw.rect(overlay,(53,105,124,190),view,1,border_radius=18)

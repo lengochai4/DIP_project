@@ -1,8 +1,60 @@
 # 05 — Project Status and Roadmap
 
-## Post-defense chemistry refinement — 2026-10-17
+## Current chemistry follow-up — 2026-10-17
 
-Current authorized task: chemistry first, on `feat/chemistry-spatial-ui` from
+Change: replaced the rejected 2D bend prototype with relative index push,
+bounded cursor capture and palm-relative direction/pose/noise checks. Kept
+1-second dwell, with a stability radius. Collapsed panels now dock as an inward
+arrow on the frame edge; header dragging to/beyond an edge docks without needing
+the fingertip to leave the camera. The arrow restores the prior page/pose/scale.
+Removed duplicate toolbar toggle/reset; reset is in the spatial panel. Added
+undoable clear-all. Hover feedback now draws as GPU geometry instead of
+rasterizing/uploading the text panel on each target change.
+
+Reason: user feedback rejected unreliable bend selection and duplicate toolbar
+controls. The latest retained local UI session recorded chemistry aim/press
+states but no completed quick selection. This is diagnostic evidence of that
+prototype's limitation, not a before/after tracking-accuracy benchmark.
+
+Canonical files/sections changed: 01 submission scope; 02 presentation input,
+docking/history and schema; this current task record.
+
+Code/modules affected: submission chemistry controls/input/view/scene/settings,
+dwell and toolbar; presentation metadata; corresponding submission tests.
+Algorithmic impact: presentation-only recognition/feedback; no MediaPipe model,
+provider thresholds, Core filters, gesture baseline or molecular grab threshold
+changes. Source coordinates supply push features; camera cover remains display
+geometry. Pointer lock ends after confirmation feedback or cancellation, rather
+than waiting indefinitely for a particular projected finger angle.
+
+Experimental impact: none. Compatibility impact: presentation schema 8 records
+the replacement policy and docking state; schema 7 sessions remain historical.
+Existing results invalidated: no; Core/replay/config/analysis and report evidence
+are unchanged. Physics remains deferred. The accepted main/submission tag is
+not part of this development branch update.
+
+Tests added/updated: push/retract, no repeated click, cursor unlock, cancellation,
+sideways shake, pure 2D bending, rigid wrist rotation/translation, one-frame z
+spike, all-edge docking/restore, inside-camera panel throw, corner-resize
+isolation, clear-all undo/redo and native toolbar/arrow regressions. Executed:
+711 full-project tests passed on Python 3.12.14 and Python 3.11.9. Native GL QA
+rendered 529 frames across 960x660, 1360x860, 1920x1080 and 1080x1000 windows,
+including one/two-hand molecular hold/release, anchored push selection, automatic
+edge docking, touchless dwell restore, clear-all/undo and repeated fullscreen.
+All four contexts reported zero GL error; each 30-frame panel translation
+sequence made zero panel texture uploads. Button-hover reuse has a regression
+test. Representative screenshots were inspected. Local scripts/results/images
+remain ignored under `runs/chemistry-spatial-qa/`; no camera was opened for this
+QA. `git diff --check` passed.
+
+The push is a conservative RGB landmark heuristic. It can still miss or confuse
+motion under occlusion/noise and is not equivalent to physical contact sensing.
+No new physical-hand latency/accuracy evaluation or optimum threshold claim is
+made. Dwell remains available without another model or inference pass.
+
+## Initial chemistry iteration (superseded UI policy) — 2026-10-17
+
+Initial authorized task: chemistry first, on `feat/chemistry-spatial-ui` from
 the accepted `main` commit `82359a1`. The submission tag/main remain unchanged.
 Physics-tab work is explicitly deferred.
 

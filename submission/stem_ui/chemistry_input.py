@@ -6,7 +6,7 @@ import numpy as np
 from .camera_space import sphere_hit
 from .manipulation import GrabController, PinchGate
 from .dwell import DwellSelector
-from .chemistry_controls import IndexTap,PanelLayout
+from .chemistry_controls import IndexPush,PanelLayout
 
 
 @dataclass
@@ -25,15 +25,16 @@ class ChemistryInput:
         self.gates={}; self.claims={}; self.groups={}; self.hover={}; self.pointers={}
         self.page='home'; self.panel=None
         self.expanded_page='home'
-        self.layout=PanelLayout(settings); self.tap=IndexTap(settings)
+        self.layout=PanelLayout(settings); self.tap=IndexPush(settings)
         self.panel_base=None; self.panel_target=None
+        self.dock_pending=None
         self.previous_time=None
         self.template_page=0
         self.grab_settings={**settings,'grip_press_ratio':settings['chemistry_grip_press_ratio'],
             'grip_release_ratio':settings['chemistry_grip_release_ratio'],
             'grip_press_s':settings['chemistry_grip_press_s'],'grip_release_s':settings['chemistry_grip_release_s'],
             'grip_loss_grace_s':settings['chemistry_grip_loss_grace_s']}
-        self.dwell=DwellSelector(settings['chemistry_dwell_s'],settings['chemistry_dwell_max_gap_s'],settings['chemistry_dwell_rearm_distance'])
+        self.dwell=DwellSelector(settings['chemistry_dwell_s'],settings['chemistry_dwell_max_gap_s'],settings['chemistry_dwell_rearm_distance'],settings['chemistry_dwell_motion_radius'])
         self.path=Path(__file__).resolve().parents[2]/'runs/ui-chemistry/workspace.json'
 
     def release(self):
@@ -43,6 +44,7 @@ class ChemistryInput:
         self.dwell.reset()
         self.tap.reset(); self.panel_base=None; self.panel_target=None
         self.previous_time=None
+        self.dock_pending=None
 
     def diagnostics(self):
         """Actual UI state for local logs, never tracking confidence."""
@@ -50,7 +52,8 @@ class ChemistryInput:
             'claims':{str(key):{'generation':c.generation,'kind':c.kind,'target':c.target,'paused':c.paused} for key,c in self.claims.items()},
             'groups':{str(key):{'held_slots':list(v['controller'].slots),'suspended':v['controller'].suspended} for key,v in self.groups.items()},
             'hover':self.hover.copy(),
-            'panel_layout':{'anchor':self.layout.anchor.tolist(),'scale':float(self.layout.scale)},
+            'panel_layout':{'anchor':self.layout.anchor.tolist(),'scale':float(self.layout.scale),
+                            'edge':self.layout.edge,'edge_position':self.layout.edge_position},
             'tap':{str(key):{'phase':state.phase,'target':state.target,'generation':state.generation}
                    for key,state in self.tap.states.items()},
             'dwell':{str(key):{'target':state.target,'progress':state.progress,'latched':state.latched,'generation':state.generation} for key,state in self.dwell.states.items()}}
@@ -58,6 +61,7 @@ class ChemistryInput:
     def hit(self,space,nx,ny):
         origin,direction=space.ray(nx,ny)
         panel=self.panel.intersect(origin,direction) if self.panel is not None else None
+        if panel and self.page=='compact': return panel[1]
         choices=[]
         if panel: choices.append((panel[0],panel[1]))
         for i,atom in self.scene.atoms.items():
@@ -85,7 +89,12 @@ class ChemistryInput:
         if action in ('home','elements','table','templates','compact'):
             for key in list(self.claims):
                 if self.claims[key].kind.startswith('panel_'): self.end(key)
-            if action=='compact' and self.page!='compact': self.expanded_page=self.page
+            if action=='compact' and self.page!='compact':
+                self.expanded_page=self.page
+                center=self.layout.anchor+self.layout.extent/2
+                distances=(center[0],1-center[0],center[1],1-center[1])
+                edge=('left','right','top','bottom')[int(np.argmin(distances))]
+                self.layout.dock(edge,center[1] if edge in ('left','right') else center[0])
             self.page=action; return
         if action in ('templates_prev','templates_next'):
             count=(len(self.settings['chemistry_templates'])+7)//8
@@ -102,6 +111,7 @@ class ChemistryInput:
         elif action=='undo': scene.undo()
         elif action=='redo': scene.undo(redo=True)
         elif action=='delete': scene.delete_selected()
+        elif action=='clear_all': scene.clear_all()
         elif action=='frame':
             if scene.atoms:
                 scene.remember()
@@ -194,7 +204,7 @@ class ChemistryInput:
                 if group: self.scene.freeze(group['ids'])
         if not any(c.kind in ('atom','group') for c in self.claims.values()): self.scene.finish_edit()
 
-    def update(self,hands,t,space):
+    def update(self,hands,t,space,gesture_hands=None,source_aspect=None):
         if self.previous_time is not None and (not math.isfinite(t) or t<=self.previous_time or
             t-self.previous_time>self.settings['chemistry_dwell_max_gap_s']):
             for key in list(self.claims):
@@ -210,6 +220,7 @@ class ChemistryInput:
         self.tap.retain(available)
         self.hover={}; self.pointers={k:p for k,p in self.pointers.items() if k=='mouse' and k in self.claims}
         tapped={}
+        gesture_hands=available if gesture_hands is None else {h.slot:h for h in gesture_hands}
         for key,hand in sorted(available.items()):
             tip=hand.landmarks[8]; nx=1-tip.x if self.settings['mirror'] else tip.x; ny=tip.y
             action=self.hit(space,nx,ny)
@@ -219,7 +230,8 @@ class ChemistryInput:
             if tap_state and tap_state.target[0]!=self.page and tap_state.phase not in ('latched','cancelled'):
                 self.tap.states.pop(key,None); tap_state=None
             blocked=bool(self.claims) or bool(state and state.latched and not (tap_state and tap_state.phase=='latched'))
-            (nx,ny),chosen=self.tap.update(key,hand,candidate,t,(nx,ny),space.aspect,blocked)
+            observed=gesture_hands.get(key,hand)
+            (nx,ny),chosen=self.tap.update(key,observed,candidate,t,(nx,ny),source_aspect or space.aspect,blocked)
             if chosen is not None: tapped[key]=chosen
             self.pointers[key]=(nx,ny)
             self.hover[key]=self.hit(space,nx,ny)
@@ -265,6 +277,7 @@ class ChemistryInput:
             if hand is not None:
                 action=self.hover.get(key); nx,ny=self.pointers[key]
                 candidate=(self.page,action) if action and not action.startswith(('atom:','panel:')) and key not in self.claims else None
+                if self.page=='compact' and held: candidate=None
                 if any(c.kind.startswith('panel_') for c in self.claims.values()): candidate=None
                 tap=self.tap.states.get(key)
                 if tap and tap.phase=='cancelled':
@@ -283,7 +296,7 @@ class ChemistryInput:
                 if chosen is not None:
                     self.press('dwell:'+str(key),hand.generation,chosen[1],space,nx,ny,t)
                     self.end('dwell:'+str(key))
-        self._panel_motion(space)
+        self._panel_motion(space,t)
         for group,value in self.groups.items():
             selected=[available[k] for k,c in self.claims.items() if c.kind=='group' and c.target==group and k in available]
             controller=value['controller']
@@ -329,9 +342,11 @@ class ChemistryInput:
                 displacement=space.point(nx,ny,c.depth)+c.offset-value['mouse_anchor']
                 value['controller'].pose.position=displacement
 
-    def _panel_motion(self,space):
+    def _panel_motion(self,space,t=None):
         keys=tuple(k for k,c in self.claims.items() if c.kind.startswith('panel_') and k in self.pointers)
-        if not keys: self.panel_base=None; self.panel_target=None; return
+        if not keys:
+            self.panel_base=None; self.panel_target=None; self.dock_pending=None
+            return
         points=np.array([self.pointers[k] for k in keys]); center=points.mean(axis=0)
         metric=points/np.array((1.,space.aspect))
         span=float(np.linalg.norm(metric[0]-metric[1])) if len(keys)==2 else None
@@ -350,6 +365,24 @@ class ChemistryInput:
         else: anchor+=center-base['center']
         scale=float(np.clip(scale,self.settings['chemistry_panel_min_scale'],self.settings['chemistry_panel_max_scale']))
         self.panel_target=(anchor,scale)
+        if all(self.claims[k].kind=='panel_move' for k in keys) and self.page!='compact':
+            distances=(center[0],1-center[0],center[1],1-center[1])
+            index=int(np.argmin(distances)); distance=distances[index]
+            borders=(anchor[0],1-anchor[0]-self.layout.extent[0],
+                     anchor[1],1-anchor[1]-self.layout.extent[1])
+            beyond=int(np.argmin(borders))
+            if borders[beyond]<=-self.settings['chemistry_panel_throw_edge']:
+                index=beyond; distance=borders[beyond]
+            edge=('left','right','top','bottom')[index]
+            if distance<=self.settings['chemistry_panel_dock_edge']:
+                if self.dock_pending is None or self.dock_pending[0]!=edge:
+                    self.dock_pending=(edge,t)
+                since=self.dock_pending[1]
+                if (distance<=-self.settings['chemistry_panel_throw_edge'] or
+                    (t is not None and since is not None and t-since>=self.settings['chemistry_panel_dock_s'])):
+                    self.command('compact')
+                    self.layout.dock(edge,center[1] if edge in ('left','right') else center[0])
+            else: self.dock_pending=None
 
     def wheel(self,amount,nx,ny,space):
         if self.claims or not self.hit(space,nx,ny) or self.hit(space,nx,ny).startswith('atom:'): return False

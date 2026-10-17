@@ -173,9 +173,9 @@ class CaptureWorker:
                 revision=None
                 dirty=None
             (folder/'metadata.json').write_text(json.dumps({'kind':'submission_presentation_only',
-                'presentation_schema':'7',
+                'presentation_schema':'8',
                 'chemistry_viewport':'center_crop_cover',
-                'chemistry_quick_select':'stable_index_bend_shared_dwell_latch',
+                'chemistry_quick_select':'relative_index_push_shared_dwell_latch',
                 'discrete_gesture_basis':'validated_raw_landmarks',
                 'fingertip_geometry':'observed_vertices_only',
                 'chemistry_data_sha256':hashlib.sha256((Path(__file__).with_name('data')/'pubchem-periodic-table.json').read_bytes()).hexdigest(),
