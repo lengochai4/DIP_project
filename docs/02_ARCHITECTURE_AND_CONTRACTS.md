@@ -300,7 +300,33 @@ atoms, moving objects or changing bond topology must not repaint an unchanged
 panel. Selection/page/control changes update immediately. Scientific graph
 labels remain owned by the scene/overlay, independently of the panel texture.
 
-#### Chemistry drag continuity — authorized 2026-10-17
+#### Chemistry grab review — authorized 2026-10-17
+
+This review supersedes the captured-palm anchor and higher response rates
+below. Restore observed filtered pinch-midpoint translation for components
+and panel handles, and index-tip translation for atomic editing, matching
+the original main interaction anchors. Do not rewrite contact landmarks to
+follow the palm. The rendered cursor remains at the observed index during
+capture. Restore main component display-following rates; panel following
+uses its own configurable rate. Core/source observations remain immutable.
+
+The user's schema-9 session contains repeated visible-hand pauses near the
+0.45 release threshold, alongside actual missing/changed hand observations.
+Keep tight initial acquisition, but widen chemistry's configurable held-grip
+hysteresis to 0.60. This tolerates small separation after acquisition, not
+proof of physical contact. Opening confirmation, generation/loss cancellation
+and immediate motion freeze during confirmed-opening pending remain intact.
+
+A recently aimed panel header/corner may be acquired while pinching just off
+the handle within configurable time and aspect-correct screen-distance limits.
+Identity/page change, expiry and distance invalidate it; an actual button or
+atom target must never be stolen by the retained aim. This is capture intent,
+not a new click gesture. Push policy is deferred and unchanged. Presentation
+schema 10 records the policy and raw gate held/pending/suspended diagnostics.
+Keep the prior short-loss pause/rebase, immediate released-hand removal,
+captured hit-test reuse and deferred resize rasterization fixes.
+
+#### Earlier chemistry drag continuity — superseded anchoring, 2026-10-17
 
 The user deferred quick selection and prioritized continuous panel/atom drags.
 No IndexPush policy or Core/provider/filter/other-tab behavior changes here.

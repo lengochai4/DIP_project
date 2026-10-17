@@ -1,5 +1,5 @@
 """Target claims and explicit editing actions for the camera chemistry scene."""
-from dataclasses import dataclass,replace
+from dataclasses import dataclass
 from pathlib import Path
 import math
 import numpy as np
@@ -17,7 +17,6 @@ class Claim:
     offset: np.ndarray | None = None
     depth: float = 0.
     paused: bool = False
-    grip_offset: np.ndarray | None = None
 
 
 class ChemistryInput:
@@ -25,6 +24,7 @@ class ChemistryInput:
         self.scene=scene; self.settings=settings
         self.gates={}; self.claims={}; self.groups={}; self.hover={}; self.pointers={}
         self.grip_points={}
+        self.handle_aim={}
         self.page='home'; self.panel=None
         self.expanded_page='home'
         self.layout=PanelLayout(settings); self.tap=IndexPush(settings)
@@ -47,6 +47,7 @@ class ChemistryInput:
         self.scene.finish_edit()
         self.gates.clear(); self.claims.clear(); self.groups.clear(); self.hover.clear(); self.pointers.clear()
         self.grip_points.clear()
+        self.handle_aim.clear()
         self.dwell.reset()
         self.tap.reset(); self.panel_base=None; self.panel_target=None
         self.previous_time=None
@@ -58,6 +59,10 @@ class ChemistryInput:
             'claims':{str(key):{'generation':c.generation,'kind':c.kind,'target':c.target,'paused':c.paused} for key,c in self.claims.items()},
             'groups':{str(key):{'held_slots':list(v['controller'].slots),'suspended':v['controller'].suspended} for key,v in self.groups.items()},
             'hover':self.hover.copy(),
+            'grips':{str(key):{'held':bool(gate.slots),'suspended':gate.suspended,
+                'ratio':next(iter(gate.grips.values())).ratio if gate.grips else None,
+                'pending':any(g.pending_since is not None for g in gate.grips.values())}
+                for key,gate in self.gates.items()},
             'panel_layout':{'anchor':self.layout.anchor.tolist(),'scale':float(self.layout.scale),
                             'edge':self.layout.edge,'edge_position':self.layout.edge_position},
             'tap':{str(key):{'phase':state.phase,'target':state.target,'generation':state.generation}
@@ -144,17 +149,13 @@ class ChemistryInput:
     def press(self,key,generation,action,space,nx,ny,timestamp_s,hand=None):
         if key in self.claims: return
         scene=self.scene
-        grip_offset=None
-        if hand is not None and (action in ('panel:drag','panel:resize') or (action and action.startswith('atom:'))):
-            nx,ny=self._pinch_point(hand)
-            grip_offset=np.array((nx,ny))-self._palm_point(hand)
-            self.grip_points[key]=(nx,ny)
         panel_claims=[c for c in self.claims.values() if c.kind.startswith('panel_')]
         if action in ('panel:drag','panel:resize'):
             if any(c.kind in ('atom','group') for c in self.claims.values()): return
             if key=='mouse' and panel_claims: return
             if any(k=='mouse' for k,c in self.claims.items() if c.kind.startswith('panel_')): return
-            self.claims[key]=Claim(generation,'panel_move' if action=='panel:drag' else 'panel_resize',action,grip_offset=grip_offset)
+            if hand is not None: self.grip_points[key]=self._pinch_point(hand)
+            self.claims[key]=Claim(generation,'panel_move' if action=='panel:drag' else 'panel_resize',action)
             self.pointers[key]=(nx,ny); self.panel_base=None; self.panel_target=None
             return
         if panel_claims: return
@@ -176,7 +177,7 @@ class ChemistryInput:
             if edit:
                 if any(c.kind=='atom' and c.target==i for c in self.claims.values()): return
                 pointer=space.point(nx,ny,atom.position[2])
-                self.claims[key]=Claim(generation,'atom',i,atom.position-pointer,float(atom.position[2]),grip_offset=grip_offset)
+                self.claims[key]=Claim(generation,'atom',i,atom.position-pointer,float(atom.position[2]))
             else:
                 ids=scene.component(i); group=min(ids)
                 if any(c.kind=='atom' and c.target in ids for c in self.claims.values()): return
@@ -191,7 +192,7 @@ class ChemistryInput:
                     self.groups[group]={'controller':controller,'ids':ids,'center':center,
                         'points':{j:scene.atoms[j].position.copy() for j in ids},'scales':scales}
                 if hand is None: self.groups[group]['mouse_anchor']=atom.position.copy()
-                self.claims[key]=Claim(generation,'group',group,atom.position-space.point(nx,ny,atom.position[2]),float(atom.position[2]),grip_offset=grip_offset)
+                self.claims[key]=Claim(generation,'group',group,atom.position-space.point(nx,ny,atom.position[2]),float(atom.position[2]))
                 if hand is not None: self.groups[group]['controller'].adopt_confirmed_grip(hand,timestamp_s,space.aspect)
             scene.message='Đang kéo nguyên tử để ghép/tách' if edit else 'Đang cầm phân tử'
         else:
@@ -201,6 +202,7 @@ class ChemistryInput:
     def end(self,key,deliberate=False):
         claim=self.claims.pop(key,None)
         self.grip_points.pop(key,None)
+        self.handle_aim.pop(key,None)
         if claim is None: return
         if claim.kind.startswith('panel_'):
             self.panel_base=None; self.panel_target=None
@@ -237,6 +239,9 @@ class ChemistryInput:
         self.tap.retain(available)
         self.hover={}; self.pointers={k:p for k,p in self.pointers.items() if k=='mouse' and k in self.claims}
         self.grip_points={k:p for k,p in self.grip_points.items() if k in available}
+        self.handle_aim={k:a for k,a in self.handle_aim.items() if k in available and
+            a[0]==available[k].generation and a[1]==self.page and
+            0<=t-a[3]<=self.settings['chemistry_panel_aim_grace_s']}
         tapped={}
         gesture_hands=available if gesture_hands is None else {h.slot:h for h in gesture_hands}
         for key,hand in sorted(available.items()):
@@ -256,6 +261,8 @@ class ChemistryInput:
             if chosen is not None: tapped[key]=chosen
             self.pointers[key]=(nx,ny)
             self.hover[key]=action if captured or (nx,ny)==original else self.hit(space,nx,ny)
+            if not captured and self.hover[key] in ('panel:drag','panel:resize'):
+                self.handle_aim[key]=(hand.generation,self.page,self.hover[key],t,original)
         for key in sorted(set(self.gates)|set(available)):
             hand=available.get(key)
             gate=self.gates.get(key)
@@ -270,6 +277,14 @@ class ChemistryInput:
             if held and key not in self.claims and hand is not None and not gate.suspended:
                 nx,ny=self.pointers[key]
                 action=self.hover[key]
+                # Closing the pinch moves the index off a narrow handle. Retain
+                # a recently aimed handle within a bounded screen-space radius;
+                # never steal another button or an atom under the current tip.
+                aimed=self.handle_aim.get(key)
+                if action in (None,'panel:blank') and aimed is not None:
+                    distance=np.linalg.norm((np.array((nx,ny))-aimed[4])/np.array((1.,space.aspect)))
+                    if distance<=self.settings['chemistry_panel_aim_radius']:
+                        action=aimed[2]
                 if action in ('panel:drag','panel:resize') or (action and action.startswith('atom:')):
                     self.press(key,hand.generation,action,space,nx,ny,t,hand)
                 elif action is None and not self.scene.edit and len(self.groups)==1:
@@ -288,17 +303,15 @@ class ChemistryInput:
                         self.panel_base=None; self.panel_target=None; self.dock_pending=None
                 else:
                     if claim.paused:
-                        claim.grip_offset=np.array(self._pinch_point(hand))-self._palm_point(hand)
                         if claim.kind.startswith('panel_'):
                             self.panel_base=None; self.panel_target=None
                         elif claim.kind=='atom' and claim.target in self.scene.atoms:
                             atom=self.scene.atoms[claim.target]; claim.depth=float(atom.position[2])
-                            nx,ny=self._pinch_point(hand)
+                            nx,ny=self.pointers[key]
                             claim.offset=atom.position-space.point(nx,ny,claim.depth)
                     claim.paused=False
-                    if claim.grip_offset is not None:
-                        point=tuple(self._palm_point(hand)+claim.grip_offset)
-                        self.grip_points[key]=point; self.pointers[key]=point
+                    if claim.kind.startswith('panel_'):
+                        self.grip_points[key]=self._pinch_point(hand)
             if claim and claim.kind=='atom' and claim.target in self.scene.atoms:
                 if hand is None or gate.suspended:
                     self.scene.freeze((claim.target,))
@@ -330,7 +343,7 @@ class ChemistryInput:
                     self.end('dwell:'+str(key))
         self._panel_motion(space,t)
         for group,value in self.groups.items():
-            selected=[self._motion_hand(available[k],c) for k,c in self.claims.items()
+            selected=[available[k] for k,c in self.claims.items()
                       if c.kind=='group' and c.target==group and k in available]
             controller=value['controller']
             controller.update(selected,t,space.aspect)
@@ -425,25 +438,7 @@ class ChemistryInput:
         self.panel_target=None
         return True
 
-    def _palm_point(self,hand):
-        points=hand.landmarks
-        x=np.mean([points[i].x for i in (0,5,9,13,17)])
-        y=np.mean([points[i].y for i in (0,5,9,13,17)])
-        return np.array((1-x if self.settings['mirror'] else x,y))
-
     def _pinch_point(self,hand):
         a,b=hand.landmarks[4],hand.landmarks[8]
         x=(a.x+b.x)/2
         return (1-x if self.settings['mirror'] else x,(a.y+b.y)/2)
-
-    def _motion_hand(self,hand,claim):
-        """Only the chemistry grip anchor is stabilized; raw pinch stays raw."""
-        if claim.grip_offset is None or claim.paused: return hand
-        nx,ny=self._palm_point(hand)+claim.grip_offset
-        x=1-nx if self.settings['mirror'] else nx
-        a,b=hand.landmarks[4],hand.landmarks[8]
-        dx=x-(a.x+b.x)/2; dy=ny-(a.y+b.y)/2
-        points=list(hand.landmarks)
-        for i in (4,8): points[i]=replace(points[i],x=points[i].x+dx,y=points[i].y+dy)
-        # Preserve original raw observations even for fixture/fallback hands.
-        return replace(hand,landmarks=tuple(points),raw_landmarks=hand.raw_landmarks or hand.landmarks)

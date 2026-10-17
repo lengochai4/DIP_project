@@ -119,7 +119,7 @@ class IndexPush:
         # wrist turn must not masquerade as an independent index push.
         depth=float(np.dot(p[8]-palm,normal)/size)
         lateral=(p[8,:2]-p[5,:2])/size
-        if pinch_ratio(hand,aspect)<cfg['chemistry_grip_release_ratio']:
+        if pinch_ratio(hand,aspect)<cfg['chemistry_push_pinch_cancel_ratio']:
             self.states.pop(key,None); return point,None
         pointing=angle>=cfg['chemistry_push_point_deg']
         if old is None:

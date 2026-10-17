@@ -37,7 +37,7 @@ Thư viện **Mẫu phân tử 3D** có 32 mẫu, chia 4 trang; dùng **Trang tr
 công thức C₂H₆O. Vị trí là hình học minh họa; không tính phản ứng/năng lượng.
 Panel AR tái sử dụng texture khi chỉ di chuyển/trỏ qua nguyên tử; thông tin
 nguyên tố, trang và các điều khiển đổi thì cập nhật ngay. Nhận pinch dùng gate
-nhẹ riêng; các ngưỡng chụm/nhả và thời gian xác nhận không đổi.
+nhẹ riêng; hóa học cấu hình riêng ngưỡng chụm/nhả và thời gian xác nhận.
 
 ### Hóa học AR — panel và vật thể trực tiếp trên hình camera
 
@@ -90,9 +90,14 @@ hoặc trên/dưới. Con trỏ dùng cùng phép cắt để khớp ảnh; khô
    không cần bắt lại một nguyên tử nhỏ. Trong
    Ghép/tách, hai tay có thể kéo hai nguyên tử khác nhau độc lập.
 
-Khi đang cầm, điểm neo giữ độ lệch cái–trỏ/lòng bàn tay tại lúc bắt đầu và theo
-chuyển động lòng bàn tay, giúp dao động hai đầu ngón không kéo giật vật thể.
-Trỏ chọn thông thường vẫn theo đầu ngón trỏ. Mất dấu ngắn: bảng/vật thể đứng
+Khi đang cầm, điểm kéo dùng các đầu ngón đã lọc như bản main: cầm khối/bảng
+theo trung điểm cái–trỏ; ghép/tách theo đầu trỏ. Không thay tọa độ đầu ngón bằng
+một điểm neo giả theo lòng bàn tay. Con trỏ vẫn theo đầu trỏ cả khi bắt đầu kéo.
+Tiêu đề/góc vừa trỏ được nhớ tối đa 0,22 giây trong bán kính giới hạn để động tác
+khép ngón không làm hụt mục tiêu; không chiếm nút hay nguyên tử đang trỏ khác.
+Chụm đủ sát mới bắt đầu giữ; sau khi bắt thành công, khoảng chụm/nhả rộng hơn
+giúp dao động nhẹ không ngắt liên tục. Đây vẫn là ngưỡng ảnh, không đo tiếp xúc.
+Mất dấu ngắn: bảng/vật thể đứng
 yên, giữ lượt cầm và đặt lại mốc khi nhận được tay; mất quá thời gian cho phép
 hoặc đổi danh tính tay sẽ hủy. Mở ngón dừng chuyển động ngay trong lúc xác nhận
 buông. Chuyển hai tay về một tay không cần chờ thêm thời gian mất dấu.

@@ -131,7 +131,7 @@ def test_panel_controls_are_exclusive_from_atom_claims_and_preserve_history():
     c.press('mouse',0,'panel:drag',space,.2,.2,1.)
     c.press(0,0,'atom:'+str(atom),space,.7,.5,1.)
     assert set(c.claims)=={'mouse'}
-    c._panel_motion(space); c.mouse('move',.4,.3,space); c.advance(.1)
+    c._panel_motion(space); c.mouse('move',.4,.3,space); c.advance(.2)
     assert c.layout.anchor==pytest.approx((.235,.145),abs=.001)
     c.mouse('up',.4,.3,space)
     assert c.panel_target is None and scene.state()==before

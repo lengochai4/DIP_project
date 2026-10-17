@@ -1,4 +1,4 @@
-"""Continuous chemistry ownership, grip anchors, and resize hot paths."""
+"""Continuous chemistry ownership, observed contact motion, and resize hot paths."""
 from dataclasses import replace
 from types import SimpleNamespace
 import numpy as np
@@ -10,6 +10,7 @@ from submission.stem_ui.camera_space import CameraSpace,SpatialPanel
 from submission.stem_ui.chemistry import ChemistryScene
 from submission.stem_ui.chemistry_input import ChemistryInput
 from submission.stem_ui.chemistry_view import CameraChemistryView
+from submission.stem_ui.manipulation import GrabController
 
 
 def panel_input():
@@ -80,23 +81,113 @@ def test_two_hand_panel_loss_freezes_all_and_rebases_returning_span():
 
 
 @pytest.mark.parametrize('edit',(False,True))
-def test_fingertip_contact_noise_does_not_move_held_atom_or_break_links(edit):
+def test_observed_contact_can_move_object_without_moving_palm(edit):
     scene=ChemistryScene(SETTINGS); scene.add_template('H2O'); scene.edit=edit
     c=ChemistryInput(scene,SETTINGS); space=CameraSpace(4/3)
     nx,ny=space.project(scene.atoms[scene.selected].position)
     h=with_ratio(aim(nx,ny),.1)
     c.update([h],1.,space); c.update([h],1.05,space); c.advance(.02)
     before={i:a.position.copy() for i,a in scene.atoms.items()}; bonds=dict(scene.bonds)
-    for step in range(20):
-        noisy=with_ratio(h,.4 if step%2 else .1)
-        p=list(noisy.landmarks)
-        for i in (4,8): p[i]=replace(p[i],x=p[i].x+(.009 if step%2 else -.009))
-        noisy=replace(noisy,landmarks=tuple(p),raw_landmarks=tuple(p))
-        c.update([noisy],1.1+step/30,space); c.advance(1/30)
+    # A real contact movement must not be discarded by an artificial palm anchor.
+    p=list(h.landmarks)
+    for i in (4,8): p[i]=replace(p[i],x=p[i].x-.02)
+    moved=replace(h,landmarks=tuple(p),raw_landmarks=tuple(p))
+    for step in range(5):
+        c.update([moved],1.1+step/30,space); c.advance(1/30)
     assert scene.bonds==bonds and 0 in c.claims
-    for i,p in before.items(): np.testing.assert_allclose(scene.atoms[i].position,p,atol=1e-10)
-    c.update([with_ratio(aim(nx+.08,ny),.1)],1.8,space); c.advance(.1)
-    assert scene.atoms[scene.selected].position[0]>before[scene.selected][0]+.3
+    assert scene.atoms[scene.selected].position[0]>before[scene.selected][0]+.08
+    assert moved.landmarks==tuple(p)
+
+
+@pytest.mark.parametrize('kind',('panel','group','atom'))
+def test_small_recorded_threshold_crossings_do_not_interrupt_confirmed_hold(kind):
+    # Values observed in schema-9 user logs; they are NOT ground-truth gestures.
+    ratios=(.4559,.5139,.4785,.4731,.4671,.4970,.4616,.5228,.5997,.5679)
+    if kind=='panel':
+        c,space,(nx,ny)=panel_input()
+    else:
+        scene=ChemistryScene(SETTINGS); i=scene.add('C',(.6,0,0)); scene.edit=kind=='atom'
+        c=ChemistryInput(scene,SETTINGS); space=CameraSpace(4/3)
+        nx,ny=space.project(scene.atoms[i].position)
+    h=with_ratio(aim(nx,ny),.1)
+    c.update([h],1.,space); c.update([h],1.05,space)
+    for i,ratio in enumerate(ratios):
+        c.update([with_ratio(aim(nx+.001*i,ny),ratio)],1.1+i*.05,space)
+        assert 0 in c.claims and not c.claims[0].paused and not c.gates[0].suspended
+        assert all(not g['controller'].suspended for g in c.groups.values())
+    # This tolerance does not acquire a new grip at the same partial opening.
+    c.release()
+    for t in (2.,2.1): c.update([with_ratio(aim(nx,ny),.52)],t,space)
+    assert not c.claims
+
+
+def test_panel_cursor_stays_on_observed_index_during_capture():
+    c,space,(nx,ny)=panel_input()
+    h=with_ratio(aim(nx,ny),.2)
+    c.update([h],1.,space); c.update([h],1.05,space)
+    assert c.pointers[0]==pytest.approx((nx,ny))
+    assert c.grip_points[0]!=pytest.approx((nx,ny))
+
+
+@pytest.mark.parametrize('kind',('panel','group','atom'))
+def test_clear_opening_freezes_immediately_and_releases_without_post_drop_drift(kind):
+    if kind=='panel':
+        c,space,(nx,ny)=panel_input()
+        position=lambda:c.layout.anchor.copy()
+    else:
+        scene=ChemistryScene(SETTINGS); i=scene.add('C',(.6,0,0)); scene.edit=kind=='atom'
+        c=ChemistryInput(scene,SETTINGS); space=CameraSpace(4/3)
+        nx,ny=space.project(scene.atoms[i].position)
+        position=lambda:scene.atoms[i].position.copy()
+    h=with_ratio(aim(nx,ny),.1)
+    c.update([h],1.,space); c.update([h],1.05,space)
+    c.update([with_ratio(aim(nx+.02,ny),.1)],1.1,space); c.advance(.01)
+    frozen=position()
+    opened=with_ratio(aim(nx+.08,ny),.65)
+    c.update([opened],1.15,space); c.advance(.2)
+    assert c.claims[0].paused
+    np.testing.assert_allclose(position(),frozen)
+    c.update([opened],1.22,space); c.advance(.2)
+    assert not c.claims
+    np.testing.assert_allclose(position(),frozen)
+
+
+def test_component_pose_matches_original_controller_on_identical_observations():
+    scene=ChemistryScene(SETTINGS); scene.add_template('H2O')
+    c=ChemistryInput(scene,SETTINGS); space=CameraSpace(4/3)
+    nx,ny=space.project(scene.atoms[scene.selected].position); h=aim(nx,ny)
+    c.update([h],1.,space); c.update([h],1.05,space)
+    group=next(iter(c.groups.values()))['controller']
+    # Original main rates and actual contact landmarks, no substituted palm XY.
+    reference=GrabController({**group.settings,'pose_response_hz':SETTINGS['pose_response_hz'],
+        'rotation_response_hz':SETTINGS['rotation_response_hz'],'scale_response_hz':SETTINGS['scale_response_hz']})
+    reference.adopt_confirmed_grip(h,1.05,space.aspect); reference.update([h],1.05,space.aspect)
+    for i in range(10):
+        h=aim(nx+.002*i,ny+.001*i); t=1.1+i/30
+        c.update([h],t,space); reference.update([h],t,space.aspect)
+        c.advance(1/30); reference.advance(1/30)
+        np.testing.assert_allclose(group.pose.position,reference.pose.position)
+        np.testing.assert_allclose(group.pose.rotation,reference.pose.rotation)
+        assert group.pose.scale==pytest.approx(reference.pose.scale)
+
+
+@pytest.mark.parametrize('reason',('valid','expired','far','identity','button','page'))
+def test_header_aim_survives_pinching_only_within_bounded_time_position_identity(reason):
+    c,space,(nx,ny)=panel_input()
+    # Aim at the real narrow header, then closing fingers moves the tip below it.
+    c.panel.targets=[((0,0,c.panel.pixels[0],68),'panel:drag')]
+    nx,ny=space.project(c.panel.world(200,60))
+    c.update([aim(nx,ny,pinch=False)],1.,space)
+    dx=.2 if reason=='far' else .005
+    dropped_y=space.project(c.panel.world(200,95))[1]
+    generation=1 if reason=='identity' else 0
+    if reason=='button': c.panel.targets.append(((0,70,*c.panel.pixels),'compact'))
+    if reason=='page': c.page='home'
+    start=1.24 if reason=='expired' else 1.05
+    h=aim(nx+dx,dropped_y,generation=generation)
+    c.update([h],start,space); c.update([h],start+.05,space)
+    assert bool(c.claims)==(reason=='valid')
+    if reason=='valid': assert c.claims[0].kind=='panel_move'
 
 
 def test_releasing_second_hand_does_not_stall_remaining_hand_for_loss_grace():

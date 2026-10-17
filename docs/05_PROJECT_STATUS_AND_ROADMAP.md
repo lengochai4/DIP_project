@@ -1,6 +1,53 @@
 # 05 — Project Status and Roadmap
 
-## Current task — chemistry drag continuity, 2026-10-17
+## Current task — chemistry grab review after live feedback, 2026-10-17
+
+Change: restore main's observed contact anchors and component response rates;
+remove the previous captured-palm XY substitution. Atomic edits follow the
+filtered index and components/panel motion use the filtered pinch midpoint.
+Keep the cursor on the index throughout capture. Widen only chemistry held-
+grip release hysteresis from 0.45 to 0.60, retaining tight 0.28 acquisition,
+opening freeze/confirmation and bounded loss/identity cancellation. A recent
+header/corner aim survives bounded fingertip displacement while closing pinch;
+never acquire through a current button/atom, another page or hand generation.
+Retain the prior short-loss pause/rebase, released-hand removal, texture reuse
+and captured hit-test fixes. Add actual gate diagnostics in UI schema 10.
+
+Reason/evidence: the user reports jerky motion and failed header dragging.
+Session `ui-20261017-161053-978692` identifies `a819a95` and records repeated
+visible-hand pauses at raw ratios just above the 0.45 release threshold, as
+well as actual missing hands and identity changes. There was no processed-
+frame timestamp gap over 0.25 s in that session. Comparison with main shows
+the capture/provider/filter path unchanged; runtime differences are metadata.
+The new palm anchor discards independent contact movement, and higher display
+response passes more input steps to the screen. Restore the baseline behavior
+rather than claim those unvalidated changes are an improvement. The thin
+header previously required the post-pinch index to hit it anew.
+
+Canonical files/sections changed: 02 chemistry grab review; this record.
+Code/modules affected: submission chemistry input/controls/settings, metadata,
+README and regression tests. Algorithmic impact: presentation-only capture,
+hysteresis and following. Experimental impact: none. Compatibility impact:
+schema 10 adds gate state; settings separate push cancellation from grab
+release so the deferred quick-press policy keeps its previous value. Existing
+results invalidated: no. Core, solid/tips, chemical graph/data and main stay
+unchanged. True observation loss still freezes/cancels safely, not extrapolated.
+
+Executed: 737 full-project tests passed on Python 3.12.14 and Python 3.11.9.
+Regressions cover recorded threshold crossings, no partial-pinch acquisition,
+immediate freeze and release without drift, original-controller pose parity,
+contact movement independent of palm, index cursor continuity, cover-invariant
+pinch ratio and bounded header aim. Native GL QA rendered 333 frames across
+960x660, 1360x860 and 1920x1080 windows, including closing off the actual header,
+short loss/rebase, two-to-one-hand transition, resizing and fullscreen. All
+contexts reported zero GL error; active resize caused zero texture uploads,
+with at most one refresh on release. Representative screenshots were inspected.
+Local artifacts: `runs/chemistry-grab-review-qa/`. Recorded raw-ratio replay is
+diagnostic only: no human-intent labels, physical gesture success rate or new
+camera latency/accuracy result is claimed. No new physical-camera trial was
+requested. Quick press and physics remain deferred.
+
+## Earlier task — chemistry drag continuity, 2026-10-17
 
 Change: retain paused panel claims across brief loss/opening confirmation;
 rebase at the displayed pose on same-generation return. Use a captured
