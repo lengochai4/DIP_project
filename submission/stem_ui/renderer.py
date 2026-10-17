@@ -130,6 +130,7 @@ class SubmissionRenderer:
         gl.glTexImage2D(gl.GL_TEXTURE_2D,0,gl.GL_RGBA,*self.size,0,gl.GL_RGBA,gl.GL_UNSIGNED_BYTE,None)
         self.overlay_surface=pygame.Surface(self.size,pygame.SRCALPHA)
         self.last_overlay_at=0.0; self.last_overlay_key=None
+        self.last_draw_at=None
         if hasattr(self,'solid_lists'):
             self.chemistry.open()
             self.unit_sphere=gl.glGenLists(1)
@@ -336,10 +337,11 @@ class SubmissionRenderer:
         view=scene_rect(self.size,self.camera_visible)
         vx,vy,vw,vh=view
         now=time.monotonic()
-        draw_dt=0 if self.last_draw_at is None else now-self.last_draw_at
-        self.last_draw_at=now
+        draw_started=time.perf_counter()
+        draw_dt=0 if self.last_draw_at is None else draw_started-self.last_draw_at
+        self.last_draw_at=draw_started
         if self.mode=='chemistry':
-            return self._draw_chemistry(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,draw_dt)
+            return self._draw_chemistry(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,draw_dt,draw_started)
         px=math.radians(self.pitch); yx=math.radians(self.yaw)
         rx=np.array(((1,0,0),(0,math.cos(px),-math.sin(px)),(0,math.sin(px),math.cos(px))))
         ry=np.array(((math.cos(yx),0,math.sin(yx)),(0,1,0),(-math.sin(yx),0,math.cos(yx))))
@@ -463,7 +465,7 @@ class SubmissionRenderer:
         if self.capture_path:
             self._capture_back(self.capture_path)
             self.capture_path=None
-        self.last_draw_cpu_ms=(time.monotonic()-now)*1000
+        self.last_draw_cpu_ms=(time.perf_counter()-draw_started)*1000
         pygame.display.flip()
         self.clock.tick(self.settings['render_fps'])
         return len(hands),len(tips)
@@ -473,7 +475,7 @@ class SubmissionRenderer:
         hz=min(self.settings['live_response_max_hz'],self.settings['live_response_hz']+error*self.settings['live_response_gain'])
         return current+(1-math.exp(-math.tau*hz*max(0,dt)))*(target-current)
 
-    def _draw_chemistry(self,snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,dt):
+    def _draw_chemistry(self,snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,dt,draw_started):
         w,h=self.size
         gl.glViewport(0,0,w,h); gl.glClearColor(*(c/255 for c in BG),1)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
@@ -492,25 +494,40 @@ class SubmissionRenderer:
         count=sum(len(self.selectors[hand.slot].active) for hand in hands)
         self.chemistry.draw(snapshot,view,fresh,dt,run_id)
         control=self.chemistry.input; scene=self.chemistry.scene
-        overlay_key=('chemistry',self.size,self.fullscreen,self.camera_visible,self.help_visible,active,error,status,
-            tuple(self.chemistry.labels),scene.revision,scene.selected,scene.edit,scene.electrons,scene.message,len(hands),
+        semantic_key=('chemistry',self.size,self.fullscreen,self.camera_visible,self.help_visible,active,error,status,
+            scene.revision,scene.selected,scene.edit,scene.electrons,scene.message,
             tuple((str(key),c.kind,c.paused) for key,c in control.claims.items()),
             tuple((key,v['controller'].suspended) for key,v in control.groups.items()),
-            pygame.mouse.get_pos(),snapshot.frame_id if snapshot and self.camera_visible else None,
+            self._chemistry_pause_message(),
+            control.page,control.template_page,
             source_kind,self.droidcam_dialog,self.droidcam_host,self.droidcam_port,self.droidcam_field)
-        semantic_key=overlay_key[:9]+(scene.revision,scene.selected,scene.edit,scene.electrons,scene.message,
-            control.page,control.template_page,source_kind,self.droidcam_dialog,self.droidcam_host,self.droidcam_port,self.droidcam_field)
+        # Camera pixels and atom-label motion are drawn independently. A fresh
+        # background frame must not upload a window-sized UI texture by itself.
+        preview=(snapshot.frame_id,len(hands)) if snapshot and self.camera_visible else None
+        overlay_key=semantic_key+(pygame.mouse.get_pos(),preview)
         if overlay_key!=self.last_overlay_key and (semantic_key!=getattr(self,'_chemistry_semantic_key',None) or now-self.last_overlay_at>=1/self.settings['overlay_fps'] or not isinstance(self.last_overlay_key,tuple) or self.last_overlay_key[0]!='chemistry'):
             overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,[None]*count,fresh,[])
             self.last_overlay_at=now; self.last_overlay_key=overlay_key
             self._chemistry_semantic_key=semantic_key
         else: overlay=None
         self._overlay(overlay)
+        self.chemistry.draw_labels()
         if self.capture_path:
             self._capture_back(self.capture_path); self.capture_path=None
-        self.last_draw_cpu_ms=(time.monotonic()-now)*1000
+        self.last_draw_cpu_ms=(time.perf_counter()-draw_started)*1000
         pygame.display.flip(); self.clock.tick(self.settings['render_fps'])
         return len(hands),count
+
+    def _chemistry_pause_message(self):
+        control=self.chemistry.input
+        paused={key:c for key,c in control.claims.items() if c.kind in ('atom','group') and c.paused}
+        if paused:
+            if any(key not in control.pointers for key in paused):
+                return 'Tạm mất tay • Vật thể giữ nguyên; đưa tay trở lại để tiếp tục'
+            return 'Đang xác nhận buông • Vật thể giữ nguyên'
+        if any(group['controller'].suspended for group in control.groups.values()):
+            return 'Hai điểm giữ quá gần • Tách hai tay rõ hơn để tiếp tục'
+        return None
 
     def _draw_ui(self,snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,tips,fresh,world_labels):
         w,h=self.size; vx,vy,vw,vh=view; hh=header_height(w)
@@ -628,18 +645,14 @@ class SubmissionRenderer:
             scene=self.chemistry.scene; selected=scene.selected
             label=scene.describe(scene.component(selected)) if selected in scene.atoms else scene.message
             claims=[claim for claim in self.chemistry.input.claims.values() if claim.kind in ('atom','group')]
-            paused=any(group['controller'].suspended for group in self.chemistry.input.groups.values()) or any(claim.paused for claim in claims)
-            if paused: label='Tạm mất tay • Vật thể giữ nguyên; đưa tay trở lại để tiếp tục'
+            paused=self._chemistry_pause_message()
+            if paused: label=paused
             elif claims and scene.edit:
                 current=scene.describe(scene.component(selected)) if selected in scene.atoms else scene.message
                 label='Ghép/tách • '+current+' • Kéo xa để tháo • Thả gần để nối'
             elif len(claims)>1: label='Đang giữ bằng hai tay • Tách / khép để đổi cỡ • Mở ngón để buông'
             elif claims: label='Đang cầm • Chụm tay còn lại trong vùng trống để xoay / đổi cỡ'
             elif scene.electrons: label+=(' • Chọn Cầm cả khối để dùng hai tay đổi cỡ' if scene.edit else ' • Cầm nguyên tử, chụm tay còn lại để đổi cỡ cả lớp e')
-            for text,pos in self.chemistry.labels:
-                label_size=self.fonts[15].size(text)
-                pygame.draw.rect(overlay,(8,20,30,205),(pos[0]-5,pos[1]-3,label_size[0]+10,label_size[1]+6),border_radius=6)
-                self._text(overlay,text,pos,15,INK)
         else: label='Kéo chuột để xem góc khác  •  Cuộn để gần / xa  •  R để đặt lại'
         if error: label=error
         if replay: label='Phát lại  •  '+label

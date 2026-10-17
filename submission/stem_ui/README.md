@@ -104,6 +104,12 @@ buông. Chuyển hai tay về một tay không cần chờ thêm thời gian m�
 Khi đổi cỡ bảng, hình học vẫn theo tay; texture được giữ trong lúc kéo và cập
 nhật độ nét cuối khi buông nếu cần, tránh vẽ lại chữ giữa thao tác.
 
+Nhịp làm mượt và electron dùng đồng hồ độ phân giải cao, tách khỏi dấu thời gian
+nhận ảnh/mất tay. Nhãn H/O/... theo vật thể mỗi lượt vẽ bằng texture chữ nhỏ đã
+cache; di chuyển phân tử không dựng lại cả lớp giao diện cửa sổ. Thu/phóng/F11
+tạo lại đúng tài nguyên đồ họa. Thông báo đang xác nhận buông được phân biệt với
+mất nhận diện tay, không xem mọi lần dừng thao tác là camera mất kết nối.
+
 **Nguyên tử / e** (O) hiện lớp electron minh họa cho nguyên tử đang chọn.
 Đổi cỡ bằng hai tay dùng **Cầm cả khối**: hạt nhân, vòng electron và các
 electron cùng đổi cỡ. Có thể bắt trong vùng lớp e đang hiện. **Về giữa cảnh**

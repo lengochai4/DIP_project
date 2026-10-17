@@ -300,6 +300,29 @@ atoms, moving objects or changing bond topology must not repaint an unchanged
 panel. Selection/page/control changes update immediately. Scientific graph
 labels remain owned by the scene/overlay, independently of the panel texture.
 
+#### Presentation timing and chemistry render audit — authorized 2026-10-17
+
+Renderer animation dt, draw CPU-duration diagnostics and illustrative electron
+phase use `perf_counter`, not a potentially coarse platform `monotonic` clock.
+Reset the renderer dt origin when rebuilding the display context. Snapshot
+freshness remains in the existing `monotonic` delivery-clock domain; Core
+filters/replay still derive timing from original frame timestamps. Presentation
+schema 11 records the render clock implementation/resolution. Earlier timing
+logs retain their old clock precision and are not a paired latency benchmark.
+
+Chemistry atom labels use the known camera projection, with near/far/viewport
+clipping, without per-atom GL matrix/viewport queries. Small cached glyph
+textures follow atoms each draw and are clipped to the chemistry view. Moving
+labels do not invalidate the window-sized UI overlay. Static UI refreshes on
+actual content/control changes; an explicitly enabled side-camera preview
+continues refreshing at its existing bounded cadence. Label textures belong
+to the GL context and must be deleted/recreated on resize/fullscreen/shutdown.
+
+Pending release is not reported as tracking loss. Footer feedback distinguishes
+visible-hand opening confirmation, actual missing observations and a too-small
+two-hand grip span. This changes feedback only; pinch/loss thresholds and
+capture ownership retain the preceding chemistry-grab-review policy.
+
 #### Chemistry grab review — authorized 2026-10-17
 
 This review supersedes the captured-palm anchor and higher response rates

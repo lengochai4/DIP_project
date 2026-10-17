@@ -1,6 +1,57 @@
 # 05 — Project Status and Roadmap
 
-## Current task — chemistry grab review after live feedback, 2026-10-17
+## Current task — renderer timing and chemistry hot-path audit, 2026-10-17
+
+Change: derive animation dt/draw CPU durations and electron phase from
+`perf_counter`; reset the dt origin on display-context rebuild. Keep snapshot
+freshness on its existing monotonic delivery clock. Project atom labels from
+the known camera geometry without per-atom GL state queries. Cache small glyph
+textures and draw them every frame independently of the full-window UI texture;
+only visible UI state or optional side-camera preview invalidates that overlay.
+Delete/rebuild glyph textures with each GL context. Distinguish pending opening
+from actual missing input and too-close two-hand span in molecular feedback.
+
+Reason/evidence: further user-requested audit. On this Windows Python 3.12.14,
+`get_clock_info` reports `GetTickCount64` / 0.015625 s for monotonic and
+`QueryPerformanceCounter` / 1e-7 s for perf_counter. The renderer previously
+used the coarse clock for following and CPU durations; session logs contain
+quantized draw times. Moving label coordinates also invalidated the full UI
+overlay, although only small glyphs had moved. These are code-level sources of
+stepped animation and avoidable rendering work, not a physical latency result.
+
+The newer `ui-20261017-162526-970468` session identifies `baf715e` / schema 10.
+It still contains real missing-hand samples and visible-hand pending release
+near the new hysteresis boundary. Processed frame timestamps continue during
+NO_HAND entries; those entries do not by themselves mean camera disconnection.
+No processed-frame gap exceeded the chemistry cancellation interval in that
+session. Do not keep raising grip thresholds or fabricate hand observations to
+hide this. Capture remains a single pending-packet live pump; no new queue,
+provider/model/filter/association tuning or quick-press change is introduced.
+
+Canonical files/sections changed: 02 presentation timing/render audit; this
+record. Modules: submission renderer, chemistry view, runtime metadata, README,
+render regressions. Algorithmic impact: presentation animation timing/render
+work and feedback only. Experimental impact: none; Core/replay timestamps,
+equations, research data and molecular rules unchanged. Compatibility impact:
+UI schema 11 records render clock implementation/resolution; prior coarse CPU
+duration logs must not be treated as a paired latency benchmark. Shared renderer
+timing also applies to solid/tips, without changing their recognition/controls.
+Existing results invalidated: no; accepted main and report evidence unchanged.
+
+Executed: 744 full tests passed on Python 3.12.14 and Python 3.11.9. New tests
+exercise advancing animation while the coarse clock stands still, label
+projection/clipping at four aspect ratios, independent moving labels/camera
+background with static UI reuse, real UI/preview refresh and honest pause text.
+Native GL QA rendered 513 frames at three window sizes, including header
+capture, one/two-hand transitions, short loss, resizing and F11. At each size,
+60 moving-label frames after warmup produced zero full-window UI uploads and
+zero new glyph uploads; native GLU projection and pure projection agreed within
+pixel rounding. Contexts reported zero GL error. Resize reuse still passed;
+a representative screenshot was inspected. Artifacts remain local under
+`runs/chemistry-render-audit-qa/`. These use recorded imagery and synthetic
+motion, not a new physical-hand success-rate or latency benchmark.
+
+## Earlier task — chemistry grab review after live feedback, 2026-10-17
 
 Change: restore main's observed contact anchors and component response rates;
 remove the previous captured-palm XY substitution. Atomic edits follow the

@@ -38,11 +38,13 @@ class CameraChemistryView:
 
     def open(self):
         self.camera_texture=gl.glGenTextures(1); self.panel_texture=gl.glGenTextures(1)
+        self.label_textures={}
         self.camera_key=self.panel_key=None; self.camera_size=self.panel_size=None
 
     def close(self):
         if hasattr(self,'camera_texture'):
-            gl.glDeleteTextures([self.camera_texture,self.panel_texture])
+            gl.glDeleteTextures([self.camera_texture,self.panel_texture]+[value[0] for value in self.label_textures.values()])
+            self.label_textures.clear()
             del self.camera_texture
 
     def _upload(self,texture,data,size,previous,fmt,mipmaps=False):
@@ -307,11 +309,7 @@ class CameraChemistryView:
         self.identity=identity; self.input.advance(dt)
         self._ensure_panel(force=self.input.panel.full!=(self.input.page=='table'))
         self._atoms()
-        self.labels=[]
-        for atom in self.scene.atoms.values():
-            px,py,pz=glu.gluProject(*atom.position)
-            if 0<pz<1 and x<=px<=x+w and window_h-y-h<=py<=window_h-y:
-                self.labels.append((atom.symbol,(int(px)+9,window_h-int(py)-18)))
+        self._update_labels()
         panel=self.input.panel
         if self.input.page=='compact': gl.glDisable(gl.GL_DEPTH_TEST)
         gl.glDisable(gl.GL_LIGHTING); gl.glEnable(gl.GL_TEXTURE_2D); gl.glBindTexture(gl.GL_TEXTURE_2D,self.panel_texture)
@@ -371,6 +369,48 @@ class CameraChemistryView:
             gl.glEnable(gl.GL_LIGHTING); self._sphere(p,.019); gl.glDisable(gl.GL_LIGHTING)
         gl.glDisable(gl.GL_SCISSOR_TEST)
 
+    def _update_labels(self):
+        """Camera-aligned projection without per-atom GL matrix/viewport queries."""
+        x,y,w,h=self.content; self.labels=[]
+        for atom in self.scene.atoms.values():
+            if not .1<self.space.distance-atom.position[2]<100: continue
+            point=self.space.project(atom.position)
+            if point is None: continue
+            nx,ny=point
+            if 0<=nx<=1 and 0<=ny<=1:
+                self.labels.append((atom.symbol,(int(x+nx*w)+9,int(y+ny*h)-18)))
+
+    def draw_labels(self):
+        """Small cached glyph textures follow atoms at draw rate, outside UI raster."""
+        if not self.labels: return
+        width,height=self.renderer.size; x,y,w,h=self.content
+        gl.glViewport(0,0,width,height)
+        gl.glEnable(gl.GL_SCISSOR_TEST); gl.glScissor(x,height-y-h,w,h)
+        gl.glDisable(gl.GL_DEPTH_TEST); gl.glDisable(gl.GL_LIGHTING)
+        gl.glMatrixMode(gl.GL_PROJECTION); gl.glLoadIdentity(); gl.glOrtho(0,width,height,0,-1,1)
+        gl.glMatrixMode(gl.GL_MODELVIEW); gl.glLoadIdentity()
+        gl.glEnable(gl.GL_TEXTURE_2D); gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA); gl.glColor4f(1,1,1,1)
+        for text,(px,py) in self.labels:
+            if text not in self.label_textures:
+                glyph=self.renderer._label(text,15,INK)
+                size=(glyph.get_width()+10,glyph.get_height()+6)
+                surface=pygame.Surface(size,pygame.SRCALPHA)
+                pygame.draw.rect(surface,(8,20,30,205),(0,0,*size),border_radius=6)
+                surface.blit(glyph,(5,3))
+                texture=gl.glGenTextures(1)
+                self._upload(texture,pygame.image.tobytes(surface,'RGBA',False),size,None,gl.GL_RGBA)
+                self.label_textures[text]=(texture,size)
+            texture,(lw,lh)=self.label_textures[text]
+            gl.glBindTexture(gl.GL_TEXTURE_2D,texture)
+            left,top=px-5,py-3
+            gl.glBegin(gl.GL_QUADS)
+            for (u,v),(a,b) in zip(((0,0),(1,0),(1,1),(0,1)),
+                ((left,top),(left+lw,top),(left+lw,top+lh),(left,top+lh))):
+                gl.glTexCoord2f(u,v); gl.glVertex2f(a,b)
+            gl.glEnd()
+        gl.glDisable(gl.GL_TEXTURE_2D); gl.glDisable(gl.GL_BLEND); gl.glDisable(gl.GL_SCISSOR_TEST)
+
     def _sphere(self,p,radius):
         gl.glPushMatrix(); gl.glTranslatef(*p); gl.glScalef(radius,radius,radius)
         gl.glCallList(self.renderer.unit_sphere); gl.glPopMatrix()
@@ -408,7 +448,7 @@ class CameraChemistryView:
                 if scene.electrons: self._electrons(atom,element)
 
     def _electrons(self,atom,element):
-        now=time.monotonic()*self.settings['chemistry_electron_speed']
+        now=time.perf_counter()*self.settings['chemistry_electron_speed']
         for shell,count in enumerate(element.shells):
             radius=(.3+.095*shell)*atom.scale; angle=.35+.22*shell
             u=np.array((1.,0.,0.)); v=np.array((0.,math.cos(angle),math.sin(angle)))
