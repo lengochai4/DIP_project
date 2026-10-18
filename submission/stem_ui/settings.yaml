@@ -132,6 +132,7 @@ chemistry_grip_loss_grace_s: 0.25
 # Physics presentation only; frozen Core/chemistry settings above are unchanged.
 physics_drag_response_hz: 9.0
 physics_drag_freeze_ratio: 0.45
+physics_model_hold_ratio: 0.34
 physics_drag_release_s: 0.045
 physics_drag_release_observations: 2
 physics_orbit_gain_deg: 180.0

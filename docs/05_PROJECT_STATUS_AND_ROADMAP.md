@@ -1,6 +1,37 @@
 # 05 — Project Status and Roadmap
 
-## Current task — Physics release latch and discoverable view tools, 2026-10-18
+## Current task — model-only early contact-break freeze, 2026-10-18
+
+Change: freeze Physics model/ruler handles at a separate contact-hold boundary
+and discard their pending render-follow target at the displayed position.
+Reason: user reports a small displacement on release specifically in the model,
+not in the panel. In local UI session ui-20261018-092815-203515, body frames
+293..295 have raw pinch ratios approximately .274, .364, .457; frame 294 still
+has an active claim and position0 changes from 1.8515216557 to 1.8657805417 m
+before opening freezes at frame 295. This demonstrates an allowed movement
+window before the old .45 boundary, not ground-truth physical hand intent or
+accuracy. The opening boundary for model handles is now separately configured;
+panel/slider/view/menu boundaries are preserved.
+Canonical file/section changed: 02 model contact-break correction; this record.
+Code/modules affected: Physics input, UI setting and input/native regressions.
+Algorithmic impact: model-handle presentation only, no SI equation/filter change.
+Experimental impact: none. Compatibility impact: UI schema 16/catalog/state
+schema unchanged; new setting captured in resolved UI configuration. Existing
+results invalidated: no; Core/provider/research/config, shared gestures,
+chemistry, solid/fingertip logic and scene/panel layout are unchanged.
+Git: continue feat/physics-lab; main and personal untracked files remain intact.
+Status: verified with 900 full tests passed on Python 3.12.14 and Python 3.11.9.
+Nine added regressions cover the recorded scalar opening sequence over model
+handles and preserve panel/slider/orbit/zoom boundaries. Extended native GL
+regression grabs the actual model handle, moves it, opens to .364 with palm
+displacement and a pending follow target, and checks unchanged displayed
+position through confirmation/drop. Existing menu/tool/edge/F11 tests pass.
+Protected Core/config/chemistry/shared gesture/geometry/model/catalog/view/
+renderer paths have no diff against d28f851; git diff --check passed.
+Tests use recorded scalar ratios with synthetic palm geometry because the logs
+do not contain landmark trajectories. No real-hand success-rate claim is added.
+
+## Earlier task — Physics release latch and discoverable view tools, 2026-10-18
 
 Change: replace button-looking orbit/zoom drag handles with selectable tools;
 allow a fresh pinch anywhere outside the panel to control the selected view.

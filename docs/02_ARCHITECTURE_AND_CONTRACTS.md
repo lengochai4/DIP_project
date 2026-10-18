@@ -70,6 +70,15 @@ paused claim. Missing observations never count as opening samples. Shared
 PointPinch, PinchGate and chemistry behavior are unchanged. UI schema 16 records
 active Physics tool and per-claim opening state, and names the release policy.
 
+Model contact-break correction (2026-10-18): model-space body/force/angle/launch,
+length/load/rope/velocity and ruler handles use their own tighter configured
+hold boundary before starting the existing opening latch. Stop at the currently
+displayed position and discard the pending render-follow target at that point;
+do not complete or snap to the last camera target. Panel headers, parameter
+sliders, orbit/zoom and button selectors keep their existing boundaries. This
+is a presentation policy/configuration change; the UI schema remains 16 and
+the added model-hold setting is captured in the resolved UI configuration.
+
 Design reference (affordances and separate movement/rotation/scale targets):
 [Microsoft direct manipulation](https://learn.microsoft.com/en-us/windows/mixed-reality/design/direct-manipulation).
 This guides presentation design; it transfers no HoloLens accuracy/performance

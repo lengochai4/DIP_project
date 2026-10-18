@@ -175,3 +175,30 @@ def test_lost_hand_cannot_resume_in_ambiguous_pinch_band():
     assert control.claims[0].paused and not host.moves
     control.update([sample(.1,nx=.7)],1.2,4/3); control.advance(.01)
     assert host.moves[-1][1]==pytest.approx(host.moves[-1][2])
+
+
+@pytest.mark.parametrize('action',('drag:body','drag:force','drag:angle','drag:launch','drag:measure_a'))
+def test_model_release_stops_at_contact_break_before_old_open_threshold(action):
+    # Scalar ratios observed in ui-20261018-092815-203515, frames 291..297.
+    # Palm translation is synthetic; the logs contain no landmark trajectories.
+    host,control=held(); control.claims[0].target=action
+    for t,ratio,x in ((1.1,.135,.32),(1.13,.190,.34),(1.16,.274,.36)):
+        control.update([sample(ratio,nx=x)],t,4/3); control.advance(.01)
+    frozen=control.claims[0].position.copy(); count=len(host.moves)
+    control.update([sample(.364,nx=.4)],1.19,4/3)
+    assert control.claims[0].paused
+    assert control.claims[0].target_point==pytest.approx(frozen)
+    for _ in range(6): control.advance(1/120)
+    assert len(host.moves)==count and control.claims[0].position==pytest.approx(frozen)
+    control.update([sample(.457,nx=.5)],1.22,4/3)
+    control.update([sample(.528,nx=.6)],1.25,4/3)
+    assert not control.claims
+    for _ in range(20): control.advance(1/60)
+    assert len(host.moves)==count
+
+
+@pytest.mark.parametrize('action',('drag:panel','drag:param:mass','drag:orbit','drag:zoom'))
+def test_earlier_model_release_does_not_change_panel_or_view_grabs(action):
+    host,control=held(); control.claims[0].target=action
+    control.update([sample(.364,nx=.4)],1.1,4/3); control.advance(.01)
+    assert not control.claims[0].paused and host.moves

@@ -69,6 +69,19 @@ def test_native_physics_scenarios_hand_palette_and_fullscreen(tmp_path):
             draw([at(nx+.1,ny,.5)]);frozen=v.model.params['mass']
             for _ in range(8):draw([at(nx+.15,ny,1)])
             assert not v.input.claims and v.model.params['mass']==frozen
+            # Model contact break must freeze before the old .45 threshold,
+            # including a palm shift and an unfinished render-follow target.
+            body=next(p for p,a in v.handles if a=='drag:body')
+            nx,ny=v.space.project(body)
+            for ratio in [1.]*8+[.1]*4:draw([at(nx,ny,ratio)])
+            assert v.input.claims[0].target=='drag:body'
+            for _ in range(5):draw([at(nx+.025,ny,.1)])
+            frozen=v.model.params['position0']
+            draw([at(nx+.08,ny,.364)])
+            assert v.model.params['position0']==frozen and v.input.claims[0].paused
+            for _ in range(4):draw([at(nx+.12,ny,.38)])
+            assert not v.input.claims and v.model.params['position0']==frozen
+            for _ in range(5):draw([at(nx+.12,ny,1)])
             # Pull the header past an edge; keep the close consumed while docked.
             nx,ny=handle('drag:panel')
             for _ in range(12):draw([at(nx-.15,ny,.1)])

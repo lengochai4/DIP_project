@@ -128,11 +128,17 @@ class PhysicsInput:
     def _opening(self,claim,ratio,t):
         # Once opening starts, the hysteresis band is still a release, not a
         # fresh hold. Only a tight contact cancels it, rebasing before motion.
+        model_handle=(claim.target.startswith('drag:') and not claim.target.startswith('drag:param:')
+                      and claim.target not in ('drag:panel','drag:orbit','drag:zoom'))
+        threshold=self.settings['physics_model_hold_ratio'] if model_handle else self.settings['physics_drag_freeze_ratio']
         if ratio<=self.grab_settings['grip_press_ratio']:
             claim.opening_since=None; claim.opening_samples=0
-        elif ratio>=self.settings['physics_drag_freeze_ratio'] and claim.opening_since is None:
+        elif ratio>=threshold and claim.opening_since is None:
             claim.opening_since=t
         if claim.opening_since is not None:
+            # Cancel the unrendered follow tail at the displayed point. Do not
+            # snap forward to the last camera target while the fingers open.
+            claim.target_point=claim.position.copy()
             claim.opening_samples+=1
             return True
         return False
