@@ -25,6 +25,39 @@ second hand may manipulate another free handle; never steal a menu gesture or
 an already-owned handle. Parameter ranges, time steps, capacities and gesture
 settings are external configuration. Model-relative z is not physical depth.
 
+Physics interaction refinement (2026-10-18): index-tip aim still chooses the
+handle, but a held edit follows filtered wrist/MCP centroid translation rather
+than thumb-index separation. Keep the acquisition offset; folding the contact
+fingers alone must not move a value. The last genuine observation is followed
+at render cadence through a configured first-order response, with the claimed
+cursor using that same displayed position. Opening intent freezes immediately
+before the normal release confirmation; missing observations, consumed/docked
+claims and release never advance a pending follow target. A short return
+rebases to the current displayed value, without a throw or delayed catch-up.
+This presentation interpolation does not create provider observations or alter
+Core timing/filter equations. Prefer the nearest visible handle in overlapping
+hit radii. Scene orbit/zoom handles own the view exclusively against parameter
+edits; separate parameter handles retain two-hand ownership.
+
+Capture and retain the current fit bounds during/after an edit so auto-fitting
+cannot masquerade as object motion when the hand releases. Run, reset, lab
+selection or explicit frame reset may refit. Orbit is bounded away from edge-on
+views for these planar models; zoom/orbit do not change SI quantities. Plane
+edits reject near-parallel or backward ray/plane intersections instead of
+amplifying them into extreme parameter values. Header
+drag beyond an edge may dock after a short hold or a larger throw, with a
+remembered edge/position and inward arrow. Docked close remains consumed until
+opening. Panel translation reuses cached pixels and moves hit rectangles;
+parameter readouts refresh at the configured UI cadence, while page/size and
+commands refresh immediately. Physics gesture/view tuning is captured in UI
+settings; the SI catalog/hash and saved-state schema remain unchanged. UI log
+schema 15 adds consumed-finish state and names the Physics movement policy.
+
+Design reference (affordances and separate movement/rotation/scale targets):
+[Microsoft direct manipulation](https://learn.microsoft.com/en-us/windows/mixed-reality/design/direct-manipulation).
+This guides presentation design; it transfers no HoloLens accuracy/performance
+claim to a monocular RGB webcam.
+
 Local state/export has its own version and bounded validation. Simulated SI
 measurements, constraints/assumptions, A/B inputs and initial conditions must be
 preserved. They are not experiment evidence for RQ1/RQ2 or measured camera-world

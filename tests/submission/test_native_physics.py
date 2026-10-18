@@ -37,6 +37,15 @@ def test_native_physics_scenarios_hand_palette_and_fullscreen(tmp_path):
                 h=with_ratio(aim(cover.left+nx*cover.width,cover.top+ny*cover.height),ratio)
                 draw([h])
             assert v.input.tap.states[0].phase=='latched'
+        def at(nx,ny,ratio):
+            cover=CameraCover(4/3,v.space.aspect)
+            return with_ratio(aim(cover.left+nx*cover.width,cover.top+ny*cover.height),ratio)
+        def handle(action):
+            rect=next(rect for rect,a in v.targets if a==action)
+            nx,ny=rect.centerx/v.content[2],rect.centery/v.content[3]
+            for ratio in [1.]*8+[.1]*4: draw([at(nx,ny,ratio)])
+            assert v.input.claims[0].target==action
+            return nx,ny
         try:
             for lab in v.model.catalog['labs']:
                 v.command('lab:'+lab);draw()
@@ -52,6 +61,27 @@ def test_native_physics_scenarios_hand_palette_and_fullscreen(tmp_path):
             choose('library');assert v.library
             action=next(a for rect,a in v.targets if a.startswith('lab:'))
             choose(action);assert v.model.lab==action[4:] and not v.library
+            # Real GL draw cadence follows hand targets; release discards the
+            # unconsumed tail instead of moving the parameter after opening.
+            nx,ny=handle('drag:param:mass');before=v.model.params['mass']
+            for _ in range(6):draw([at(nx+.04,ny,.1)])
+            assert v.model.params['mass']>before
+            draw([at(nx+.1,ny,.5)]);frozen=v.model.params['mass']
+            for _ in range(8):draw([at(nx+.15,ny,1)])
+            assert not v.input.claims and v.model.params['mass']==frozen
+            # Pull the header past an edge; keep the close consumed while docked.
+            nx,ny=handle('drag:panel')
+            for _ in range(12):draw([at(nx-.15,ny,.1)])
+            assert v.collapsed and v.dock_edge=='left' and v.input.claims[0].finished
+            for _ in range(5):draw([at(nx-.15,ny,1)])
+            choose('restore');assert not v.collapsed
+            choose('page:tools')
+            while not any(a=='drag:orbit' for rect,a in v.targets):v.command('tools_next');draw()
+            original=v.model.configuration();nx,ny=handle('drag:orbit');yaw=v.yaw
+            for _ in range(8):draw([at(nx+.1,ny+.04,.1)])
+            assert v.yaw>yaw and v.model.configuration()==original
+            for _ in range(5):draw([at(nx+.1,ny+.04,1)])
+            v.command('frame');draw()
             original=v.model.configuration();size=r.size
             r.toggle_fullscreen();draw();r.toggle_fullscreen();draw()
             assert r.size==size and v.model.configuration()==original

@@ -30,6 +30,7 @@ class PhysicsView:
         self.space=CameraSpace(4/3); self.content=(0,0,960,640)
         self.page='adjust'; self.param_page=0; self.library=False; self.collapsed=False
         self.panel_scale=1.; self.panel_offset=np.zeros(2); self.zoom=1.
+        self.dock_edge='left'; self.dock_position=.25; self.dock_pending=None; self.edit_bounds=None
         self.yaw=self.cfg['default_yaw_deg']; self.pitch=self.cfg['default_pitch_deg']; self.flags={'vectors':True,'trace':True,'energy':False,'graph':False,'measure':True}
         self.graph='position_m'; self.targets=[]; self.handles=[]; self.cursor_points={}
         self.textures={}; self.fonts={}; self.identity=None; self.run_id=None; self.geometry=None
@@ -59,21 +60,22 @@ class PhysicsView:
         self.model.message='Đang điều chỉnh • Chọn Chạy để bắt đầu'
 
     def command(self,action):
-        m=self.model; self.ui_dirty=True
+        m=self.model; self.ui_dirty=True; self.panel_force=True
         if action.startswith('lab:'):
-            m.choose(action.split(':',1)[1]); self.library=False; self.param_page=0; self.input.aims.clear(); self.measure_points=None
+            m.choose(action.split(':',1)[1]); self.library=False; self.param_page=0; self.input.aims.clear(); self.measure_points=None; self.edit_bounds=None
         elif action=='library': self.library=not self.library
         elif action.startswith('page:'): self.page=action.split(':')[1]; self.library=False
         elif action=='run':
             if self.input.claims or self.mouse_claim:
                 m.message='Buông tay nắm trước khi chạy'; return
+            self.edit_bounds=None
             m.toggle()
             if m.static: m._check_goal()
         elif action=='step':
             if self.input.claims or self.mouse_claim:
                 m.message='Buông tay nắm trước khi tiến bước'; return
             m.running=False; m.step()
-        elif action=='reset': m.reset()
+        elif action=='reset': m.reset(); self.edit_bounds=None
         elif action=='slow': m.speed=.25 if m.speed==1 else 1.
         elif action=='param_next': self.param_page=(self.param_page+1)%self.page_count
         elif action=='param_prev': self.param_page=(self.param_page-1)%self.page_count
@@ -100,6 +102,7 @@ class PhysicsView:
         elif action=='keep': m.keep_reference()
         elif action=='clear_trace': m.samples.clear(); m._record()
         elif action=='view':
+            self.input.release(); self.mouse_claim=None
             self.yaw=0. if self.yaw else self.cfg['default_yaw_deg']
             self.pitch=self.cfg['default_pitch_deg'] if self.yaw else 0.
         elif action in ('panel_larger','panel_smaller'):
@@ -108,6 +111,7 @@ class PhysicsView:
             self.zoom=float(np.clip(self.zoom*(self.cfg['zoom_factor'] if action=='zoom_in' else 1/self.cfg['zoom_factor']),self.cfg['min_scene_zoom'],self.cfg['max_scene_zoom']))
         elif action=='frame':
             self.input.release(); self.mouse_claim=None; self.zoom=1.; self.panel_offset[:]=0
+            self.yaw=self.cfg['default_yaw_deg']; self.pitch=self.cfg['default_pitch_deg']; self.edit_bounds=None
         elif action=='compact': self.collapsed=True
         elif action=='restore': self.collapsed=False
         elif action in ('save','load','export'):
@@ -128,8 +132,14 @@ class PhysicsView:
         width=min(width,w-180); height=h-24
         origin=np.array((12.,12.))+self.panel_offset*np.array((w,h))
         origin=np.clip(origin,(4,4),(max(4,w-width-4),max(4,h-height-4)))
+        self.panel_offset=(origin-np.array((12.,12.)))/np.array((w,h))
         self.panel_rect=pygame.Rect(*origin,width,height)
-        if self.collapsed: self.panel_rect=pygame.Rect(4,round(h*.25),38,46)
+        if self.collapsed:
+            edge=self.dock_edge; along=self.dock_position
+            if edge in ('left','right'):
+                self.panel_rect=pygame.Rect(4 if edge=='left' else w-42,round(np.clip(h*along-23,4,h-50)),38,46)
+            else:
+                self.panel_rect=pygame.Rect(round(np.clip(w*along-23,4,w-50)),4 if edge=='top' else h-42,46,38)
         self.rows=max(1,min(7,(height-(86 if height<290 else 114)-88)//44))
         self.page_count=max(1,math.ceil(len(self.model.params)/self.rows))
         self.param_page%=self.page_count
@@ -169,7 +179,7 @@ class PhysicsView:
         self.targets=[]
         surface=glass((w,h),238,16,True,1).copy()
         if self.collapsed:
-            self._button(surface,'›',(2,2,w-4,h-4),'restore'); return surface
+            self._button(surface,{'left':'›','right':'‹','top':'↓','bottom':'↑'}[self.dock_edge],(2,2,w-4,h-4),'restore'); return surface
         small=h<290
         self._text(surface,'VẬT LÝ • '+('THỬ THÁCH' if m.challenge else 'KHÁM PHÁ'),(12,3 if small else 10),11 if small else 12,ACCENT)
         self.targets.append((pygame.Rect(r.x+8,r.y+2,w-62,18 if small else 28),'drag:panel'))
@@ -232,6 +242,7 @@ class PhysicsView:
                  ('Lưu thiết lập','save'),('Mở thiết lập','load'),('Xuất CSV/ảnh','export'),('Xóa vết','clear_trace'),('Đổi đồ thị','graph_next'),
                  ('Dự đoán: đạt','predict:yes'),('Dự đoán: chưa','predict:no'),('Bảng lớn +','panel_larger'),('Bảng nhỏ −','panel_smaller'),
                  ('Cảnh gần +','zoom_in'),('Cảnh xa −','zoom_out')]
+        actions += [('Kéo xoay cảnh','drag:orbit'),('Kéo cỡ cảnh','drag:zoom')]
         capacity=max(2,(body.h//31)*2); pages=math.ceil(len(actions)/capacity)
         self.tools_page=getattr(self,'tools_page',0)%pages
         visible=capacity
@@ -245,6 +256,7 @@ class PhysicsView:
     def _paint_lesson(self,surface,body):
         parts=[self.model.spec[k] for k in ('application','assumptions','formula')]
         parts+=['Độ dài, lực và vận tốc là giá trị mô phỏng SI; không phải số đo tay trong camera.',
+                'Chụm để cầm, di cả bàn tay để kéo; mở ngón để dừng. Kéo tiêu đề ra ngoài viền để thu, chọn mũi tên để mở. Đo/Lưu có tay nắm Kéo xoay cảnh và Kéo cỡ cảnh; R khôi phục khung nhìn. Góc xoay có giới hạn để tránh nhìn cạnh mặt phẳng bài học.',
                 'Vector: lực kéo vàng, ma sát đỏ, phản lực/lực căng xanh lam, trọng lực tím, vận tốc xanh lá, gia tốc trắng. Độ dài mũi tên được giới hạn để dễ quan sát.',
                 self.model.spec['challenge'],'Đo/Lưu: ghi dự đoán trước lượt chạy. Giữ A, đổi một thông số, đặt lại và chạy B; đối chiếu cùng thời điểm.']
         font=self._font(12); lines=[]
@@ -264,15 +276,23 @@ class PhysicsView:
         for rect,action in reversed(self.targets):
             if rect.collidepoint(px,py): return action
         if not self.collapsed and self.panel_rect.collidepoint(px,py): return None
-        for position,action in reversed(self.handles):
+        nearby=[]
+        for order,(position,action) in enumerate(self.handles):
             projected=self.space.project(position)
-            if projected and math.hypot((point[0]-projected[0])*self.content[2],(point[1]-projected[1])*self.content[3])<=self.cfg['handle_radius_px']:
-                return action
-        return None
+            if projected:
+                distance=math.hypot((point[0]-projected[0])*self.content[2],(point[1]-projected[1])*self.content[3])
+                if distance<=self.cfg['handle_radius_px']: nearby.append((distance,-order,action))
+        return min(nearby)[2] if nearby else None
 
     def capture(self,action):
-        if action=='drag:panel': return self.panel_offset.copy()
-        if action.startswith('drag:measure_'): return self.measure_points[0 if action.endswith('a') else 1].copy()
+        if action=='drag:panel':
+            self.dock_pending=None
+            return self.panel_offset.copy()
+        if action in ('drag:orbit','drag:zoom'): return (self.yaw,self.pitch,self.zoom)
+        self.edit_bounds=tuple(v.copy() for v in self.bounds)
+        if action.startswith('drag:measure_'):
+            return {'point':self.measure_points[0 if action.endswith('a') else 1].copy(),
+                    'projection':(self.origin.copy(),self.rotation.copy(),self.mid.copy(),self.scale,self.space)}
         value=self.model.params.copy(); m=self.model
         value['_body']=self.body_position().copy()
         value['_projection']=(self.origin.copy(),self.rotation.copy(),self.mid.copy(),self.scale,self.space)
@@ -285,16 +305,42 @@ class PhysicsView:
 
     def drag(self,action,origin,point,value):
         self.ui_dirty=True; m=self.model
-        if action=='drag:panel':
-            self.panel_offset=value+np.array(point)-origin; return
-        if action.startswith('drag:measure_'):
-            self.measure_points[0 if action.endswith('a') else 1]=value+self.to_model(point)-self.to_model(origin); return
         dx,dy=np.array(point)-origin
+        if action=='drag:orbit':
+            self.yaw=float(np.clip(value[0]+dx*self.settings['physics_orbit_gain_deg'],-self.settings['physics_yaw_limit_deg'],self.settings['physics_yaw_limit_deg']))
+            self.pitch=float(np.clip(value[1]+dy*self.settings['physics_orbit_gain_deg'],-self.settings['physics_pitch_limit_deg'],self.settings['physics_pitch_limit_deg']))
+            return
+        if action=='drag:zoom':
+            self.zoom=float(np.clip(value[2]*math.exp(float(np.clip(-dy*self.settings['physics_zoom_drag_gain'],-10,10))),self.cfg['min_scene_zoom'],self.cfg['max_scene_zoom']))
+            return
+        if action=='drag:panel':
+            self.panel_offset=value+np.array(point)-origin
+            # Inspect the requested rectangle before clipping. A full-height
+            # panel touches top/bottom at rest, so mere border contact is not intent.
+            w,h=self.content[2:]; x,y=np.array((12.,12.))+self.panel_offset*np.array((w,h))
+            borders=np.array((x/w,(w-x-self.panel_rect.w)/w,y/h,(h-y-self.panel_rect.h)/h))
+            index=int(np.argmin(borders)); now=time.perf_counter()
+            if borders[index]<=-self.settings['physics_panel_dock_edge']:
+                if self.dock_pending is None or self.dock_pending[0]!=index: self.dock_pending=(index,now)
+                if borders[index]<=-self.settings['physics_panel_throw_edge'] or now-self.dock_pending[1]>=self.settings['physics_panel_dock_s']:
+                    self.dock_edge=('left','right','top','bottom')[index]
+                    self.dock_position=float(np.clip((y+self.panel_rect.h/2)/h if index<2 else (x+self.panel_rect.w/2)/w,0,1))
+                    self.collapsed=True; self.mouse_claim=None; self.dock_pending=None
+                    return False  # Keep the hand claim consumed until release.
+            else: self.dock_pending=None
+            return
+        if action.startswith('drag:measure_'):
+            a=self.to_model(origin,value['projection']); b=self.to_model(point,value['projection'])
+            if a is not None and b is not None:
+                self.measure_points[0 if action.endswith('a') else 1]=value['point']+b-a
+            return
         if action.startswith('drag:param:'):
             key=action.split(':')[-1]; spec=m.spec['params'][key]
             rail_width=max(20,self.panel_rect.w-92)/self.content[2]
             m.set_parameter(key,value[key]+dx/rail_width*(spec[3]-spec[2])); return
-        a=self.to_model(origin,value['_projection']); b=self.to_model(point,value['_projection']); delta=b-a
+        a=self.to_model(origin,value['_projection']); b=self.to_model(point,value['_projection'])
+        if a is None or b is None: return  # No unstable near-parallel plane edit.
+        delta=b-a
         if action=='drag:body':
             key={'forces':'position0','incline':'position0','projectile':'height','spring':'displacement',
                  'pendulum':'angle','lever':'arm1','pulley':'pull','collision':'velocity1'}[m.lab]
@@ -361,6 +407,7 @@ class PhysicsView:
             low=np.array((min(-2.5,body[0]-1),min(-1.,body[1]-1)))
             high=np.array((max(5.,body[0]+1),max(3.,body[1]+1)))
             if m.lab=='collision': low[0]=min(low[0],m.q[1]-1); high[0]=max(high[0],m.q[1]+1)
+        if self.edit_bounds is not None: low,high=self.edit_bounds
         self.bounds=(low,high); self.mid=(low+high)/2
         if self.measure_points is None:
             self.measure_points=[np.array((low[0]+.2*(high[0]-low[0]),-.65)),np.array((low[0]+.45*(high[0]-low[0]),-.65))]
@@ -380,8 +427,9 @@ class PhysicsView:
     def to_model(self,point,projection=None):
         center,rotation,mid,scale,space=projection or (self.origin,self.rotation,self.mid,self.scale,self.space)
         origin,direction=space.ray(*point); normal=rotation[:,2]; divisor=np.dot(normal,direction)
-        if abs(divisor)<1e-8: return self.mid.copy()
+        if abs(divisor)<self.settings['physics_min_edit_ray_cos']: return None
         t=np.dot(normal,center-origin)/divisor
+        if t<=0: return None
         local=rotation.T@(origin+direction*t-center)
         return local[:2]/scale+mid
 
@@ -415,6 +463,24 @@ class PhysicsView:
         gl.glMatrixMode(gl.GL_MODELVIEW); gl.glLoadIdentity()
         gl.glEnable(gl.GL_BLEND); gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA)
 
+    def _sync_panel(self):
+        # Translation moves hit rectangles, not text pixels. Upload only when
+        # visible content/size changes, once after an edited source observation.
+        semantic=(self.page_key,self.panel_rect.size,self.model.running,self.model.speed,
+             self.model.challenge,self.model.achieved,tuple(self.flags.items()),self.graph,
+             getattr(self,'lesson_page',0),self.dock_edge)
+        key=(semantic,tuple(self.model.params.items())); now=time.perf_counter()
+        refresh=(semantic!=getattr(self,'panel_semantic',None) or getattr(self,'panel_force',False)
+                 or now-getattr(self,'last_panel',-math.inf)>=1/self.cfg['ui_refresh_hz'])
+        if 'panel' not in self.textures or (key!=getattr(self,'panel_key',None) and refresh):
+            self._texture('panel',self._paint_panel(),key=key); self.panel_key=key
+            self.panel_semantic=semantic; self.last_panel=now
+        else:
+            delta=np.array(self.panel_rect.topleft)-getattr(self,'paint_origin',np.array(self.panel_rect.topleft))
+            if np.any(delta): self.targets=[(rect.move(*delta),action) for rect,action in self.targets]
+            gl.glBindTexture(gl.GL_TEXTURE_2D,self.textures['panel']['id'])
+        self.paint_origin=np.array(self.panel_rect.topleft); self.ui_dirty=False; self.panel_force=False
+
     def draw(self,snapshot,view,fresh,dt,run_id):
         geometry=(view,snapshot.image.shape[:2] if snapshot is not None else None)
         self.content=view
@@ -437,12 +503,7 @@ class PhysicsView:
         for point in ((0,0),(w,0),(w,h),(0,h)): gl.glVertex2f(*point)
         gl.glEnd()
         now=time.perf_counter()
-        key=(self.page_key,tuple(self.model.params.items()),tuple(self.panel_rect),self.model.running,self.model.speed,
-             self.model.challenge,self.model.achieved,tuple(self.flags.items()),self.graph,self.yaw,
-             getattr(self,'library_page',0),getattr(self,'tools_page',0))
-        if key!=getattr(self,'panel_key',None) or self.ui_dirty:
-            surface=self._paint_panel(); self._texture('panel',surface,key=key)
-            self.panel_key=key; self.ui_dirty=False
+        self._sync_panel()
         identity=(run_id,snapshot.frame_id) if fresh else None
         if fresh and identity!=self.identity and self.mouse_claim is None:
             hands=tuple(cover.hand(hand) for hand in snapshot.hands)
@@ -460,6 +521,7 @@ class PhysicsView:
             self.press_cursors=captured
         elif not fresh and self.identity is not None: self.input.release()
         self.identity=identity
+        self.input.advance(dt)
         self.model.advance(max(0,dt))
         if self.ui_dirty:
             previous_stage=self.stage.copy(); self.layout()
@@ -467,9 +529,7 @@ class PhysicsView:
         self.setup_projection(); self._draw_world()
         self._ortho()
         self._draw_object_labels()
-        if self.ui_dirty or self.panel_key!=key:
-            self._texture('panel',self._paint_panel(),key=('dirty',now)); self.ui_dirty=False; self.panel_key=None
-        else: gl.glBindTexture(gl.GL_TEXTURE_2D,self.textures['panel']['id'])
+        self._sync_panel()
         self._quad(self.panel_rect)
         semantic=(self.model.lab,self.model.running,self.model.challenge,self.model.achieved,self.model.prediction,tuple(self.flags.items()),self.graph,self.stage.size,self.renderer.help_visible,id(self.model.reference))
         if semantic!=getattr(self,'hud_semantic',None) or now-self.last_ui>=1/self.cfg['ui_refresh_hz'] or 'hud' not in self.textures:
@@ -759,9 +819,11 @@ class PhysicsView:
         for key,point in self.input.pointers.items():
             p=np.array(point)*self.content[2:]; previous=self.cursor_points.get(key,p)
             state=self.input.tap.states.get(key)
-            p=p if state and state.locked else previous+(p-previous)*(1-math.exp(-math.tau*self.cfg['cursor_response_hz']*dt))
+            p=p if key in self.input.claims or (state and state.locked) else previous+(p-previous)*(1-math.exp(-math.tau*self.cfg['cursor_response_hz']*dt))
             active[key]=p
-            gl.glColor3f(*(c/255 for c in (GOLD if state and state.phase in ('armed','press','latched') else ACCENT)))
+            claim=self.input.claims.get(key)
+            color=MUTED if claim and claim.paused else GOLD if claim or (state and state.phase in ('armed','press','latched')) else ACCENT
+            gl.glColor3f(*(c/255 for c in color))
             gl.glLineWidth(2); gl.glBegin(gl.GL_LINE_LOOP)
             for a in np.linspace(0,math.tau,33): gl.glVertex2f(p[0]+10*math.cos(a),p[1]+10*math.sin(a))
             gl.glEnd()

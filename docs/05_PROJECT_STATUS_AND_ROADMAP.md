@@ -1,6 +1,47 @@
 # 05 — Project Status and Roadmap
 
-## Current task — eight-scenario applied mechanics tab, 2026-10-18
+## Current task — Physics manipulation and view correction, 2026-10-18
+
+Change: stabilize Physics-only held edits using wrist/MCP translation, shared
+render-follow position for values/cursor, immediate freeze on opening/loss,
+neutral reacquisition, retained fit bounds and nearest-handle picking. Add
+bounded orbit and scene zoom handles, drag-to-edge docking with four restoring
+arrows, and panel texture reuse/parameter-readout throttling.
+Reason: user reports movement on release, uneven control and asks about view
+rotation/zoom, edge docking and effects on accepted tabs. Inspection found
+contact-midpoint displacement during folding, camera-cadence value updates vs
+independently smoothed cursor, continuous auto-fit and redundant panel uploads.
+These code paths explain possible symptoms; existing logs do not record full
+hand trajectories/intent and cannot establish each physical failure's cause.
+Canonical file/section changed: 02 Physics presentation contract; this record.
+Code/modules affected: Physics input/view, additional Physics-only UI settings,
+UI metadata, README and interaction/view/native regressions.
+Algorithmic impact: presentation control only; eight SI equations unchanged.
+Experimental impact: none. Compatibility impact: UI schema 15 records finished
+claims/movement policy; catalog content/hash and state schema 1 are unchanged,
+so previously saved Physics configurations retain compatibility.
+Existing results invalidated: no; Core/provider/raw/fixed/adaptive/replay,
+research/report and accepted chemistry/solid/fingertip logic are unchanged.
+Git: continue feat/physics-lab; main and chemistry branch remain intact. Preserve
+untracked personal submission/PHAN_CONG_BAO_VE.md and local QA artifacts.
+Status: implemented and verified. Executed 884 full tests on Python 3.12.14
+and Python 3.11.9. Seventeen added regressions cover finger-only motion, source
+vs render cadence, no post-release/loss tail, neutral rebase, consumed docking,
+two-hand view ownership, four-edge restore, hold vs throw intent, stable fit,
+bounded orbit/zoom, invalid plane edits, nearest-handle picking and texture
+reuse/readout refresh. Extended native GL regression also exercises real draw
+cadence release, hand-drag docking and orbit, then F11 restoration.
+Local native QA rendered 165 frames over 640x600, 768x520 and 1360x860 with
+all four docking edges and eight labs at different angles; zero GL errors.
+Inspected large angled pendulum and compact right-edge screenshots. Artifacts:
+runs/physics-refinement-qa/ (ignored). Actual Python 3.11 app replay run
+ui-20261018-091136-360338 processed 30 MediaPipe frames, wrote a screenshot,
+reported no error and stopped its worker cleanly; metadata uses UI schema 15.
+Protected Core/config/chemistry/solid/fingertip/model/catalog paths have no
+diff against 7b46be9. git diff --check passed. No physical accuracy or
+commercial-readiness claim is inferred from synthetic hands or automated tests.
+
+## Earlier task — eight-scenario applied mechanics tab, 2026-10-18
 
 Change: promote the user-approved Physics presentation scope into active work.
 Eight bounded SI experiments, common gesture controls, measurement/plot tools,

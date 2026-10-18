@@ -14,6 +14,10 @@ class PhysicsClaim:
     origin: tuple
     value: object
     paused: bool = False
+    position: object = None
+    target_point: object = None
+    cursor_origin: object = None
+    finished: bool = False
 
 
 class PhysicsInput:
@@ -68,11 +72,15 @@ class PhysicsInput:
             grip=self._grip_point(hand)
             if claim:
                 if not gate.slots: self.claims.pop(key)
-                elif gate.suspended: claim.paused=True
+                elif gate.suspended or gate.grips[key].ratio>=self.settings['physics_drag_freeze_ratio'] or claim.finished:
+                    claim.paused=True
                 else:
                     if claim.paused:
                         claim.origin=grip; claim.value=self.host.capture(claim.target); claim.paused=False
-                    self.host.drag(claim.target,claim.origin,grip,claim.value)
+                        claim.position=np.array(grip); claim.cursor_origin=np.array(point)
+                    claim.target_point=np.array(grip)
+                if key in self.claims:
+                    self.pointers[key]=tuple(claim.cursor_origin+claim.position-np.array(claim.origin))
                 continue
             if action and action.startswith('drag:'):
                 self.aims[key]=(hand.generation,self.host.page_key,action,t,point)
@@ -81,8 +89,11 @@ class PhysicsInput:
                 if np.linalg.norm((np.array(point)-aimed[4])/np.array((1.,aspect)))<=self.settings['chemistry_panel_aim_radius']:
                     action=aimed[2]
             if gate.slots and not gate.suspended and not consumed and action and action.startswith('drag:'):
-                if action not in {c.target for c in self.claims.values()}:
-                    self.claims[key]=PhysicsClaim(hand.generation,action,grip,self.host.capture(action))
+                view_targets={'drag:orbit','drag:zoom'}
+                owned={c.target for c in self.claims.values()}
+                if action not in owned and not (owned and (action in view_targets or owned & view_targets)):
+                    self.claims[key]=PhysicsClaim(hand.generation,action,grip,self.host.capture(action),
+                        position=np.array(grip),target_point=np.array(grip),cursor_origin=np.array(point))
                     self.host.pause_edit(); self.dwell.states.pop(key,None)
                 continue
             if chosen is not None and chosen[0]==self.host.page_key:
@@ -99,9 +110,23 @@ class PhysicsInput:
                 self.tap.latch(key,hand.generation,chosen,t,point); self.host.command(chosen[1])
 
     def _grip_point(self,hand):
-        a,b=hand.landmarks[4],hand.landmarks[8]; x=(a.x+b.x)/2
-        return (1-x if self.settings['mirror'] else x,(a.y+b.y)/2)
+        # Palm translation excludes the two folding contact fingers. Acquisition
+        # still hits the index cursor; its offset is kept for the whole claim.
+        points=[hand.landmarks[i] for i in (0,5,9,13,17)]
+        x=sum(p.x for p in points)/len(points); y=sum(p.y for p in points)/len(points)
+        return (1-x if self.settings['mirror'] else x,y)
+
+    def advance(self,dt):
+        """Follow the last real observation at render rate; never coast on release."""
+        if not math.isfinite(dt) or dt<=0: return
+        alpha=-math.expm1(-math.tau*self.settings['physics_drag_response_hz']*dt)
+        for key,claim in list(self.claims.items()):
+            if claim.paused or claim.finished: continue
+            claim.position+=alpha*(claim.target_point-claim.position)
+            finished=self.host.drag(claim.target,claim.origin,tuple(claim.position),claim.value) is False
+            claim.finished=finished; claim.paused=finished
+            self.pointers[key]=tuple(claim.cursor_origin+claim.position-np.array(claim.origin))
 
     def diagnostics(self):
-        return {'claims':{str(k):{'target':v.target,'generation':v.generation,'paused':v.paused} for k,v in self.claims.items()},
+        return {'claims':{str(k):{'target':v.target,'generation':v.generation,'paused':v.paused,'finished':v.finished} for k,v in self.claims.items()},
                 'selection':{str(k):{'target':v.target,'phase':v.phase,'ratio':v.ratio,'cancel_reason':v.reason} for k,v in self.tap.states.items()}}

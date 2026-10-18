@@ -32,7 +32,7 @@ def test_every_scenario_and_parameter_tool_are_reachable_in_compact_panels(size)
         for page in range(v.tools_pages):
             v._paint_panel(); actions|={a for r,a in v.targets}; v.command('tools_next')
         assert {'save','load','export','keep','step','graph_next','predict:yes','predict:no'}<=actions
-        assert {'panel_larger','panel_smaller','zoom_in','zoom_out'}<=actions
+        assert {'panel_larger','panel_smaller','zoom_in','zoom_out','drag:orbit','drag:zoom'}<=actions
         v.page='lesson'; v._paint_panel(); lesson=[]
         for _ in range(v.lesson_pages):
             v._paint_panel(); lesson.extend(v.visible_lesson_lines); v.command('lesson_next')
@@ -91,3 +91,84 @@ def test_static_challenge_begins_as_an_actual_problem_and_accepts_prediction():
 def test_keyboard_run_does_not_start_simulation_while_a_handle_is_owned():
     v=view(); v.input.claims[0]=object(); v.command('run')
     assert not v.model.running
+
+
+@pytest.mark.parametrize('edge,delta',(('left',(-.09,0)),('right',(1.,0)),('top',(0,-.09)),('bottom',(0,.09))))
+def test_throw_panel_docks_on_correct_edge_and_restores_inside_view(edge,delta):
+    v=view(); v.layout(); value=v.capture('drag:panel')
+    assert v.drag('drag:panel',(.3,.3),tuple(np.array((.3,.3))+delta),value) is False
+    assert v.collapsed and v.dock_edge==edge
+    v.layout(); v._paint_panel()
+    assert pygame.Rect((0,0),v.content[2:]).contains(v.panel_rect)
+    assert v.hit((v.panel_rect.centerx/v.content[2],v.panel_rect.centery/v.content[3]))=='restore'
+    v.command('restore'); v.layout()
+    assert not v.collapsed and pygame.Rect((0,0),v.content[2:]).contains(v.panel_rect)
+
+
+def test_near_border_drag_requires_hold_and_horizontal_header_does_not_dock(monkeypatch):
+    v=view(); clock=[1.]; monkeypatch.setattr('submission.stem_ui.physics_view.time.perf_counter',lambda:clock[0])
+    value=v.capture('drag:panel'); v.drag('drag:panel',(.3,.3),(.32,.3),value)
+    assert not v.collapsed
+    # A small excursion past the left border must persist, unlike a fast throw.
+    end=(.3-(12/v.content[2]+.03),.3)
+    v.drag('drag:panel',(.3,.3),end,value); assert not v.collapsed
+    clock[0]+=.1; v.drag('drag:panel',(.3,.3),end,value); assert not v.collapsed
+    clock[0]+=.06; v.drag('drag:panel',(.3,.3),end,value); assert v.collapsed
+
+
+def test_world_edit_does_not_reframe_on_drag_or_release_and_frame_resets_angles():
+    v=view(); before=(v.mid.copy(),v.scale); value=v.capture('drag:body')
+    v.drag('drag:body',(.6,.5),(1.2,.5),value); v.setup_projection()
+    assert v.mid==pytest.approx(before[0]) and v.scale==pytest.approx(before[1])
+    v.input.release(); v.setup_projection()
+    assert v.mid==pytest.approx(before[0]) and v.scale==pytest.approx(before[1])
+    v.yaw=60; v.pitch=40; v.zoom=1.7; v.command('frame')
+    assert v.edit_bounds is None and v.zoom==1 and v.yaw==v.cfg['default_yaw_deg'] and v.pitch==v.cfg['default_pitch_deg']
+
+
+def test_orbit_zoom_remain_editable_and_preserve_physical_state():
+    v=view(); before=v.model.configuration(); original=v.model.metrics(); value=v.capture('drag:orbit')
+    for end in ((-2,-2),(2,2),(.7,.4)):
+        v.drag('drag:orbit',(.5,.5),end,value); v.setup_projection()
+        xy=np.array((.3,.7)); assert v.to_model(v.space.project(v.world(xy)))==pytest.approx(xy)
+        assert abs(v.yaw)<=SETTINGS['physics_yaw_limit_deg'] and abs(v.pitch)<=SETTINGS['physics_pitch_limit_deg']
+    value=v.capture('drag:zoom')
+    for y in (-10,10):
+        v.drag('drag:zoom',(.5,.5),(.5,y),value)
+        assert v.cfg['min_scene_zoom']<=v.zoom<=v.cfg['max_scene_zoom']
+    assert v.model.configuration()==before and v.model.metrics()==original
+
+
+def test_panel_translation_reuses_pixels_and_moves_hit_regions(monkeypatch):
+    v=view(); uploads=[]; clock=[1.]
+    monkeypatch.setattr('submission.stem_ui.physics_view.time.perf_counter',lambda:clock[0])
+    def upload(name,surface,key):
+        uploads.append((name,surface.get_size())); v.textures[name]={'id':1}
+    monkeypatch.setattr(v,'_texture',upload)
+    monkeypatch.setattr('submission.stem_ui.physics_view.gl.glBindTexture',lambda *args:None)
+    v._sync_panel(); targets=[(r.copy(),a) for r,a in v.targets]
+    v.panel_offset[0]=.1; v.layout(); v._sync_panel()
+    assert len(uploads)==1
+    for (old,action),(new,now) in zip(targets,v.targets):
+        assert action==now and new.x-old.x==96 and new.y==old.y
+    v.model.set_parameter('mass',3); v._sync_panel(); assert len(uploads)==1
+    clock[0]+=.1; v._sync_panel(); assert len(uploads)==2
+
+
+def test_overlapping_handle_hit_uses_nearest_visible_center():
+    v=view(); v.targets=[]; point=(.75,.5)
+    v.handles=[(v.space.point(*point,0),'drag:body'),
+               (v.space.point(point[0]+.015,point[1],0),'drag:force')]
+    assert v.hit(point)=='drag:body'
+    assert v.hit((point[0]+.015,point[1]))=='drag:force'
+
+
+def test_near_parallel_or_backward_plane_edit_freezes_without_extreme_values():
+    v=view(); v.yaw=90; v.pitch=0; v.setup_projection()
+    assert v.to_model((.5,.5)) is None
+    value=v.capture('drag:body'); original=v.model.configuration()
+    v.drag('drag:body',(.5,.5),(.6,.6),value)
+    assert v.model.configuration()==original
+    v.yaw=0; v.setup_projection()
+    projection=(np.array((0.,0.,v.space.distance+1)),v.rotation,v.mid,v.scale,v.space)
+    assert v.to_model((.5,.5),projection) is None

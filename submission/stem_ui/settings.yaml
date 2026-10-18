@@ -129,6 +129,17 @@ chemistry_grip_release_ratio: 0.60
 chemistry_grip_press_s: 0.035
 chemistry_grip_release_s: 0.065
 chemistry_grip_loss_grace_s: 0.25
+# Physics presentation only; frozen Core/chemistry settings above are unchanged.
+physics_drag_response_hz: 9.0
+physics_drag_freeze_ratio: 0.45
+physics_orbit_gain_deg: 180.0
+physics_yaw_limit_deg: 50.0
+physics_pitch_limit_deg: 30.0
+physics_min_edit_ray_cos: 0.15
+physics_zoom_drag_gain: 3.0
+physics_panel_dock_edge: 0.025
+physics_panel_dock_s: 0.15
+physics_panel_throw_edge: 0.04
 crystal_panel_opacity: 218
 # Conservative neutral covalent editing rules; not general chemistry valences.
 chemistry_covalent_limits: {H: 1, C: 4, N: 3, O: 2, F: 1, P: 3, S: 2, Cl: 1, Br: 1, I: 1}
