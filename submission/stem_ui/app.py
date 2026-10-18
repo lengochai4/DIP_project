@@ -12,7 +12,7 @@ def main():
     parser=argparse.ArgumentParser(description='DIP Touchless STEM — UI nộp đồ án')
     parser.add_argument('--replay',type=Path)
     parser.add_argument('--camera',type=int,default=0)
-    parser.add_argument('--mode',choices=('solid','tips','chemistry'),default='solid')
+    parser.add_argument('--mode',choices=('solid','tips','chemistry','physics'),default='solid')
     parser.add_argument('--smoke-frames',type=int,default=0)
     parser.add_argument('--screenshot',type=Path)
     args=parser.parse_args()
@@ -28,6 +28,7 @@ def main():
             pass
     renderer=SubmissionRenderer(settings); renderer.mode=args.mode
     if args.mode=='chemistry': renderer.enter_chemistry()
+    elif args.mode=='physics': renderer.enter_physics()
     worker=None; active=False; error=None; webcam_index=args.camera
     current_source=('webcam',webcam_index); pending_source=None
     frame_count=0; seen=set(); max_hands=max_tips=0; start=time.monotonic()
@@ -121,10 +122,18 @@ def main():
                     'scale':grip.pose.scale,'stretch':grip.pose.stretch.tolist(),
                     'position':grip.pose.position.tolist(),'rotation':grip.pose.rotation.tolist(),
                     'mode':renderer.mode,'live_mesh_mode':getattr(renderer,'live_mesh_mode',None),
+                    'solid_controls':renderer.solid_palette.diagnostics() if renderer.mode=='solid' else None,
                     'draw_cpu_ms_excluding_swap_and_cap':renderer.last_draw_cpu_ms,
                     'render_msaa_samples':renderer.actual_msaa_samples,
+                    'window_size':list(renderer.size),'fullscreen':renderer.fullscreen,
                     'chemistry':renderer.chemistry.scene.state() if renderer.mode=='chemistry' else None,
                     'chemistry_controls':renderer.chemistry.input.diagnostics() if renderer.mode=='chemistry' else None,
+                    'physics':{'configuration':renderer.physics.model.configuration(),
+                        'measurements':renderer.physics.model.metrics(),'running':renderer.physics.model.running,
+                        'speed':renderer.physics.model.speed,'achieved':renderer.physics.model.achieved,
+                        'prediction':renderer.physics.model.prediction,
+                        'discarded_wall_s':renderer.physics.model.discarded_wall_s} if renderer.mode=='physics' else None,
+                    'physics_controls':renderer.physics.input.diagnostics() if renderer.mode=='physics' else None,
                     'feedback':grip.feedback},ensure_ascii=False)+'\n')
                 logged_frame=snapshot.frame_id
             max_hands=max(max_hands,hands); max_tips=max(max_tips,tips)

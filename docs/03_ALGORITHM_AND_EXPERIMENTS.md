@@ -1655,3 +1655,152 @@ Recommended final report:
 After the course prototype is validated, a research-paper branch MAY strengthen evidence through larger controlled datasets, more sessions/participants where relevant, stronger ablation, fixed/preregistered analysis, and broader failure analysis.
 
 Adding more prose without stronger evidence is not a research upgrade.
+
+## 26. Authorized educational mechanics models — 2026-10-18
+
+This presentation-only appendix implements the eight-scenario scope in 01.
+It changes no RQ, research algorithm, baseline, replay or retained evidence.
+`submission/stem_ui/physics_labs.yaml` owns parameter ranges, integration step,
+capacities, time limits, goals and primary reference URLs. Standard laws and
+classical RK4 are existing methods, not project algorithmic inventions.
+
+| Model | State/evolution and explicit limits |
+|---|---|
+| Force / incline | One translational coordinate, positive up the incline. N=mg cosθ; driving force F−mg sinθ. At zero speed static friction balances within μsN; otherwise kinetic friction opposes motion, μk≤μs. Constant-acceleration segments split at the exact stop time; re-evaluate sticking/reversal. Accumulate external work FΔx and nonnegative frictional dissipation. |
+| Projectile | Analytic constant-g planar position/velocity over each step. Solve first ground-contact time inside the step, end at contact, report pre-impact velocity. A configured time limit is not a landing or target hit. No air drag or ground bounce. |
+| Collision | Two translating centers on a frictionless 1D rail. Solve contact time from center separation; conserve momentum and apply relative restitution e∈[0,1]. Account for lost kinetic energy. One collision, no spin/deformation/contact-force waveform. |
+| Spring | Horizontal x′=v, v′=(−kx−cv)/m. RK4 also integrates dissipated energy D′=cv². No gravity term in this horizontal model. |
+| Pendulum | θ′=ω, ω′=−(g/L)sinθ−bω/(mL²), D′=bω². Solve the nonlinear equation for large angles. Measured period uses successive same-direction zero crossings with interpolation. 2π√(L/g) is separately labeled as the small-angle reference, not the measured period. |
+| Lever | Static massless horizontal beam with loads on opposite sides. Net torque m1gr1−m2gr2; no invented tilt dynamics/inertia. |
+| Pulley | Quasistatic ideal predefined supporting-branch arrangements, n=1..4. Required effort mg/n, lift s/n, input work Fs=mgh. No elastic rope, motor or free-fall dynamics. The rendered mechanism is a schematic. |
+
+Simulation advances only in configured fixed steps, independent of rendering.
+Frame catch-up is bounded and discarded wall time is logged, not silently
+reinterpreted as source timestamps. Pause/hidden tabs accrue no debt. Single
+step is explicit. Speed changes wall-time presentation, not simulated SI units.
+
+Editing pauses motion. Only force edits on forces/incline preserve ongoing
+state/work; their simulation-time input changes are retained. Other physical
+parameter edits reset initial conditions. Repeated paused edits at the same
+simulation time coalesce into one effective input event. Display zoom never
+changes physical state. Mouse/hand edit origins capture their projection and
+rebase after short observation loss; cancellation never adds an impulse.
+
+World-render geometry is illustrative. Planar meters and SI forces are defined
+by the model, not measured from webcam coordinates or model-relative z. The
+two-point ruler measures model-plane distance. Vector lengths are capped for
+legibility; numeric quantities retain their SI values. Energy may be negative
+relative to a chosen potential reference and must not be presented as an
+unsigned proportion. A/B keeps independent initial conditions, input histories,
+measurements and configuration; flag different times/multiple changes rather
+than claiming causal equivalence. JSON export records equations/assumptions,
+resolved catalog identity and references; CSV contains simulated measurements.
+
+Challenge conditions are configured mechanical criteria, not a score proving
+conceptual understanding. Static problems are checked explicitly; dynamic goals
+pause at the achieved state. Optional predictions and A/B encourage explanation.
+Numerical/analytic/invariant tests validate software against these idealizations;
+they do not establish real-device gesture accuracy or commercial readiness.
+
+### Mechanics audit correction — model revision 2, 2026-10-18
+
+The eight evolution equations, integrator step and parameter bounds above stay
+unchanged. Correct the incline diagram velocity to v(cosθ,sinθ), including
+negative velocity. Treat incline friction as a signed component in
+ma=F−mg sinθ+f_ms, opposing sliding or balancing the static drive.
+
+For the pendulum, the signed tangential speed is Lω and tangential acceleration
+is Lθ″; these are not respectively dx/dt or the magnitude of total acceleration.
+The total Cartesian acceleration includes the inward centripetal term Lω².
+Tension is m(g cosθ+Lω²) and the viscous tangential force is −bω/L, since the
+configured b is a rotational-damping coefficient (kg·m²/s). Its power is −bω².
+Render tension, gravity and this damping force. The undamped small-angle
+reference T₀=2π√(L/g) is explicitly labeled b=0. The challenge checks measured
+same-direction crossing periods against configured pendulum_target_s.
+
+Render the ideal lever pivot reaction R=(m1+m2)g upward in addition to the two
+weights. An unbalanced candidate remains a fixed diagram for computing torque;
+it is not a simulated horizontal beam in dynamic equilibrium. The pulley image
+is an equivalent support-force diagram, not a physically routed rope network;
+the blue load force is the sum nT, while T=mg/n is the pull/branch tension.
+For the spring, 2π√(m/k) is the c=0 natural reference; it is not an observed
+period of a critically/overdamped trajectory. Projectile speed is |v|, while
+its acceleration scalar is the signed y component −g. Readout/graph labels
+must distinguish these quantities and the incline's along-track coordinate.
+
+Catalog/model revision 2 names these corrections. UI schema 17 adds pendulum
+tension/drag quantities to measurement rows; all previous scalar keys retain
+their definitions. Existing setup schema 1 remains supported: only the known
+revision-1 catalog hash is explicitly migrated through the unchanged parameter
+bounds, as new initial conditions. Unknown mismatched catalogs remain rejected.
+Earlier Physics images/challenge descriptions are superseded; prior model
+trajectory values and frozen Core/report/research results remain valid. Do not
+treat legacy export rows as if they contain revision-2 force fields.
+
+### Follow-up boundary audit — model revision 3, 2026-10-18
+
+For the forces challenge, "stop" means actual static rest in this exact-stop
+Coulomb model: velocity is zero and the current force can be balanced by static
+friction (zero acceleration). A low-speed turnaround or continuing uniform
+motion does not satisfy this criterion. This tightens educational success
+evaluation; the evolution equations and stop-event integrator are unchanged.
+Require forward displacement from the actual initial position of at least
+forces_min_travel_m as well as the configured stopping zone. Initial position
+need not be strictly before that zone if both conditions can be met. Use the
+configured forces_position_tolerance_m only for floating-point distance/zone
+boundary roundoff; it is not a webcam/physical-measurement accuracy claim.
+
+Project the launch-handle vector into the declared first-quadrant domain before
+deriving both angle and speed, then apply the existing speed cap. Rejected
+negative components must not add kinetic energy in the allowed direction.
+
+Snapshots/exports include the current final measurement: replace a stale sample
+at that same simulation timestamp, or append the current endpoint if between
+sampling instants. Preserve prior input events and do not mutate live sample
+history during export. CSV final rows and JSON final/snapshot endpoints must
+agree after a paused live-force edit. This applies to frozen A/B references too.
+Revision 3 identifies the tightened goal, corrected launch mapping and endpoint
+publication; UI field schema remains 17. Known revision-1/2 setup hashes may
+migrate to the unchanged initial-parameter schema. Earlier goal flags, out-of-
+domain launch settings and stale endpoint exports are superseded, not rewritten.
+Live-force edits at an already sampled timestamp replace that sample with the
+post-edit value; this defines right-continuous force/acceleration at input
+events without inserting repeated same-time rows. Frozen references stay intact.
+
+### Direct mechanics interaction — presentation policy, 2026-10-18
+
+Deliberate release may run spring/pendulum from the edited zero-speed initial
+condition or run a projectile from its configured launch vector. It does not
+derive metric velocity or an impulse from webcam motion. The existing Run
+command remains available; release-to-run can be disabled. Meaningful edit
+travel, pair separation, scene bounds and undo capacity are external UI settings.
+Undo restores a bounded in-memory checkpoint of the model state, paused; no new
+saved-setup/runtime-restoration file contract is introduced. No equation, research
+baseline, experiment or catalog/hash changes. Earlier interaction recordings
+remain evidence only for their original UI schema/policy.
+
+### Physics shortcut policy — 2026-10-18
+
+Shortcuts are bounded presentation state machines over actual source observations:
+open-palm duration/stability/observation-count gates with one-shot rearming;
+fresh open-to-pinch evidence for the paused two-hand scene shortcut. Missing or
+invalid samples never advance timers. Feature thresholds are engineering defaults,
+not measured recognition accuracy. No new physical equation, provider, Core
+filter, replay baseline or research result. UI schema 19 distinguishes recordings.
+
+### Solid palette and fingertip feedback — 2026-10-18
+
+The solid palette reuses observed source-XY open-palm features with isolated
+solid thresholds; modal PointPinch/dwell and release/re-aim guards are entirely
+presentation state. No missing observation advances gesture progress. Existing
+solid motion smoothing and live-mesh equations remain unchanged. Analytic
+screen projection replaces per-tip driver queries without changing geometry.
+UI schema 20 distinguishes this policy; no Core experimental result is invalidated.
+
+### Chemistry object release correction — 2026-10-18
+
+Object-only contact-break freeze and observed release confirmation prevent
+partial opening from moving an atom/component through the wider panel-held
+band. Missing samples never complete a drop. Shared manipulation equations,
+panel/menu behavior, Core baselines and chemical graph rules are unchanged.
+UI schema 21 identifies the policy; no Core experimental result is invalidated.

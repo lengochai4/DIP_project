@@ -15,11 +15,16 @@ class Dwell:
 
 
 class DwellSelector:
-    def __init__(self,duration_s,max_gap_s,rearm_distance):
+    def __init__(self,duration_s,max_gap_s,rearm_distance,motion_radius=None):
         self.duration=duration_s; self.max_gap=max_gap_s; self.rearm=rearm_distance
         self.states={}
+        self.motion_radius=motion_radius
 
     def reset(self): self.states.clear()
+
+    def latch(self,key,generation,target,t,point):
+        """Explicit selection and dwell share an activation latch across pages."""
+        self.states[key]=Dwell(generation,target,t,t,latched=True,point=point)
 
     def update(self,key,generation,target,t,point,outside=False):
         old=self.states.get(key)
@@ -33,7 +38,7 @@ class DwellSelector:
                 old.last=t; old.progress=0.; return None
         if target is None:
             self.states.pop(key,None); return None
-        if old is None or old.target!=target:
+        if old is None or old.target!=target or (self.motion_radius is not None and math.dist(point,old.point)>self.motion_radius):
             self.states[key]=Dwell(generation,target,t,t,point=point); return None
         old.last=t; old.progress=min(1.,max(0.,(t-old.since)/self.duration))
         if old.progress>=1.-1e-9:

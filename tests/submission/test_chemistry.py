@@ -276,7 +276,8 @@ def test_chemistry_requires_close_pinch_but_small_opening_noise_does_not_release
     closed=with_ratio(aim(nx,ny),.1)
     c.update((closed,),1.15,space); c.update((closed,),1.2,space)
     assert c.claims[0].kind=='group'
-    for t in (1.25,1.3,1.35): c.update((partial,),t,space)
+    contact_noise=with_ratio(aim(nx,ny),.31)
+    for t in (1.25,1.3,1.35): c.update((contact_noise,),t,space)
     assert 0 in c.claims
     opened=aim(nx,ny,pinch=False)
     c.update((opened,),1.4,space); c.update((opened,),1.44,space)

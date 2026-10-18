@@ -114,6 +114,75 @@ The term **3D** means interaction with a rendered 3D scene. MediaPipe/model-rela
 
 ### Submission presentation scope — authorized 2026-10-14
 
+#### Solid and fingertip presentation refinement — authorized 2026-10-18
+
+The user authorized a modal four-shape palette summoned by a stable open palm
+at a free side edge, with deliberate re-aim followed by 1-second dwell or
+point-and-pinch selection. Shape changes preserve displayed object pose/scale.
+Fingertip mode adds observed node counts, hand colors and point/segment/surface/
+hull classification, with render-rate labels and less static UI rasterization.
+No extra fingertip vertices, new depth claims, Core/filter changes or chemistry/
+mechanics behavior changes are authorized. Commercial opportunity is a goal,
+not evidence of measured commercial readiness or universal tracking stability.
+
+#### Applied mechanics laboratory — authorized 2026-10-18
+
+The user additionally authorized two optional Physics shortcuts: a stable open
+palm in a free side-edge region summons four existing commands, and a fresh
+two-hand pinch in empty space temporarily enters scene viewing while paused.
+Existing buttons, model equations, other tabs and Core remain unchanged.
+
+After the mechanics audit, the user authorized richer direct interaction across
+the same eight models: body-sized picking, distinct velocity/parameter handles,
+contextual feedback, bounded undo/cancel, deliberate release-to-run for spring,
+pendulum and projectile launch, and coordinated two-hand scene viewing. These
+are presentation inputs to the existing bounded models; no general physics,
+new tracking provider or measured-accuracy/performance target is introduced.
+
+After accepting the chemistry interaction milestone, the user authorized a
+separate Physics tab with eight bounded teaching experiments: forces/friction,
+inclined plane, free fall/projectile motion, one-dimensional collisions,
+spring/damping, pendulum, lever equilibrium and ideal pulley systems. Include
+hand and mouse manipulation, SI parameters, measurements, plots, energy and
+force visualization, A/B comparison, educational challenges and local save/export.
+This is a set of explicit educational models, not the full general-purpose
+physics engine excluded in section 6. Model assumptions and constraints must be
+visible. Webcam gestures set simulation values; they do not measure physical
+forces, lengths or metric hand velocities. Original Core/research results and
+chemistry interaction behavior remain frozen. Novelty is the integrated learning
+workflow, not a claim of inventing the physical laws or unique market position.
+Commercial potential is a direction, not a validated readiness claim.
+
+#### Post-defense chemistry refinement — authorized 2026-10-17
+
+On 2026-10-18, the user reported objects following the hand after opening
+and authorized an object-only contact-break/release correction. Panel dragging,
+menu confirmation, chemical graph rules, other tabs and Core remain unchanged.
+
+On 2026-10-18, the user requested another responsive/sharpness audit and a
+more practical alternative to the unsuccessful air-push selector, retaining
+1-second dwell. The presentation may use open-hand aim plus normalized XY
+thumb-index pinch to confirm panel buttons, with bounded cursor capture,
+one-shot selection and explicit release/re-aim. Existing object/header grabs
+remain separate by target type. No >90% accuracy or optimum-readiness claim
+is authorized without labeled physical trials. Initial desktop fitting and
+compact control layout are part of the same presentation refinement.
+
+On a new branch from the accepted submission, the user authorized a responsive
+camera-cover viewport, sharper spatial palette text, movable/resizable and
+collapsible chemistry panel, and an optional quick selection alongside
+the existing 1-second dwell. Object manipulation and chemistry graph semantics
+remain unchanged. This uses the existing RGB landmarks only, with no new model,
+physical contact/depth claims, Core changes or new research results. Physics-tab
+work is deferred until after this chemistry refinement.
+
+Following user testing on the same date, the user rejected the index-bend
+prototype and authorized a palm-relative index-push heuristic with bounded
+cursor capture, edge-arrow docking (including drag-to-edge), in-scene controls
+instead of duplicate toolbar controls, and undoable clear-all. No RGB-only
+gesture is claimed to perfectly distinguish every shake from an intentional
+press or to match a depth-sensing VR device.
+
 #### Camera chemistry demonstration — authorized 2026-10-14
 
 The user approved an additional isolated desktop camera-composited chemistry

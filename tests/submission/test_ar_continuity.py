@@ -10,7 +10,7 @@ from submission.stem_ui.chemistry_view import CameraChemistryView
 from submission.stem_ui.manipulation import GrabController,PinchGate
 
 
-def test_panel_does_not_rebuild_for_atom_hover_motion_or_bond_graph(monkeypatch):
+def test_panel_does_not_rebuild_for_atom_or_button_hover_motion_or_bond_graph(monkeypatch):
     import submission.stem_ui.chemistry_view as module
     view=CameraChemistryView(SETTINGS,SimpleNamespace(help_visible=True))
     c=view.input; view.scene.add_template('H2O')
@@ -24,9 +24,9 @@ def test_panel_does_not_rebuild_for_atom_hover_motion_or_bond_graph(monkeypatch)
         clock[0]+=.1; c.hover={0:'atom:'+str(i%3+1),1:None}
         view.scene.move_atom(2,(3+i*.01,0,0)); view._ensure_panel()
     assert len(calls)==1
-    c.hover={0:'elements'}; view._ensure_panel(); assert len(calls)==2
+    c.hover={0:'elements'}; view._ensure_panel(); assert len(calls)==1
     clock[0]+=.1; c.hover={0:'elements',1:'elements'}; view._ensure_panel()
-    assert len(calls)==2
+    assert len(calls)==1
 
 
 def test_panel_semantic_changes_refresh_immediately_inside_hover_rate_limit(monkeypatch):

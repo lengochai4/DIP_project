@@ -1,5 +1,6 @@
 """Pure camera-aligned display projection and spatial-panel hit testing."""
 import math
+from dataclasses import replace
 import numpy as np
 
 
@@ -8,6 +9,31 @@ def letterbox(rect,aspect):
     cw,ch=(w,w/aspect) if w/h<aspect else (h*aspect,h)
     cw,ch=round(cw),round(ch)
     return (x+(w-cw)//2,y+(h-ch)//2,cw,ch)
+
+
+class CameraCover:
+    """Centered aspect-preserving crop, shared by texture and presentation XY.
+
+    Source snapshots are immutable. This is display geometry, not camera depth
+    or a change to the detector's ROI. Cropped observations may lie offscreen.
+    """
+    def __init__(self,source_aspect,view_aspect):
+        self.width=min(1.,view_aspect/source_aspect)
+        self.height=min(1.,source_aspect/view_aspect)
+        self.left=(1-self.width)/2; self.top=(1-self.height)/2
+
+    @property
+    def uv(self):
+        l,t=self.left,self.top; r,b=l+self.width,t+self.height
+        return ((l,t),(r,t),(r,b),(l,b))
+
+    def point(self,x,y):
+        return ((x-self.left)/self.width,(y-self.top)/self.height)
+
+    def hand(self,hand):
+        def convert(points):
+            return tuple(replace(p,x=(p.x-self.left)/self.width,y=(p.y-self.top)/self.height) for p in points)
+        return replace(hand,landmarks=convert(hand.landmarks),raw_landmarks=convert(hand.raw_landmarks))
 
 
 class CameraSpace:
