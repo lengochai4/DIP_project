@@ -728,17 +728,21 @@ class PhysicsView:
             for key,color in (('spring_n',GOLD),('damping_n',(252,151,143))): self._arrow(at,self.rotation[:,0]*np.clip(values[key]/limit,-1,1)*length,color)
         elif m.lab=='projectile': self._arrow(at,-self.rotation[:,1]*min(1,p['mass']*p['gravity']/limit)*length,(178,165,249))
         elif m.lab=='pendulum':
-            angle,omega,_=m.q; tension=p['mass']*(p['gravity']*math.cos(angle)+p['length']*omega*omega)
+            angle,omega,_=m.q; tension=values['tension_n']
             self._arrow(at,self.rotation@np.array((-math.sin(angle),math.cos(angle),0))*min(1,tension/limit)*length,ACCENT)
             self._arrow(at,-self.rotation[:,1]*min(1,p['mass']*p['gravity']/limit)*length,(178,165,249))
+            self._arrow(at,self.rotation@np.array((math.cos(angle),math.sin(angle),0))*np.clip(values['damping_n']/limit,-1,1)*length,(252,151,143))
         elif m.lab=='pulley':
             weight=p['mass']*p['gravity']; magnitude=min(1,weight/limit)*length
             self._arrow(at,self.rotation[:,1]*magnitude,ACCENT); self._arrow(at,-self.rotation[:,1]*magnitude,(178,165,249))
         elif m.lab=='lever':
             for pos,mass in ((at,p['mass']),(self.world((p['arm2'],0)),p['mass2'])):
                 self._arrow(pos,-self.rotation[:,1]*min(1,mass*p['gravity']/limit)*length,(178,165,249))
+            self._arrow(self.world((0,0)),self.rotation[:,1]*min(1,values['reaction_n']/limit)*length,ACCENT)
         if m.lab=='projectile': velocity=np.array((values['vx_m_s'],values['vy_m_s'],0.))
         elif m.lab=='pendulum': velocity=np.array((math.cos(m.q[0]),math.sin(m.q[0]),0.))*values['velocity_m_s']
+        elif m.lab=='incline':
+            angle=math.radians(p['angle']); velocity=np.array((math.cos(angle),math.sin(angle),0.))*values['velocity_m_s']
         else: velocity=np.array((values['velocity_m_s'],0.,0.))
         velocity_length=min(cfg['velocity_vector_length'],display_limit)
         self._arrow(at,self.rotation@velocity/max(cfg['velocity_vector_max_m_s'],float(np.linalg.norm(velocity)))*velocity_length,(146,239,170))
@@ -752,6 +756,17 @@ class PhysicsView:
             angle,omega,_=m.q
             acceleration=np.array((math.cos(angle),math.sin(angle),0))*values['acceleration_m_s2']+np.array((-math.sin(angle),math.cos(angle),0))*p['length']*omega*omega
         self._arrow(at,self.rotation@acceleration/max(cfg['acceleration_vector_max_m_s2'],float(np.linalg.norm(acceleration)))*min(cfg['acceleration_vector_length'],display_limit),INK)
+
+    def measurement_label(self,key):
+        specific={
+            'pendulum':{'position_m':('Hoành độ x','m'),'velocity_m_s':('Vận tốc tiếp tuyến','m/s'),
+                        'acceleration_m_s2':('Gia tốc tiếp tuyến','m/s²'),'period_small_s':('T₀ góc nhỏ, b=0','s')},
+            'spring':{'period_small_s':('T₀ riêng, c=0','s')},
+            'projectile':{'velocity_m_s':('Tốc độ','m/s'),'acceleration_m_s2':('Gia tốc y','m/s²')},
+            'incline':{'position_m':('Vị trí dọc dốc','m'),'velocity_m_s':('Vận tốc dọc dốc','m/s'),
+                       'acceleration_m_s2':('Gia tốc dọc dốc','m/s²')},
+            'lever':{'position_m':('Cánh tay đòn trái','m')},'pulley':{'position_m':('Dây đã kéo s','m')}}
+        return specific.get(self.model.lab,{}).get(key,MEASUREMENTS.get(key))
 
     def _paint_hud(self,fresh):
         w,h=self.stage.size; surface=pygame.Surface((w,h),pygame.SRCALPHA); m=self.model; values=m.metrics()
@@ -784,7 +799,7 @@ class PhysicsView:
             for key in keys:
                 if key not in MEASUREMENTS:
                     name,unit={'torque_left_nm':('Mômen trái','N·m'),'torque_right_nm':('Mômen phải','N·m'),'velocity2_m_s':('Vận tốc xe 2','m/s')}[key]
-                else: name,unit=MEASUREMENTS[key]
+                else: name,unit=self.measurement_label(key)
                 value=values[key]; text=('chưa chạm đất' if key=='target_error_m' else 'chưa đủ chu kỳ') if value is None else f'{value:.3g} {unit}'
                 y=self._text(surface,f'{name}: {text}',(8,y),12,INK,w-16)
         paused={k:c for k,c in self.input.claims.items() if c.paused}
@@ -820,7 +835,7 @@ class PhysicsView:
 
     def _paint_graph(self,surface,rect):
         pygame.draw.rect(surface,(10,24,36,228),rect,border_radius=10)
-        name,unit=MEASUREMENTS[self.graph]; self._text(surface,f'{name} ({unit}) • t (s) • A vàng / B xanh',(rect.x+10,rect.y+5),11,INK,rect.w-20)
+        name,unit=self.measurement_label(self.graph); self._text(surface,f'{name} ({unit}) • t (s) • A vàng / B xanh',(rect.x+10,rect.y+5),11,INK,rect.w-20)
         series=[(list(self.model.samples),ACCENT)]
         if self.model.reference: series.insert(0,(self.model.reference['samples'],GOLD))
         points=[(row['time_s'],row[self.graph]) for rows,_ in series for row in rows if row.get(self.graph) is not None]

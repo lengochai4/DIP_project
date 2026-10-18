@@ -210,3 +210,44 @@ def test_dwell_tool_choice_stays_selected_without_toggling_on_continued_hover():
     x,y=rect.centerx/v.content[2],rect.centery/v.content[3]
     for t in np.arange(1,4,.04): v.input.update([sample(1,nx=x,ny=y)],float(t),4/3)
     assert v.tool=='zoom' and not v.input.claims
+
+
+def test_incline_velocity_vector_follows_track_in_both_directions():
+    v=view(); v.command('lab:incline'); v.model.params['angle']=30
+    vectors=[]; v._arrow=lambda start,vector,color:vectors.append(np.array(vector))
+    axis=v.rotation@np.array((math.cos(math.pi/6),math.sin(math.pi/6),0))
+    for speed in (2.,-2.):
+        v.model.q=[0.,speed]; vectors.clear(); v._draw_vectors(np.zeros(3))
+        velocity=vectors[-2]
+        assert np.cross(velocity,axis)==pytest.approx(np.zeros(3),abs=1e-12)
+        assert np.dot(velocity,axis)*speed>0
+
+
+def test_pendulum_force_arrows_include_tangential_drag_and_balance_acceleration():
+    v=view(); v.command('lab:pendulum'); v.model.params.update(damping=.4,length=1.3,mass=1.7)
+    v.model.q=[.6,-1.2,0.]; v.cfg={**v.cfg,'force_vector_max_n':1000}
+    vectors=[]; v._arrow=lambda start,vector,color:vectors.append(np.array(vector))
+    v._draw_vectors(np.zeros(3))
+    assert len(vectors)==5  # tension, gravity, drag, velocity, total acceleration
+    length=min(v.cfg['force_vector_length'],v.space.height*v.stage.h/v.content[3]*v.cfg['vector_stage_fraction'])
+    force=sum(vectors[:3])*1000/length
+    theta,omega=v.model.q[:2]; m=v.model.params['mass']; l=v.model.params['length']; b=.4; g=v.model.params['gravity']
+    alpha=-g/l*math.sin(theta)-b*omega/(m*l*l)
+    acceleration=l*np.array((alpha*math.cos(theta)-omega**2*math.sin(theta),alpha*math.sin(theta)+omega**2*math.cos(theta),0))
+    assert force==pytest.approx(v.rotation@(m*acceleration))
+
+
+def test_static_lever_arrows_show_upward_pivot_reaction():
+    v=view(); v.command('lab:lever'); v.cfg={**v.cfg,'force_vector_max_n':1000}
+    vectors=[]; v._arrow=lambda start,vector,color:vectors.append(np.array(vector))
+    v._draw_vectors(v.world(v.body_position()))
+    assert sum(vectors[:3])==pytest.approx(np.zeros(3),abs=1e-12)
+    assert np.dot(vectors[2],v.rotation[:,1])>0
+
+
+def test_physics_readouts_distinguish_scalar_components_and_ideal_periods():
+    v=view(); v.command('lab:pendulum')
+    assert 'tiếp tuyến' in v.measurement_label('velocity_m_s')[0]
+    assert 'b=0' in v.measurement_label('period_small_s')[0]
+    v.command('lab:projectile'); assert v.measurement_label('velocity_m_s')[0]=='Tốc độ'
+    v.command('lab:spring'); assert 'c=0' in v.measurement_label('period_small_s')[0]

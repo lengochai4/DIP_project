@@ -1701,3 +1701,38 @@ conceptual understanding. Static problems are checked explicitly; dynamic goals
 pause at the achieved state. Optional predictions and A/B encourage explanation.
 Numerical/analytic/invariant tests validate software against these idealizations;
 they do not establish real-device gesture accuracy or commercial readiness.
+
+### Mechanics audit correction — model revision 2, 2026-10-18
+
+The eight evolution equations, integrator step and parameter bounds above stay
+unchanged. Correct the incline diagram velocity to v(cosθ,sinθ), including
+negative velocity. Treat incline friction as a signed component in
+ma=F−mg sinθ+f_ms, opposing sliding or balancing the static drive.
+
+For the pendulum, the signed tangential speed is Lω and tangential acceleration
+is Lθ″; these are not respectively dx/dt or the magnitude of total acceleration.
+The total Cartesian acceleration includes the inward centripetal term Lω².
+Tension is m(g cosθ+Lω²) and the viscous tangential force is −bω/L, since the
+configured b is a rotational-damping coefficient (kg·m²/s). Its power is −bω².
+Render tension, gravity and this damping force. The undamped small-angle
+reference T₀=2π√(L/g) is explicitly labeled b=0. The challenge checks measured
+same-direction crossing periods against configured pendulum_target_s.
+
+Render the ideal lever pivot reaction R=(m1+m2)g upward in addition to the two
+weights. An unbalanced candidate remains a fixed diagram for computing torque;
+it is not a simulated horizontal beam in dynamic equilibrium. The pulley image
+is an equivalent support-force diagram, not a physically routed rope network;
+the blue load force is the sum nT, while T=mg/n is the pull/branch tension.
+For the spring, 2π√(m/k) is the c=0 natural reference; it is not an observed
+period of a critically/overdamped trajectory. Projectile speed is |v|, while
+its acceleration scalar is the signed y component −g. Readout/graph labels
+must distinguish these quantities and the incline's along-track coordinate.
+
+Catalog/model revision 2 names these corrections. UI schema 17 adds pendulum
+tension/drag quantities to measurement rows; all previous scalar keys retain
+their definitions. Existing setup schema 1 remains supported: only the known
+revision-1 catalog hash is explicitly migrated through the unchanged parameter
+bounds, as new initial conditions. Unknown mismatched catalogs remain rejected.
+Earlier Physics images/challenge descriptions are superseded; prior model
+trajectory values and frozen Core/report/research results remain valid. Do not
+treat legacy export rows as if they contain revision-2 force fields.

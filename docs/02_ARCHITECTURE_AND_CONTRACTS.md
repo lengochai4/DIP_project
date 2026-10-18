@@ -79,6 +79,13 @@ sliders, orbit/zoom and button selectors keep their existing boundaries. This
 is a presentation policy/configuration change; the UI schema remains 16 and
 the added model-hold setting is captured in the resolved UI configuration.
 
+Mechanics audit (2026-10-18): UI schema 17 adds pendulum tension_n/damping_n
+measurements in new runs. Catalog/model revision 2 distinguishes corrected
+physical diagrams, quantity labels and configured period-goal evaluation;
+evolution equations/bounds remain those in 03. A known revision-1 setup hash
+may migrate to fresh initial parameters after complete existing validation;
+this is not restoration of old runtime state or acceptance of unknown hashes.
+
 Design reference (affordances and separate movement/rotation/scale targets):
 [Microsoft direct manipulation](https://learn.microsoft.com/en-us/windows/mixed-reality/design/direct-manipulation).
 This guides presentation design; it transfers no HoloLens accuracy/performance

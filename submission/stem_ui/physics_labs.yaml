@@ -1,4 +1,8 @@
 schema: 1
+model_revision: 2
+# Revision 1 setup parameters/bounds are unchanged; load as fresh initial values.
+compatible_setup_hashes:
+  - 8f0a24f1bfce193d05c4d4b9c5f685c5c0658717b2c8be998c4d313a710f9402
 view:
   ui_refresh_hz: 15
   cursor_response_hz: 18
@@ -59,6 +63,7 @@ sources:
   - https://openstax.org/books/college-physics-2e/pages/16-3-simple-harmonic-motion-a-special-periodic-motion
   - https://openstax.org/books/college-physics-2e/pages/16-4-the-simple-pendulum
   - https://openstax.org/books/college-physics-2e/pages/9-5-simple-machines
+  - https://openstax.org/books/university-physics-volume-1/pages/15-5-damped-oscillations
 labs:
   forces:
     title: Lực và ma sát
@@ -77,7 +82,7 @@ labs:
     title: Mặt phẳng nghiêng
     application: Đưa hàng lên xe • Đánh đổi lực kéo và quãng đường
     assumptions: Vật chỉ trượt dọc dốc; lực kéo song song dốc, không lăn.
-    formula: ΣF = F − mg sinθ − Fms; N = mg cosθ
+    formula: ma = F − mg sinθ + fms; N = mg cosθ; fms ngược chiều trượt
     challenge: Đưa hàng lên cao ít nhất 1 m bằng lực kéo không quá 20 N.
     params:
       mass: [Khối lượng, kg, 0.2, 10, 0.2, 2]
@@ -126,9 +131,9 @@ labs:
   pendulum:
     title: Con lắc
     application: Xích đu • Chiều dài, biên độ và chu kỳ liên hệ thế nào?
-    assumptions: Vật điểm, dây không giãn và không khối lượng; chuyển động trong mặt phẳng đứng.
-    formula: θ″ = −(g/L)sinθ − bθ′/(mL²); T góc nhỏ ≈ 2π√(L/g)
-    challenge: Điều chỉnh chiều dài để chu kỳ góc nhỏ gần 2 s; kiểm chứng bằng đồng hồ.
+    assumptions: Vật điểm, dây không giãn và không khối lượng; chuyển động trong mặt phẳng đứng; mômen cản nhớt −bθ′. Chu kỳ đo từ hai lần qua cân bằng cùng chiều.
+    formula: θ″ = −(g/L)sinθ − bθ′/(mL²); T₀ góc nhỏ, b=0 ≈ 2π√(L/g)
+    challenge: Điều chỉnh chiều dài để chu kỳ đo gần 2 s; so sánh với xấp xỉ góc nhỏ không cản.
     params:
       mass: [Khối lượng, kg, 0.2, 10, 0.2, 1]
       length: [Chiều dài dây, m, 0.2, 4, 0.1, 1]
@@ -138,7 +143,7 @@ labs:
   lever:
     title: Đòn bẩy và cân bằng
     application: Cân đòn • Đặt tải ở đâu để cân bằng?
-    assumptions: Bài toán cân bằng tĩnh; thanh ngang không khối lượng, tải đặt hai bên điểm tựa.
+    assumptions: Kiểm tra điều kiện cân bằng tĩnh; thanh ngang không khối lượng, tải đặt hai bên điểm tựa. Hình giữ ngang để tính mômen, không mô phỏng thanh nghiêng khi chưa cân bằng.
     formula: τ = Fr; cân bằng khi m₁gr₁ = m₂gr₂
     challenge: Cân bằng hai tải khác nhau bằng cách điều chỉnh cánh tay đòn.
     static: true
@@ -151,7 +156,7 @@ labs:
   pulley:
     title: Ròng rọc và công
     application: Nâng hàng • Lợi về lực thì phải kéo dây bao xa?
-    assumptions: Nâng chậm, dây/ròng rọc lý tưởng; số nhánh đỡ tải n chọn từ các bộ có sẵn.
+    assumptions: Nâng chậm, dây/ròng rọc lý tưởng; n nhánh cùng lực căng T=mg/n. Hình là sơ đồ lực tương đương, không hướng dẫn đường luồn dây.
     formula: F = mg/n; h = s/n; Fs = mgh
     challenge: Nâng tải ít nhất 1 m với lực kéo không quá 15 N.
     static: true

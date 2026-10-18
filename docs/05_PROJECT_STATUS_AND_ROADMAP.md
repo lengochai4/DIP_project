@@ -1,6 +1,42 @@
 # 05 — Project Status and Roadmap
 
-## Current task — model-only early contact-break freeze, 2026-10-18
+## Current task — full bounded-mechanics audit, 2026-10-18
+
+Change: audit all eight SI models, formulas/assumptions, numerical integration,
+goals, export compatibility and physical diagrams before further gesture work.
+Correct along-incline velocity, pendulum damping-force and lever-reaction
+arrows, model-specific scalar/period labels, signed incline-friction notation,
+measured-period goal configuration and explicit lever/pulley idealizations.
+Reason: user requests a physics/formula audit before adding interactions.
+Canonical file/section changed: 02 schema/setup contract; 03 mechanics audit;
+this record. Code/modules affected: Physics model/catalog/view, metadata,
+independent analytic/conservation/diagram tests and review notes.
+Algorithmic impact: eight evolution equations, fixed step and bounds unchanged;
+derived tension/drag and physical display/goal semantics corrected.
+Experimental impact: no Core/RQ/report changes. Compatibility impact: model
+revision 2/catalog hash, UI schema 17 with added pendulum quantities. State file
+schema 1 unchanged; explicitly permit the known revision-1 setup hash with full
+parameter validation. Unknown mismatches rejected. Existing results invalidated:
+no research data/trajectory values; prior Physics diagrams/labels/goal wording
+are superseded and must not be presented as the corrected revision.
+Git: continue feat/physics-lab, preserve main/chemistry and personal untracked
+submission/PHAN_CONG_BAO_VE.md. Status: verified. Executed 923 full tests on
+Python 3.12.14 and Python 3.11.9; 23 added regressions cover analytic damped
+spring phase, nonlinear pendulum elliptic-period reference, Cartesian force
+balance, configured period goals, elevated projectile landing, collision loss,
+all pulley ratios, known-setup migration/unknown-hash rejection and diagram/
+quantity semantics. Native QA rendered 652 frames across four window sizes,
+all eight scenes/tool/lesson pages and F11, with zero GL errors. Inspected
+large incline and compact pendulum screenshots. Local runs/physics-qa/ ignored.
+Python 3.11 native save/load/export produced all four files with A/B final
+states; a pendulum export retained revision 2 and tension/drag CSV columns.
+Actual app replay ui-20261018-122908-734451 processed 30 MediaPipe frames,
+reported UI schema 17/no error and stopped its worker cleanly.
+git diff --check passed. Protected Core/config/chemistry/gesture/geometry/
+renderer paths have no diff against 343e919. The audit is validation against
+bounded ideal models, not a general-physics/commercial or device-accuracy claim.
+
+## Earlier task — model-only early contact-break freeze, 2026-10-18
 
 Change: freeze Physics model/ruler handles at a separate contact-hold boundary
 and discard their pending render-follow target at the displayed position.

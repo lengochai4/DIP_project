@@ -32,6 +32,9 @@ def load_catalog():
         for name,unit,low,high,step,default in lab['params'].values():
             if not (all(type(v) in (int,float) and math.isfinite(v) for v in (low,high,step,default)) and low<high and step>0 and low<=default<=high):
                 raise ValueError('Invalid physics parameter catalog')
+    if any(not isinstance(h,str) or len(h)!=64 or any(c not in '0123456789abcdef' for c in h)
+           for h in data.get('compatible_setup_hashes',[])):
+        raise ValueError('Invalid compatible physics setup hash')
     return data
 
 
@@ -226,7 +229,8 @@ class PhysicsLab:
             result.update(position_m=length*math.sin(angle),angle_rad=angle,angular_velocity_rad_s=omega,
                 height_m=height,velocity_m_s=length*omega,kinetic_j=.5*m*(length*omega)**2,
                 potential_j=m*g*height,thermal_j=d,period_small_s=math.tau*math.sqrt(length/g),period_measured_s=self.period,
-                acceleration_m_s2=-g*math.sin(angle)-p['damping']*omega/(m*length))
+                acceleration_m_s2=-g*math.sin(angle)-p['damping']*omega/(m*length),
+                tension_n=m*(g*math.cos(angle)+length*omega**2),damping_n=-p['damping']*omega/length)
         elif self.lab=='lever':
             left=m*g*p['arm1']; right=p['mass2']*g*p['arm2']
             result.update(position_m=p['arm1'],velocity_m_s=0.,torque_left_nm=left,torque_right_nm=right,
@@ -253,7 +257,7 @@ class PhysicsLab:
             if goal and self.goal_since is None: self.goal_since=self.time
             if not goal: self.goal_since=None
             goal=goal and self.time-self.goal_since>=e['challenge_hold_s'] and self.time<=limits['spring_deadline_s']
-        elif self.lab=='pendulum': goal=self.period is not None and abs(self.period-2)<=limits['pendulum_tolerance_s'] and abs(self.initial_params['angle'])>=limits['pendulum_min_angle_deg']
+        elif self.lab=='pendulum': goal=self.period is not None and abs(self.period-limits['pendulum_target_s'])<=limits['pendulum_tolerance_s'] and abs(self.initial_params['angle'])>=limits['pendulum_min_angle_deg']
         elif self.lab=='lever': goal=abs(v['torque_net_nm'])<=e['balance_tolerance_nm'] and p['mass']!=p['mass2']
         elif self.lab=='pulley': goal=v['height_m']>=limits['pulley_height_m'] and v['required_n']<=limits['pulley_max_force_n']
         if goal:
@@ -266,7 +270,7 @@ class PhysicsLab:
         return {'configuration':self.configuration(),'initial_params':self.initial_params.copy(),
                 'inputs':copy.deepcopy(self.inputs),'samples':list(self.samples),'final':self.metrics(),
                 'prediction':self.prediction,'achieved':self.achieved,'finished':self.finished,'landed':self.landed,
-                'model':{'assumptions':self.spec['assumptions'],'formula':self.spec['formula'],
+                'model':{'revision':self.catalog.get('model_revision',1),'assumptions':self.spec['assumptions'],'formula':self.spec['formula'],
                     'engine':self.engine,'sources':self.catalog['sources']}}
 
     def keep_reference(self):
@@ -289,7 +293,8 @@ class PhysicsLab:
         path=Path(path)
         if path.stat().st_size>self.engine['max_file_bytes']: raise ValueError('Physics file too large')
         data=json.loads(path.read_text(encoding='utf-8'))
-        if not isinstance(data,dict) or type(data.get('schema')) is not int or data.get('schema')!=self.schema or not isinstance(data.get('lab'),str) or data.get('lab') not in self.catalog['labs'] or data.get('catalog_hash',self.catalog_hash)!=self.catalog_hash:
+        hashes=[self.catalog_hash,*self.catalog.get('compatible_setup_hashes',[])]
+        if not isinstance(data,dict) or type(data.get('schema')) is not int or data.get('schema')!=self.schema or not isinstance(data.get('lab'),str) or data.get('lab') not in self.catalog['labs'] or data.get('catalog_hash',self.catalog_hash) not in hashes:
             raise ValueError('Invalid physics setup')
         params=data.get('params'); spec=self.catalog['labs'][data['lab']]['params']
         if not isinstance(params,dict) or set(params)!=set(spec) or not isinstance(data.get('challenge',False),bool): raise ValueError('Invalid physics setup')
