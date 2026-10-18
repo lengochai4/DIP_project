@@ -116,6 +116,15 @@ The term **3D** means interaction with a rendered 3D scene. MediaPipe/model-rela
 
 #### Post-defense chemistry refinement — authorized 2026-10-17
 
+On 2026-10-18, the user requested another responsive/sharpness audit and a
+more practical alternative to the unsuccessful air-push selector, retaining
+1-second dwell. The presentation may use open-hand aim plus normalized XY
+thumb-index pinch to confirm panel buttons, with bounded cursor capture,
+one-shot selection and explicit release/re-aim. Existing object/header grabs
+remain separate by target type. No >90% accuracy or optimum-readiness claim
+is authorized without labeled physical trials. Initial desktop fitting and
+compact control layout are part of the same presentation refinement.
+
 On a new branch from the accepted submission, the user authorized a responsive
 camera-cover viewport, sharper spatial palette text, movable/resizable and
 collapsible chemistry panel, and an optional quick selection alongside

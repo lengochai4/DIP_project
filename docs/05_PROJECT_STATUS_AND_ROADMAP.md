@@ -1,6 +1,64 @@
 # 05 — Project Status and Roadmap
 
-## Current task — renderer timing and chemistry hot-path audit, 2026-10-17
+## Current task — responsive review and point-and-pinch selection, 2026-10-18
+
+Change: fit the initial window to desktop dimensions with configurable chrome
+margins; do not shrink subsequent user resizing/restoration repeatedly. Wrap
+controls at compact widths, reserve the extra solid-control row only where
+used, keep all author glyphs within their badge using real font metrics, and
+fit/clip sidebar content to its card. Fall back from a missing Windows panel
+font. Preserve camera-cover geometry, raster/glyph caching and F11 lifecycle.
+
+Default chemistry quick selection changes to open-hand aim plus confirmed raw
+XY thumb-index pinch. Capture the displayed cursor/target during a bounded
+close, require tight pinch and multiple observations, emit once, unlock after
+feedback, and require confirmed opening/fresh aim for another explicit click.
+Consume menu pinches across page changes so they cannot grab objects behind
+the palette. Keep the existing 1-second dwell and its normal leave/rearm
+behavior; a dwell activation also consumes the current menu gesture. Maintain
+existing atom/component/header manipulation and graph rules. The previous
+index-push selector is retained only as an explicit experimental configuration.
+
+Reason/evidence: user requested another smoothness/sharpness/layout review and
+a more practical selector, retaining dwell. The default 1360x860 window could
+exceed a 768-pixel-high laptop display. The narrow badge title was outside its
+card and 13px glyph rows overlapped by one bounding-box pixel. Schema-11 local
+sessions `ui-20261017-164032-225005` and `ui-20261018-071830-751249` contain aim/
+armed/cancelled states but no completed push click. This motivates replacing
+the default policy, not claiming a tracking accuracy improvement. Reference:
+Microsoft point-and-commit design, linked in 02; no device performance transfer.
+
+Canonical files/sections changed: 01 authorized presentation scope; 02 point-
+and-pinch contract; this record. Modules: submission controls/input/view/theme/
+renderer/app/settings/metadata, README and tests. Algorithmic impact: UI menu
+selection and responsive display only. Experimental impact: none. Compatibility
+impact: UI schema 12 records selector name and actual window/fullscreen in
+interaction logs. Existing results invalidated: no; Core/provider/filter/raw-
+fixed-adaptive/replay/config/report data, chemistry data and accepted main are
+unchanged. No new model, camera resolution increase or UI telemetry panel.
+
+Executed: 780 full tests passed on Python 3.12.14 and Python 3.11.9. Coverage
+includes gradual close, one-shot/release/re-aim, no depth dependency, invalid/
+loss/identity/time cancellation, partial/spike/shake rejection, actual-cursor
+capture, dwell fallback/no duplicate action, same-tile repeat, edge restore and
+no grab through a changed page or short loss during a consumed menu gesture.
+Layout tests cover ten badge widths and four
+desktop-fit examples. Legacy push tests now explicitly select the legacy mode.
+
+Native GL selector/layout QA rendered 558 frames at actual sizes 640x600,
+800x600, 960x660, 1248x640, 1334x688 and 1888x1080 (1920x1080 requested, fitted
+to the current desktop). All three modes' buttons remained inside the window
+and non-overlapping; selection/repeat/collapse/restore/F11 passed. An additional
+333 native motion frames checked header capture, brief-loss rebasing, two-to-
+one-hand transitions, resize texture reuse and F11 at three window sizes.
+All contexts reported zero GL error; representative screenshots were inspected.
+Artifacts: `runs/chemistry-point-pinch-qa/` (ignored). Recorded camera imagery
+and synthetic hands were used. No labeled physical-hand trial, >90% recognition
+claim, universal-display guarantee, or new latency/accuracy result is asserted.
+Camera-image detail still depends on the input resolution/lighting. Physics
+remains deferred; accepted main is unchanged.
+
+## Earlier task — renderer timing and chemistry hot-path audit, 2026-10-17
 
 Change: derive animation dt/draw CPU durations and electron phase from
 `perf_counter`; reset the dt origin on display-context rebuild. Keep snapshot

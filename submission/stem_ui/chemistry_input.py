@@ -6,7 +6,7 @@ import numpy as np
 from .camera_space import sphere_hit
 from .manipulation import GrabController, PinchGate
 from .dwell import DwellSelector
-from .chemistry_controls import IndexPush,PanelLayout
+from .chemistry_controls import IndexPush,PointPinch,PanelLayout
 
 
 @dataclass
@@ -27,7 +27,9 @@ class ChemistryInput:
         self.handle_aim={}
         self.page='home'; self.panel=None
         self.expanded_page='home'
-        self.layout=PanelLayout(settings); self.tap=IndexPush(settings)
+        self.layout=PanelLayout(settings)
+        selectors={'point_pinch':PointPinch,'index_push':IndexPush}
+        self.tap=selectors[settings['chemistry_quick_select']](settings)
         self.panel_base=None; self.panel_target=None
         self.dock_pending=None
         self.previous_time=None
@@ -253,8 +255,10 @@ class ChemistryInput:
             state=self.dwell.states.get(key)
             tap_state=self.tap.states.get(key)
             if tap_state and tap_state.target[0]!=self.page and tap_state.phase not in ('latched','cancelled'):
-                self.tap.states.pop(key,None); tap_state=None
-            blocked=bool(self.claims) or bool(state and state.latched and not (tap_state and tap_state.phase=='latched'))
+                if isinstance(self.tap,PointPinch) and tap_state.phase=='press':
+                    self.tap.cancel(key,t)
+                else: self.tap.states.pop(key,None); tap_state=None
+            blocked=bool(self.claims) or bool(isinstance(self.tap,IndexPush) and state and state.latched and not (tap_state and tap_state.phase=='latched'))
             observed=gesture_hands.get(key,hand)
             original=(nx,ny)
             (nx,ny),chosen=self.tap.update(key,observed,candidate,t,original,source_aspect or space.aspect,blocked)
@@ -274,7 +278,9 @@ class ChemistryInput:
             was_held=bool(gate.slots)
             gate.update((hand,) if hand is not None else (),t,space.aspect)
             held=bool(gate.slots)
-            if held and key not in self.claims and hand is not None and not gate.suspended:
+            tap_state=self.tap.states.get(key)
+            menu_consumed=isinstance(self.tap,PointPinch) and tap_state is not None and tap_state.phase in ('press','latched','cancelled')
+            if held and key not in self.claims and hand is not None and not gate.suspended and not menu_consumed:
                 nx,ny=self.pointers[key]
                 action=self.hover[key]
                 # Closing the pinch moves the index off a narrow handle. Retain
@@ -322,10 +328,10 @@ class ChemistryInput:
             if hand is not None:
                 action=self.hover.get(key); nx,ny=self.pointers[key]
                 candidate=(self.page,action) if action and not action.startswith(('atom:','panel:')) and key not in self.claims else None
-                if self.page=='compact' and held: candidate=None
+                if self.page=='compact' and held and key not in tapped: candidate=None
                 if any(c.kind.startswith('panel_') for c in self.claims.values()): candidate=None
                 tap=self.tap.states.get(key)
-                if tap and tap.phase=='cancelled':
+                if tap and tap.phase=='cancelled' and isinstance(self.tap,IndexPush):
                     self.dwell.states.pop(key,None)
                     continue
                 if tap and tap.phase=='press':
@@ -337,8 +343,13 @@ class ChemistryInput:
                     self.press('dwell:'+str(key),hand.generation,candidate[1],space,nx,ny,t)
                     self.end('dwell:'+str(key))
                     continue
+                if menu_consumed and tap and tap.phase!='cancelled':
+                    state=self.dwell.states.get(key)
+                    if state: state.last=t
+                    continue
                 chosen=self.dwell.update(key,hand.generation,candidate,t,(nx,ny),outside=action is None or (action and action.startswith('atom:')))
                 if chosen is not None:
+                    if isinstance(self.tap,PointPinch): self.tap.latch(key,hand.generation,chosen,t,(nx,ny))
                     self.press('dwell:'+str(key),hand.generation,chosen[1],space,nx,ny,t)
                     self.end('dwell:'+str(key))
         self._panel_motion(space,t)

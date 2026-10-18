@@ -300,6 +300,51 @@ atoms, moving objects or changing bond topology must not repaint an unchanged
 panel. Selection/page/control changes update immediately. Scientific graph
 labels remain owned by the scene/overlay, independently of the panel texture.
 
+#### Point-and-pinch menu confirmation — authorized 2026-10-18
+
+The default presentation selector is now `point_pinch`, alongside unchanged
+1-second dwell. The prior unsuccessful `index_push` remains an explicitly
+selectable experimental configuration, not the default or a proven gesture.
+This replaces the default quick-selection policy described historically below.
+
+Require an observed open hand and stable aim at an actual menu button before
+arming. A gradual close may retain that button within configured position/time
+bounds. Capture the actual displayed cursor when closure passes the configured
+capture ratio. Require tight raw XY pinch, a minimum observation count and
+confirmation duration before emitting once. Do not use model-relative z to
+infer touch. After feedback the cursor unlocks even if pinch stays closed.
+Release confirmation and fresh stable aim are required before another explicit
+selection; this permits deliberately selecting the same tile again. Dwell
+keeps its existing leave/rearm behavior. A dwell activation consumes the current
+menu gesture so a coincident pinch does not immediately activate twice.
+
+While a menu pinch is captured/latched it cannot acquire an atom or header
+behind a changed/collapsed page, join a molecular grab or start another dwell.
+Existing object/header claims block menu confirmation. Thumb-index holds on
+atoms/header/corners still use their original gate and movement controllers.
+Partial pinches, opening before confirmation, excessive motion, time/identity
+discontinuity, invalid/missing observations and stale/source/viewport changes
+cancel safely. A reacquired already-closed hand cannot arm a menu click.
+Consumed selection/cancelled-capture intent is retained through brief loss and
+page changes until opening, so a closed returning hand cannot acquire an object
+behind the button. This retains no missing hand geometry and does not freeze
+the ordinary cursor. An incomplete cancelled capture still permits dwell.
+All tunable aim/capture/timeout/observation settings live in submission settings.
+
+The initial window is fitted to the current desktop minus configured chrome
+margins. Later user resizing/fullscreen restoration is not repeatedly shrunk.
+At compact widths the top controls and solid controls wrap to extra rows;
+the camera scene reserves that space. Author glyphs stay inside their badge,
+with spacing derived from font metrics. Sidebar content is clipped to its card.
+Panel font loading falls back if the Windows font file is absent. UI schema 12
+records selector mode and actual window dimensions/fullscreen in local logs.
+Core/replay/filter/report data remain unchanged. Simulated regressions establish
+software invariants only, not physical-hand recognition accuracy.
+
+Interaction reference: Microsoft point-and-commit design (concept only; this
+RGB implementation does not inherit HoloLens tracking or performance):
+https://learn.microsoft.com/en-us/windows/mixed-reality/design/point-and-commit
+
 #### Presentation timing and chemistry render audit — authorized 2026-10-17
 
 Renderer animation dt, draw CPU-duration diagnostics and illustrative electron

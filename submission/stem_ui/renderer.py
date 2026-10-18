@@ -14,7 +14,7 @@ from .geometry import (Tip, FingerSelection, live_mesh, solid_mesh,
 from .geometry import bone_transforms
 from .manipulation import GrabController
 from .chemistry_view import CameraChemistryView
-from .theme import BG, PANEL, INK, MUTED, ACCENT, GOLD, AUTHORS, card, glass, outline, atom_mark, header_height, scene_rect
+from .theme import BG, PANEL, INK, MUTED, ACCENT, GOLD, AUTHORS, card, glass, outline, atom_mark, header_height, scene_rect, fit_desktop_window
 
 COLORS = ((.20,.72,.90),(.28,.46,.82),(.48,.87,.94),(.47,.60,.79))
 KINDS = ('cube','tetra','octa','sphere')
@@ -25,6 +25,7 @@ class SubmissionRenderer:
         self.settings = settings
         self.size = tuple(settings['window'])
         self.windowed = self.size
+        self.initial_window_fit=True
         self.windowed_position=None
         self.display_index=0
         self.restore_window_position=False
@@ -100,6 +101,12 @@ class SubmissionRenderer:
         # SDL desktop fullscreen handles monitor bounds/origin and taskbar;
         # merely enlarging a borderless window leaves its old screen offset.
         flags = pygame.OPENGL | pygame.DOUBLEBUF | (pygame.NOFRAME if self.fullscreen else pygame.RESIZABLE)
+        if not self.fullscreen and self.initial_window_fit:
+            desktops=pygame.display.get_desktop_sizes()
+            desktop=desktops[min(self.display_index,len(desktops)-1)]
+            self.size=fit_desktop_window(self.size,desktop,self.settings['window_desktop_margin'])
+            self.windowed=self.size
+            self.initial_window_fit=False
         for samples in (self.settings['render_msaa_samples'],0):
             pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLEBUFFERS,int(samples>0))
             pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLESAMPLES,samples)
@@ -177,7 +184,10 @@ class SubmissionRenderer:
             if event.type == pygame.QUIT:
                 actions.append('quit')
             elif event.type == pygame.VIDEORESIZE and not self.fullscreen and (event.w,event.h)!=self.size and (event.w,event.h)==pygame.display.get_window_size():
-                self.size=(max(960,event.w),max(660,event.h)); self.windowed=self.size; self._set_display()
+                desktops=pygame.display.get_desktop_sizes()
+                desktop=desktops[min(self.display_index,len(desktops)-1)]
+                minimum=fit_desktop_window((960,660),desktop,self.settings['window_desktop_margin'])
+                self.size=(max(minimum[0],event.w),max(minimum[1],event.h)); self.windowed=self.size; self._set_display()
             elif event.type == pygame.KEYDOWN:
                 key = event.key
                 if self.droidcam_dialog:
@@ -334,7 +344,7 @@ class SubmissionRenderer:
 
     def draw(self,snapshot,status,*,active=False,error=None,run_id='',camera_index=0,replay=False,source_kind='webcam'):
         w,h=self.size
-        view=scene_rect(self.size,self.camera_visible)
+        view=scene_rect(self.size,self.camera_visible,self.mode)
         vx,vy,vw,vh=view
         now=time.monotonic()
         draw_started=time.perf_counter()
@@ -529,6 +539,23 @@ class SubmissionRenderer:
             return 'Hai điểm giữ quá gần • Tách hai tay rõ hơn để tiếp tục'
         return None
 
+    def _author_badge_labels(self,badge,fs):
+        """Keep the author heading and every name inside the badge at small sizes."""
+        lines=AUTHORS.split(' | ')
+        combined=lines[1]+' | '+lines[2]
+        if self.fonts[fs].size(combined)[0]<=badge.width-20:
+            lines=[lines[0],combined]
+        else:
+            lines=['Nhóm tác giả:',lines[0].replace('Nhóm tác giả: ',''),*lines[1:]]
+        line_h=max(self.fonts[fs].get_height(),self.fonts[fs].get_linesize())
+        y=badge.centery-len(lines)*line_h//2
+        labels=[]
+        for line in lines:
+            glyph=self._label(line,fs,INK)
+            labels.append((glyph,glyph.get_rect(center=(badge.centerx,y+line_h//2))))
+            y+=line_h
+        return labels
+
     def _draw_ui(self,snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,tips,fresh,world_labels):
         w,h=self.size; vx,vy,vw,vh=view; hh=header_height(w)
         overlay=self.overlay_surface; overlay.fill((0,0,0,0)); self.buttons=[]
@@ -550,22 +577,13 @@ class SubmissionRenderer:
             ('Thu khung' if self.fullscreen else 'Phóng to',94,'fullscreen',self.fullscreen),
         ))
         controls=sum(item[1] for item in top_controls)+6*(len(top_controls)-1)
+        compact=w<960
         right=w-controls-20; left=275 if w>=1120 else 225
-        badge=pygame.Rect(left,17,right-left-16,hh-20)
+        badge=pygame.Rect(left,17,(w-20 if compact else right-16)-left,60 if compact else hh-20)
         self._card(overlay,badge,215)
-        author_lines=AUTHORS.split(' | ')
         fs=13 if w>=1120 else 12
-        combined=author_lines[1]+' | '+author_lines[2]
-        if self.fonts[fs].size(combined)[0]<=badge.width-20:
-            author_lines=[author_lines[0],combined]
-        elif w<1120:
-            author_lines[0]=author_lines[0].replace('Nhóm tác giả: ','')
-        line_h=17; y=badge.centery-len(author_lines)*line_h//2
-        for line in author_lines:
-            label=self._label(line,fs,INK)
-            overlay.blit(label,label.get_rect(center=(badge.centerx,y+line_h//2))); y+=line_h
-        if w<1120: self._text(overlay,'Nhóm tác giả:',(badge.x+10,badge.y-12),12,MUTED)
-        x=right; cy=hh//2-11
+        for label,rect in self._author_badge_labels(badge,fs): overlay.blit(label,rect)
+        x=(w-controls)//2 if compact else right; cy=92 if compact else hh//2-11
         for label,bw,action,on in top_controls:
             self._button(overlay,label,(x,cy,bw,38),action,on); x+=bw+6
         sy=hh+15
@@ -573,10 +591,11 @@ class SubmissionRenderer:
         for label,x,bw,action in (('Khối 3D',26,112,'solid'),('Đầu ngón',144,114,'tips'),('Hóa học AR',264,138,'chemistry')):
             self._button(overlay,label,(x,sy, bw,36),action,self.mode==action)
         if self.mode=='solid':
-            self._button(overlay,NAMES[KINDS.index(self.kind)],(424,sy,130,36),'menu')
-            pygame.draw.polygon(overlay,MUTED,((539,sy+15),(547,sy+15),(543,sy+20)))
+            mx,my=(26,sy+46) if compact else (424,sy)
+            self._button(overlay,NAMES[KINDS.index(self.kind)],(mx,my,130,36),'menu')
+            pygame.draw.polygon(overlay,MUTED,((mx+115,my+15),(mx+123,my+15),(mx+119,my+20)))
             label={'uniform':'Hai tay: đổi cỡ','stretch':'Hai tay: kéo dãn','distance':'Một tay: đổi cỡ','depth':'Một tay: tiến/lùi'}[self.grab.scale_mode]
-            self._button(overlay,label,(566,sy,152,36),'scale_mode',self.grab.scale_mode!='uniform')
+            self._button(overlay,label,(168,my,152,36) if compact else (566,sy,152,36),'scale_mode',self.grab.scale_mode!='uniform')
         self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại góc nhìn',(w-168,sy,148,36),'reset')
         # Scene frame is only an outline, leaving the camera unobstructed.
         pygame.draw.rect(overlay,(53,105,124,190),view,1,border_radius=18)
@@ -589,8 +608,9 @@ class SubmissionRenderer:
         if self.camera_visible:
             pw=min(300,w//4); px=w-20-pw; py=vy
             self._card(overlay,(px,py,pw,vh),245)
+            previous_clip=overlay.get_clip(); overlay.set_clip(pygame.Rect(px,py,pw,vh))
             self._text(overlay,'CAMERA',(px+18,py+16),13,ACCENT)
-            cwmax=pw-28; chmax=min(220,int(cwmax*.75))
+            cwmax=pw-28; chmax=min(220,int(cwmax*.75),max(40,vh-180))
             if snapshot is not None and active:
                 bgr=snapshot.image; ih,iw=bgr.shape[:2]
                 ratio=min(cwmax/iw,chmax/ih); cw,ch=round(iw*ratio),round(ih*ratio)
@@ -614,15 +634,17 @@ class SubmissionRenderer:
                 self._text(overlay,'Đang nhận tay' if hands else 'Chưa thấy tay',(px+18,py+chmax+65),17,ACCENT if hands else MUTED)
             else:
                 self._wrap(overlay,'Bật camera để thao tác trực tiếp bằng tay.',(px+18,py+68),pw-36,17)
-                self._button(overlay,'Đổi camera',(px+18,py+176,pw-36,36),'next_camera')
-            if self.help_visible and self.mode!='chemistry' and vw<820:
+                self._button(overlay,'Đổi camera',(px+18,py+min(176,max(0,vh-52)),pw-36,36),'next_camera')
+            if self.help_visible and self.mode!='chemistry' and vw<820 and vh>=240:
                 y=py+chmax+108
                 self._text(overlay,'THAO TÁC',(px+18,y),13,ACCENT); y+=26
                 lines=('Chụm để cầm; mở ngón để buông.','Một tay: dời và xoay.','Hai tay: tách / khép để đổi cỡ.') if self.mode=='solid' else ('Duỗi ngón: tạo đỉnh sống.','Gập ngón: bỏ đỉnh.','Hai tay: tạo hình cùng lúc.')
+                if vh<400: lines=('Chụm: cầm. Mở: buông.',) if self.mode=='solid' else ('Duỗi: thêm. Gập: bỏ đỉnh.',)
                 for line in lines: y=self._wrap(overlay,line,(px+18,y),pw-36,13,INK)
-                self._text(overlay,'H: ẩn hướng dẫn',(px+18,y+4),12,MUTED)
-            else:
+                if vh>=400: self._text(overlay,'H: ẩn hướng dẫn',(px+18,y+4),12,MUTED)
+            elif vh>=240:
                 self._wrap(overlay,'Đưa một hoặc hai tay vào khung. Tránh che đầu ngón và chồng hai lòng bàn tay.',(px+18,py+chmax+108),pw-36,15)
+            overlay.set_clip(previous_clip)
         if self.help_visible and self.mode!='chemistry' and not (self.camera_visible and vw<820):
             hw=min(342,vw-36); hx=vx+18; hy=vy+54
             self._card(overlay,(hx,hy,hw,184),231,True)
@@ -633,7 +655,7 @@ class SubmissionRenderer:
             for line in instructions.split('\n'): y=self._wrap(overlay,line,(hx+16,y),hw-32,15,INK)
             self._text(overlay,'H: ẩn hướng dẫn  •  F11: phóng to',(hx+16,hy+157),12,MUTED)
         if self.menu and self.mode=='solid':
-            for i,name in enumerate(NAMES): self._button(overlay,name,(424,sy+44+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
+            for i,name in enumerate(NAMES): self._button(overlay,name,(26 if compact else 424,sy+(90 if compact else 44)+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
         footer=pygame.Rect(20,h-55,w-40,45)
         self._card(overlay,footer,248)
         if self.mode!='chemistry':

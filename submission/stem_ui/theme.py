@@ -58,11 +58,17 @@ def atom_mark(samples=2):
 
 
 def header_height(width):
-    return 96 if width < 1120 else 80
+    return 144 if width < 960 else 96 if width < 1120 else 80
 
 
-def scene_rect(size, camera):
+def fit_desktop_window(size,desktop,margin):
+    """Leave room for window chrome/taskbar without enlarging a requested size."""
+    return tuple(max(1,min(int(wanted),int(screen)-int(gap)))
+                 for wanted,screen,gap in zip(size,desktop,margin))
+
+
+def scene_rect(size, camera,mode='solid'):
     w,h = size
     sidebar = min(300, w//4) if camera else 0
-    y = header_height(w) + 68
+    y = header_height(w) + (116 if w<960 and mode=='solid' else 68)
     return (20, y, w-40-sidebar-(16 if sidebar else 0), h-y-68)

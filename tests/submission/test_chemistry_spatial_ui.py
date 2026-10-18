@@ -79,7 +79,7 @@ def test_quick_push_freezes_only_during_press_fires_once_and_requires_retraction
 
 
 def test_quick_tap_and_dwell_share_latch_no_repeat_on_page_change():
-    c=ChemistryInput(ChemistryScene(SETTINGS),SETTINGS); c.page='elements'
+    c=ChemistryInput(ChemistryScene(SETTINGS),{**SETTINGS,'chemistry_quick_select':'index_push'}); c.page='elements'
     space=CameraSpace(4/3); panel=SpatialPanel(space=space)
     panel.targets=[((0,0,*panel.pixels),'element:H')]; c.panel=panel
     nx,ny=space.project(panel.center)
@@ -188,7 +188,7 @@ def test_panel_drag_does_not_upload_texture_or_mutate_scene(monkeypatch):
 
 
 def test_tap_freezes_the_actual_smoothed_visual_cursor_before_bend():
-    view=CameraChemistryView(SETTINGS,SimpleNamespace(help_visible=True))
+    view=CameraChemistryView({**SETTINGS,'chemistry_quick_select':'index_push'},SimpleNamespace(help_visible=True))
     arm(view.input.tap)
     view.input.tap.update(0,push_pose(.11),None,1.23,(.31,.31),4/3)
     view.cursor_points={(0,0):view.space.point(.29,.298,.6)}
@@ -293,7 +293,7 @@ def test_collapsed_arrow_is_priority_target_even_if_atom_is_in_front():
 
 
 def test_cancelled_push_cannot_turn_into_a_delayed_dwell_click():
-    c=ChemistryInput(ChemistryScene(SETTINGS),SETTINGS); c.page='elements'
+    c=ChemistryInput(ChemistryScene(SETTINGS),{**SETTINGS,'chemistry_quick_select':'index_push'}); c.page='elements'
     space=CameraSpace(4/3); panel=SpatialPanel(space=space)
     panel.targets=[((0,0,*panel.pixels),'element:H')]; c.panel=panel
     nx,ny=space.project(panel.center)

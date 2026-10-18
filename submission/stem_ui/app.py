@@ -123,6 +123,7 @@ def main():
                     'mode':renderer.mode,'live_mesh_mode':getattr(renderer,'live_mesh_mode',None),
                     'draw_cpu_ms_excluding_swap_and_cap':renderer.last_draw_cpu_ms,
                     'render_msaa_samples':renderer.actual_msaa_samples,
+                    'window_size':list(renderer.size),'fullscreen':renderer.fullscreen,
                     'chemistry':renderer.chemistry.scene.state() if renderer.mode=='chemistry' else None,
                     'chemistry_controls':renderer.chemistry.input.diagnostics() if renderer.mode=='chemistry' else None,
                     'feedback':grip.feedback},ensure_ascii=False)+'\n')

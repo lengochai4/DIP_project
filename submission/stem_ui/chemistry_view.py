@@ -1,6 +1,7 @@
 """Camera compositing and a textured spatial palette with true 3D atom geometry."""
 import math
 import time
+from pathlib import Path
 import cv2
 import numpy as np
 import pygame
@@ -68,7 +69,8 @@ class CameraChemistryView:
         # Panel fonts are cached separately from the window font sizes.
         if not hasattr(self,'fonts'): self.fonts={}
         if size not in self.fonts:
-            self.fonts[size]=pygame.font.Font('C:/Windows/Fonts/segoeui.ttf',size)
+            path=Path('C:/Windows/Fonts/segoeui.ttf')
+            self.fonts[size]=pygame.font.Font(str(path) if path.is_file() else None,size)
         return self.fonts[size]
 
     def _geometry(self):
@@ -138,7 +140,7 @@ class CameraChemistryView:
         button('−',(w-103,15,72,52),'compact')
         pygame.draw.line(surface,(161,213,232,150),(32,78),(w-32,78),2)
         if control.page=='home':
-            text(f"Giữ {self.settings['chemistry_dwell_s']:g}s hoặc đẩy trỏ để chọn",(32,99),29)
+            text(f"Giữ {self.settings['chemistry_dwell_s']:g}s hoặc chụm để chọn" if self.settings['chemistry_quick_select']=='point_pinch' else f"Giữ {self.settings['chemistry_dwell_s']:g}s hoặc đẩy trỏ để chọn",(32,99),29)
             button('BẢNG NGUYÊN TỐ',(32,165,w-64,130),'elements')
             button('MẪU PHÂN TỬ 3D',(32,322,w-64,105),'templates')
             if self.renderer.help_visible:
@@ -148,7 +150,7 @@ class CameraChemistryView:
                 text('Ghép/tách: thả gần để nối, kéo xa để tháo',(32,608),26)
                 text('Kéo tiêu đề: dời bảng; góc dưới: đổi cỡ',(32,655),25)
                 text('Kéo ra viền để ẩn; trỏ mũi tên để mở',(32,696),24)
-                text('Vòng vàng: đẩy riêng trỏ rồi rút lại',(32,731),23,ACCENT)
+                text('Vòng vàng: chụm để chọn; mở để chọn tiếp' if self.settings['chemistry_quick_select']=='point_pinch' else 'Vòng vàng: đẩy riêng trỏ rồi rút lại',(32,731),23,ACCENT)
             else: text('H để hiện cách thao tác',(32,525),28,(166,189,205))
         elif control.page=='elements':
             text('Nguyên tố thường dùng',(32,93),31)
@@ -356,7 +358,7 @@ class CameraChemistryView:
             gl.glColor3f(*(np.array(GOLD if pressed else ACCENT)/255))
             state=self.input.dwell.states.get(key); progress=state.progress if state else 0.
             if tap and tap.phase=='press':
-                progress=max(progress,float(np.clip((tap.depth-tap.baseline)/self.settings['chemistry_push_travel_ratio'],0,1)))
+                progress=max(progress,tap.progress if hasattr(tap,'progress') else float(np.clip((tap.depth-tap.baseline)/self.settings['chemistry_push_travel_ratio'],0,1)))
             gl.glBegin(gl.GL_LINE_LOOP)
             for i in range(48):
                 t=math.tau*i/48; gl.glVertex3fv(p+np.array((math.cos(t),math.sin(t),0))*.075)

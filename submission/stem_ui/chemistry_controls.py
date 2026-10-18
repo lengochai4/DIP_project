@@ -77,6 +77,121 @@ class PushState:
     locked: bool = False
 
 
+@dataclass
+class PointPinchState:
+    generation: int
+    target: object
+    since: float
+    last: float
+    anchor: tuple
+    origin: tuple
+    phase: str = 'aim'
+    locked: bool = False
+    captured_at: float | None = None
+    pressed_at: float | None = None
+    release_since: float | None = None
+    observations: int = 0
+    progress: float = 0.
+
+
+class PointPinch:
+    """Open-hand aim -> captured close -> one explicit menu selection.
+
+    Uses observed normalized XY pinch, never model z. Continuous hover remains
+    independent. A held selection pinch cannot become an object/panel grab.
+    """
+    def __init__(self,settings):
+        self.settings=settings; self.states={}
+
+    def reset(self): self.states.clear()
+
+    def _cancel(self,state,t):
+        if state.phase!='latched': state.phase='cancelled'
+        state.locked=False; state.release_since=None
+        if math.isfinite(t): state.last=t
+        state.progress=0.
+
+    def cancel(self,key,t):
+        if key in self.states: self._cancel(self.states[key],t)
+
+    def retain(self,keys):
+        # Remember consumed intent during loss, not hand geometry. Otherwise a
+        # returning closed pinch could grab the object behind a menu button.
+        self.states={k:s for k,s in self.states.items() if k in keys or s.phase in ('press','latched','cancelled')}
+        for k,s in self.states.items():
+            if k not in keys: self._cancel(s,s.last)
+
+    def latch(self,key,generation,target,t,point):
+        self.states[key]=PointPinchState(generation,target,t,t,point,point,phase='latched',pressed_at=t)
+
+    def update(self,key,hand,target,t,point,aspect,blocked=False):
+        cfg=self.settings; old=self.states.get(key); points=hand.raw_landmarks or hand.landmarks
+        if (blocked or not math.isfinite(t) or len(points)!=21 or
+            tuple(p.index for p in points)!=tuple(range(21)) or
+            not all(math.isfinite(v) for p in points for v in (p.x,p.y,p.z))):
+            if old and old.phase in ('press','latched','cancelled'): self._cancel(old,t)
+            else: self.states.pop(key,None)
+            return point,None
+        if old and old.generation!=hand.generation:
+            self.states.pop(key,None); old=None
+        elif old and (t<=old.last or t-old.last>cfg['chemistry_dwell_max_gap_s']):
+            if old.phase in ('press','latched','cancelled'): self._cancel(old,t)
+            else: self.states.pop(key,None); old=None
+        ratio=pinch_ratio(hand,aspect)
+        opened=ratio>=cfg['chemistry_grip_release_ratio']
+        if old and old.phase in ('latched','cancelled'):
+            old.last=t
+            old.locked=old.phase=='latched' and t-old.pressed_at<cfg['chemistry_click_feedback_s']
+            if opened:
+                if old.release_since is None: old.release_since=t
+                if t-old.release_since>=cfg['chemistry_grip_release_s']-1e-9:
+                    self.states.pop(key,None); old=None
+            else: old.release_since=None
+            if old is not None: return (old.anchor if old.locked else point),None
+        if old is None:
+            if opened and target is not None:
+                self.states[key]=PointPinchState(hand.generation,target,t,t,point,point)
+            return point,None
+        old.last=t
+        if old.phase=='press':
+            if (opened or t-old.captured_at>cfg['chemistry_click_timeout_s'] or
+                math.dist(point,old.origin)>cfg['chemistry_click_capture_radius']):
+                self._cancel(old,t); return point,None
+            if ratio<=cfg['chemistry_grip_press_ratio']:
+                if old.pressed_at is None: old.pressed_at=t
+                old.observations+=1
+                old.progress=min(1.,(t-old.pressed_at)/cfg['chemistry_grip_press_s'])
+                if old.observations>=cfg['chemistry_click_observations'] and old.progress>=1.-1e-9:
+                    old.phase='latched'; old.pressed_at=t; old.progress=1.
+                    return old.anchor,old.target
+            else: old.pressed_at=None; old.observations=0; old.progress=0.
+            return old.anchor,None
+        if old.phase=='armed' and ratio<=cfg['chemistry_click_capture_ratio']:
+            if math.dist(point,old.anchor)<=cfg['chemistry_click_capture_radius']:
+                old.phase='press'; old.locked=True; old.captured_at=t; old.origin=point
+                if ratio<=cfg['chemistry_grip_press_ratio']:
+                    old.pressed_at=t; old.observations=1
+                return old.anchor,None
+            self.states.pop(key,None); return point,None
+        if old.phase=='armed' and not opened:
+            # Preserve the intended button through the intermediate ratios of
+            # a gradual close; requiring an open hand on every step loses aim.
+            if old.captured_at is None: old.captured_at=t
+            if (math.dist(point,old.anchor)>cfg['chemistry_click_capture_radius'] or
+                t-old.captured_at>cfg['chemistry_click_timeout_s']):
+                self.states.pop(key,None)
+            return point,None
+        if not opened or target is None:
+            self.states.pop(key,None); return point,None
+        if target!=old.target or math.dist(point,old.origin)>cfg['chemistry_dwell_motion_radius']:
+            self.states[key]=PointPinchState(hand.generation,target,t,t,point,point)
+        else:
+            old.captured_at=None
+            old.anchor=point
+            if t-old.since>=cfg['chemistry_click_aim_s']-1e-9: old.phase='armed'
+        return point,None
+
+
 class IndexPush:
     """Stable aim -> coherent relative forward motion -> click -> retract.
 

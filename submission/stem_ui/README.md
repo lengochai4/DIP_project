@@ -50,17 +50,18 @@ rời mục tiêu trước khi chọn lần nữa; đổi trang không tự nh�
 dưới cùng vị trí ngón. Mất tay hoặc ngắt thời gian hủy tiến trình. Chuột
 vẫn chọn/kéo trực tiếp làm cách dự phòng.
 
-**Nhấn nhanh:** duỗi trỏ vào nút, chờ vòng chuyển vàng rồi đẩy riêng đầu ngón
-trỏ nhẹ về phía camera, sau đó rút về. Giữ lòng bàn tay tương đối yên và không
-chụm cái–trỏ. Con trỏ chỉ khóa trong lượt nhấn; sau phản hồi ngắn sẽ theo tay
-trở lại, kể cả khi chưa rút ngón. Mỗi lượt chỉ chọn một lần. Chỉ gập ngón trên
-mặt phẳng ảnh hoặc lắc ngang không phải tín hiệu nhấn. Giữ yên khoảng 1 giây
-vẫn chọn như cũ; di chuyển quá vùng ổn định sẽ bắt đầu lại tiến trình.
+**Chọn nhanh mới:** mở cái–trỏ, trỏ vào nút và chờ vòng chuyển vàng rồi chụm
+sát cái–trỏ để xác nhận. App giữ mục tiêu trong lúc khép ngón, tránh trượt sang
+ô bên cạnh; mỗi lần chụm chọn một lần. Sau đó con trỏ theo tay trở lại dù vẫn
+chụm. Mở ngón và nhắm lại trước lượt tiếp theo, kể cả muốn chọn cùng một ô.
+Một lần chụm dùng chọn nút không tự chuyển thành cầm vật thể sau khi đổi trang
+hay thu bảng. Trên nguyên tử/tiêu đề, chụm vẫn là cầm/kéo như cũ.
 
-App xét chuyển động tương đối với mặt lòng bàn tay, hướng và thời gian từ
-landmark RGB. Đây là heuristic có thể bỏ sót hoặc nhầm trong điều kiện khó,
-không đo lực/độ sâu thật hay bảo đảm loại mọi động tác lắc. Khi không thuận
-góc máy hoặc bị che tay, dùng giữ 1 giây; chuột là cách dự phòng tùy chọn.
+Giữ trỏ khoảng **1 giây** vẫn chọn như trước. Cách nhanh dùng khoảng cách
+XY chuẩn hóa giữa cái–trỏ, không suy tiếp xúc từ độ sâu đầu trỏ. Đây vẫn là
+heuristic từ webcam; chưa có dữ liệu gắn nhãn để khẳng định trên 90% chính xác.
+Nhánh thử đẩy trỏ cũ chỉ dùng khi cấu hình `chemistry_quick_select: index_push`;
+mặc định mới là `point_pinch`. Chuột vẫn là cách dự phòng tùy chọn.
 
 **Di chuyển bảng:** chụm cái–trỏ trên thanh tiêu đề rồi kéo; chụm vào góc dưới
 phải để đổi cỡ. Hai tay cùng chụm trên phần điều khiển bảng sẽ dời/đổi cỡ bảng,
@@ -109,6 +110,12 @@ nhận ảnh/mất tay. Nhãn H/O/... theo vật thể mỗi lượt vẽ bằng
 cache; di chuyển phân tử không dựng lại cả lớp giao diện cửa sổ. Thu/phóng/F11
 tạo lại đúng tài nguyên đồ họa. Thông báo đang xác nhận buông được phân biệt với
 mất nhận diện tay, không xem mọi lần dừng thao tác là camera mất kết nối.
+
+Cửa sổ mới mở tự vừa màn hình với khoảng chừa cho viền/taskbar. Khi khung hẹp,
+các nút chuyển xuống hàng riêng và tên tác giả nằm trọn trong bảng. F11/nút
+phóng to vẫn dùng toàn màn; resize sau khi mở không bị ép nhỏ lại theo khoảng
+chừa ban đầu. Camera nền giữ tỉ lệ; độ nét ảnh phụ thuộc nguồn RGB, không có
+cam kết làm ảnh 640×480 thành ảnh HD thật.
 
 **Nguyên tử / e** (O) hiện lớp electron minh họa cho nguyên tử đang chọn.
 Đổi cỡ bằng hai tay dùng **Cầm cả khối**: hạt nhân, vòng electron và các
