@@ -1,0 +1,170 @@
+schema: 1
+model_revision: 3
+# Revision 1/2 setup parameters/bounds are unchanged; load as fresh initial values.
+compatible_setup_hashes:
+  - 8f0a24f1bfce193d05c4d4b9c5f685c5c0658717b2c8be998c4d313a710f9402
+  - f27e940293e274c0131e250b859f36ca9104c01daba6e45789dacb7648957d13
+view:
+  ui_refresh_hz: 15
+  cursor_response_hz: 18
+  handle_radius_px: 22
+  min_panel_scale: 0.8
+  max_panel_scale: 1.25
+  min_scene_zoom: 0.6
+  max_scene_zoom: 1.8
+  zoom_factor: 1.1
+  wheel_gain: 0.08
+  force_drag_gain: 10
+  launch_drag_gain: 3
+  angle_drag_gain_deg: 90
+  drag_response_hz: 9
+  default_yaw_deg: 18
+  default_pitch_deg: 12
+  force_vector_max_n: 40
+  force_vector_length: 0.8
+  vector_stage_fraction: 0.18
+  velocity_vector_length: 0.7
+  velocity_vector_max_m_s: 10
+  acceleration_vector_length: 0.55
+  acceleration_vector_max_m_s2: 20
+engine:
+  fixed_dt_s: 0.004166666666666667
+  max_frame_s: 0.1
+  max_substeps: 64
+  sample_s: 0.05
+  max_samples: 1200
+  max_time_s: 30.0
+  balance_tolerance_nm: 0.2
+  target_tolerance_m: 0.35
+  settle_speed_m_s: 0.03
+  settle_displacement_m: 0.03
+  challenge_hold_s: 1.0
+  max_file_bytes: 1000000
+  comparison_tolerance: 0.000001
+  min_challenge_time_s: 0.5
+  friction_force_epsilon_n: 0.000000001
+  collision_separation_m: 3.0
+  collision_contact_m: 0.4
+goals:
+  forces_min_travel_m: 2
+  forces_position_tolerance_m: 0.000000001  # Floating-point boundary tolerance, not camera accuracy.
+  forces_min_position_m: 2
+  forces_max_position_m: 4
+  incline_height_m: 1
+  incline_max_force_n: 20
+  spring_min_initial_m: 0.3
+  spring_deadline_s: 8
+  pendulum_target_s: 2
+  pendulum_tolerance_s: 0.1
+  pendulum_min_angle_deg: 5
+  pulley_height_m: 1
+  pulley_max_force_n: 15
+sources:
+  - https://openstax.org/books/university-physics-volume-1/pages/6-2-friction
+  - https://openstax.org/books/physics/pages/5-3-projectile-motion
+  - https://openstax.org/books/college-physics-2e/pages/8-5-inelastic-collisions-in-one-dimension
+  - https://openstax.org/books/college-physics-2e/pages/16-3-simple-harmonic-motion-a-special-periodic-motion
+  - https://openstax.org/books/college-physics-2e/pages/16-4-the-simple-pendulum
+  - https://openstax.org/books/college-physics-2e/pages/9-5-simple-machines
+  - https://openstax.org/books/university-physics-volume-1/pages/15-5-damped-oscillations
+labs:
+  forces:
+    title: Lực và ma sát
+    application: Đẩy kiện hàng • Khi nào vật bắt đầu trượt?
+    assumptions: Vật trượt trên mặt phẳng ngang; ma sát Coulomb, không cản không khí.
+    formula: ΣF = ma; |F nghỉ| ≤ μsN; F trượt = μkN
+    challenge: Đưa vật theo chiều dương ít nhất 2 m so với vị trí đầu, rồi dừng hẳn trong vùng 2–4 m bằng cách thay lực.
+    params:
+      mass: [Khối lượng, kg, 0.2, 10, 0.2, 2]
+      force: [Lực kéo, N, -40, 40, 1, 10]
+      position0: [Vị trí đầu, m, -2, 4, 0.1, 0]
+      mu_s: [Ma sát nghỉ, '', 0, 1, 0.05, 0.4]
+      mu_k: [Ma sát trượt, '', 0, 1, 0.05, 0.25]
+      gravity: [Trọng trường, m/s², 1, 20, 0.1, 9.81]
+  incline:
+    title: Mặt phẳng nghiêng
+    application: Đưa hàng lên xe • Đánh đổi lực kéo và quãng đường
+    assumptions: Vật chỉ trượt dọc dốc; lực kéo song song dốc, không lăn.
+    formula: ma = F − mg sinθ + fms; N = mg cosθ; fms ngược chiều trượt
+    challenge: Đưa hàng lên cao ít nhất 1 m bằng lực kéo không quá 20 N.
+    params:
+      mass: [Khối lượng, kg, 0.2, 10, 0.2, 2]
+      force: [Lực lên dốc, N, -40, 40, 1, 18]
+      position0: [Vị trí đầu dọc dốc, m, -2, 4, 0.1, 0]
+      angle: [Góc dốc, °, 0, 65, 1, 25]
+      mu_s: [Ma sát nghỉ, '', 0, 1, 0.05, 0.35]
+      mu_k: [Ma sát trượt, '', 0, 1, 0.05, 0.2]
+      gravity: [Trọng trường, m/s², 1, 20, 0.1, 9.81]
+  projectile:
+    title: Rơi và ném xiên
+    application: Đưa bóng vào đích • Góc và tốc độ nào phù hợp?
+    assumptions: Chất điểm trong mặt phẳng đứng; g không đổi, bỏ qua cản không khí. Kết thúc ở lần chạm đất đầu tiên; vận tốc cuối là ngay trước chạm.
+    formula: x = v₀ cosθ·t; y = h + v₀ sinθ·t − ½gt²
+    challenge: Chọn góc và tốc độ để điểm rơi cách mục tiêu không quá 0,35 m.
+    params:
+      mass: [Khối lượng, kg, 0.1, 5, 0.1, 1]
+      speed: [Vận tốc đầu, m/s, 0, 15, 0.2, 7]
+      angle: [Góc phóng, °, 0, 90, 1, 45]
+      height: [Độ cao đầu, m, 0, 5, 0.1, 0.5]
+      target: [Vị trí đích, m, 0.5, 25, 0.5, 5]
+      gravity: [Trọng trường, m/s², 1, 20, 0.1, 9.81]
+  collision:
+    title: Va chạm và động lượng
+    application: Hai xe đẩy trên ray • Động lượng và năng lượng đi đâu?
+    assumptions: Hai xe tịnh tiến trên ray ngang không ma sát; khoảng cách hai tâm khi tiếp xúc là 0,4 m. Chỉ mô phỏng một va chạm, không xét quay/biến dạng.
+    formula: m₁v₁ + m₂v₂ = hằng số; v₂′ − v₁′ = e(v₁ − v₂)
+    challenge: Tạo va chạm rồi giải thích động năng còn lại khi đổi độ đàn hồi.
+    params:
+      mass: [Khối lượng xe 1, kg, 0.2, 10, 0.2, 2]
+      mass2: [Khối lượng xe 2, kg, 0.2, 10, 0.2, 2]
+      velocity1: [Vận tốc xe 1, m/s, -5, 5, 0.2, 2]
+      velocity2: [Vận tốc xe 2, m/s, -5, 5, 0.2, 0]
+      restitution: [Độ đàn hồi e, '', 0, 1, 0.05, 0.8]
+  spring:
+    title: Lò xo và giảm chấn
+    application: Mô hình giảm xóc • Giảm rung nhưng vẫn trở lại cân bằng
+    assumptions: Dao động ngang một chiều, lò xo tuyến tính và cản nhớt; không có kích thích ngoài.
+    formula: ma = −kx − cv; E = ½mv² + ½kx²
+    challenge: Đưa vật về gần cân bằng và giữ ổn định trong 1 s, trước 8 s.
+    params:
+      mass: [Khối lượng, kg, 0.2, 10, 0.2, 1]
+      stiffness: [Độ cứng k, N/m, 1, 80, 1, 15]
+      damping: [Giảm chấn c, N·s/m, 0, 20, 0.2, 1]
+      displacement: [Kéo lệch đầu, m, -1.5, 1.5, 0.05, 0.8]
+  pendulum:
+    title: Con lắc
+    application: Xích đu • Chiều dài, biên độ và chu kỳ liên hệ thế nào?
+    assumptions: Vật điểm, dây không giãn và không khối lượng; chuyển động trong mặt phẳng đứng; mômen cản nhớt −bθ′. Chu kỳ đo từ hai lần qua cân bằng cùng chiều.
+    formula: θ″ = −(g/L)sinθ − bθ′/(mL²); T₀ góc nhỏ, b=0 ≈ 2π√(L/g)
+    challenge: Điều chỉnh chiều dài để chu kỳ đo gần 2 s; so sánh với xấp xỉ góc nhỏ không cản.
+    params:
+      mass: [Khối lượng, kg, 0.2, 10, 0.2, 1]
+      length: [Chiều dài dây, m, 0.2, 4, 0.1, 1]
+      angle: [Góc thả đầu, °, -80, 80, 1, 25]
+      damping: [Cản quay b, kg·m²/s, 0, 2, 0.02, 0]
+      gravity: [Trọng trường, m/s², 1, 20, 0.1, 9.81]
+  lever:
+    title: Đòn bẩy và cân bằng
+    application: Cân đòn • Đặt tải ở đâu để cân bằng?
+    assumptions: Kiểm tra điều kiện cân bằng tĩnh; thanh ngang không khối lượng, tải đặt hai bên điểm tựa. Hình giữ ngang để tính mômen, không mô phỏng thanh nghiêng khi chưa cân bằng.
+    formula: τ = Fr; cân bằng khi m₁gr₁ = m₂gr₂
+    challenge: Cân bằng hai tải khác nhau bằng cách điều chỉnh cánh tay đòn.
+    static: true
+    params:
+      mass: [Tải bên trái, kg, 0.2, 10, 0.2, 2]
+      mass2: [Tải bên phải, kg, 0.2, 10, 0.2, 3]
+      arm1: [Cánh tay trái, m, 0.2, 3, 0.1, 1.5]
+      arm2: [Cánh tay phải, m, 0.2, 3, 0.1, 1]
+      gravity: [Trọng trường, m/s², 1, 20, 0.1, 9.81]
+  pulley:
+    title: Ròng rọc và công
+    application: Nâng hàng • Lợi về lực thì phải kéo dây bao xa?
+    assumptions: Nâng chậm, dây/ròng rọc lý tưởng; n nhánh cùng lực căng T=mg/n. Hình là sơ đồ lực tương đương, không hướng dẫn đường luồn dây.
+    formula: F = mg/n; h = s/n; Fs = mgh
+    challenge: Nâng tải ít nhất 1 m với lực kéo không quá 15 N.
+    static: true
+    params:
+      mass: [Khối lượng tải, kg, 0.2, 10, 0.2, 3]
+      strands: [Nhánh đỡ tải n, '', 1, 4, 1, 2]
+      pull: [Dây đã kéo s, m, 0, 8, 0.1, 0]
+      gravity: [Trọng trường, m/s², 1, 20, 0.1, 9.81]

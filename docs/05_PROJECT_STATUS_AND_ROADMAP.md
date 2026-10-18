@@ -1,5 +1,720 @@
 # 05 — Project Status and Roadmap
 
+## Current handoff — submission after defense, 2026-10-18
+
+User authorized freezing the current four-tab scope, merging feat/physics-lab
+into main, updating installation/README guidance and preparing a short video
+script. Submission identity: tag submission-2026-10-18; earlier 16/10 tags and
+development branches remain intact. Runtime code is the accepted 688f6b4 fix.
+This handoff changes documentation/Git only; no tests are rerun, following the
+user's explicit request. Existing 1091-pass Python 3.11/3.12 evidence below is
+retained with its actual scope and limitations. The video script is guidance,
+not a claim that physical-hand filming has already succeeded. Word/PDF/slides
+and source video remain separate submission artifacts; do not claim the source
+ZIP includes ignored local files. Preserve personal untracked files.
+
+## Earlier task — chemistry post-release drift fix, 2026-10-18
+
+Change: atom/component-only early contact-break freeze and observed release.
+Reason: user reported objects continuing to follow after opening; reproduced
+the missing freeze in both whole-component and atom edit regression cases.
+Canonical file/section changed: 01 authorized fix, 02 chemistry grab policy,
+03 presentation policy, this record.
+Code/modules affected: chemistry_input, UI settings/metadata, release regressions;
+two earlier object tests updated to the new narrower object contact band.
+Algorithmic impact: object presentation release only; panel/menu gates, shared
+GrabController, Core, physics and chemical graph rules unchanged.
+Experimental impact: none on research/model data. Compatibility impact: UI schema
+21 adds actual per-claim opening state and identifies the object release policy.
+Tests added/updated: raw-vs-filtered release, follow-tail freeze, no recapture,
+reclose rebase, two-hand release, missing input not confirming/linking.
+Existing results invalidated: no Core/model results; older UI logs retain their
+policy identity. Status: complete. Full suites passed 1091 tests on each of
+Python 3.11.9 and 3.12.14, including seven new release cases. The two raw partial-
+opening cases were observed failing before the correction. Native GL ran 37
+frames through whole-component and atom-edit capture, movement, partial raw
+opening with still-closed filtered fingers and post-release updates. Displayed
+positions/scales stayed frozen and no GL error was reported. Local script:
+runs/chemistry_release_qa.py. No physical-hand accuracy/latency claim follows.
+Preserve main and personal files. User requested no further tests after these
+completed checks; only documentation/Git handoff remains.
+
+## Earlier task — solid palette and fingertip presentation, 2026-10-18
+
+Change: touchless four-shape palette, observed geometry feedback, render-rate
+tip labels and semantic-only basic-tab UI uploads.
+Reason: user approved improving the first two tabs while preserving accepted
+chemistry/physics manipulation and research semantics.
+Canonical file/section changed: 01 authorized scope, 02 presentation boundary,
+03 presentation policy, this record.
+Code/modules affected: solid_palette, screen_sprites, renderer, geometry
+projection helper, UI settings/metadata and UI/native regressions.
+Algorithmic impact: presentation selection/feedback only; source filtering,
+live geometry and solid object manipulation equations unchanged.
+Experimental impact: none on Core/report. Compatibility impact: UI schema 20;
+model revision 3/catalog/setup identity unchanged.
+Tests added/updated: modal re-aim, dwell/pinch, grip priority, no grab-through,
+loss/identity/time/source/viewport cancellation, tip classification, projection,
+static UI uploads, context resource lifecycle and four-tab native GL.
+Existing results invalidated: no Core/model results; UI recordings retain their
+previous policy identity. Status: complete. Full suites passed 1084 tests each
+on Python 3.11.9 and 3.12.14, adding 55 cases. After a final glyph-contrast
+adjustment, 77 targeted presentation/native/release checks passed again.
+Native GL QA rendered 320 frames across 640x600, 800x600, 960x660 and 1360x860,
+all four tabs, side-camera toggles, both menu edges and F11 round trips; no GL
+errors or header button overlaps were reported. Inspected compact/menu/tip images.
+Actual Python 3.11 app replays processed 30 MediaPipe frames in each mode,
+all with error=null, worker_stopped=true and UI schema 20; solid_controls logs
+were parsed. Local artifacts: runs/solid-palette-qa, including app-results.json
+and native-results.json. These software/synthetic checks do not establish
+real-hand accuracy, physical latency or universal smoothness.
+Continue feat/physics-lab; preserve main, chemistry branch and personal files.
+
+## Earlier task — Physics quick commands and temporary scene shortcut, 2026-10-18
+
+Change: stable open palm at a free side edge summons four existing commands;
+fresh two-hand pinch in empty space enters temporary scene viewing while paused.
+Reason: user approved fewer button-navigation steps, preserving original UI.
+Canonical file/section changed: 01 shortcut scope, 02 shortcut contract,
+03 presentation policy, this record.
+Code/modules affected: Physics-only recognizer/input/view, UI settings/metadata,
+documentation and shortcut/native regressions.
+Algorithmic impact: gesture/presentation only; eight SI models unchanged.
+Experimental impact: none on Core/RQ/report. Compatibility impact: UI schema 19;
+model revision 3, SI catalog hash and setup schema unchanged.
+Tests added/updated: pose/hold/rearm, stale/loss/identity, target/claim priority,
+modal selection, temporary-mode release, compact layout and native GL.
+Existing results invalidated: no Core/model results; old interaction recordings
+remain identified by their previous UI policy. Git: continue feat/physics-lab,
+preserve main/chemistry and personal untracked files. Status: complete. Full
+suites passed on Python 3.11.9 and 3.12.14: 1029 tests each, 57 added cases
+including a native shortcut regression. Coverage includes scale/aspect-safe
+source pose gates, short/unstable/invalid input, one-shot rearming, fresh pair
+activation, modal pointer re-aim, no grab-through, cancel on loss/identity/stale,
+paused-only entry, original target priority and static Check. A lost temporary
+grip stays consumed until observed opening, including slot generation changes.
+Busy normal grabs skip new geometry/pose shortcut work.
+Native GL QA rendered 780 frames over four window sizes, eight models and
+quick palettes, including F11 while a palette stayed open, with no GL errors.
+Inspected native progress/palette screenshots in runs/physics-shortcuts-qa.
+Actual app replay ui-20261018-133657-059518 processed 30 MediaPipe frames,
+reported UI schema 19, error=null and worker_stopped=true. Native export/load
+still produced JSON/CSV/view JSON/PNG with independent A/B. Catalog/model/Core,
+research config, chemistry/shared gestures and renderer paths have no diff
+against fd1319f. Artifacts stay ignored. These software/synthetic checks do not
+establish real-hand recognition accuracy or a performance improvement claim.
+
+## Earlier task — richer direct mechanics interaction, 2026-10-18
+
+Change: body-sized picking, explicit velocity/parameter targets, contextual
+feedback, undo/cancel, optional deliberate release-to-run and coordinated
+two-hand scene manipulation on the existing eight models.
+Reason: user accepts the audited model but finds the limited handle-only
+interaction too shallow and requests smooth, practical manipulation.
+Canonical file/section changed: 01 approved presentation scope, 02 interaction
+contract, 03 presentation policy, this task record.
+Code/modules affected: Physics input/view, UI settings/metadata and regressions.
+Algorithmic impact: presentation only; SI equations, fixed-step integration,
+research filters, tracking provider and other tabs remain unchanged.
+Experimental impact: none on retained Core/report/research results.
+Compatibility impact: UI schema 18; model revision 3/setup schema/catalog hash
+unchanged. Tests added/updated: lifecycle/ownership/two-hand transitions,
+geometry picking, undo, deliberate release/loss cancellation and native GL.
+Existing results invalidated: no research/model results; old UI interaction
+recordings retain their original policy identity. Git: feat/physics-lab, preserve
+main and personal untracked files. Status: complete and verified. Full suites
+passed on Python 3.11.9 and 3.12.14: 972 tests each, with 38 new direct-interaction
+cases and an extended native regression. Cases cover observed release/noise-size
+gating, loss/identity/time/viewport cancellation, exact paused undo, two-hand
+ownership/join/leave/near-span freeze, rotated box picking, continuous signed
+velocity controls, analytic preview and bounded label rasterization cadence.
+Native GL QA rendered 676 frames over four window sizes, all eight models,
+tool/lesson pages and F11 with no GL errors. Inspected compact projectile and
+large collision images, including font-safe undo/cancel labels. Actual Python
+3.11 app replay ui-20261018-130651-614880 processed 30 frames with error=null,
+worker_stopped=true and UI schema 18. Native export/load passed all four files;
+verified model revision 3/catalog hash unchanged and view pose/release mode in
+view.json. Local artifacts: runs/physics-direct-qa and runs/physics-qa/export-check
+(ignored). Protected Core/config/research/chemistry/shared gesture/renderer/model
+paths have no diff against 8d893b0. No physical gesture accuracy or measured
+performance improvement is claimed from these synthetic/software checks.
+
+## Earlier task — second mechanics boundary audit, 2026-10-18
+
+Change: correct same-time live-force samples and exported endpoints; require
+enough forward displacement and reject a transient turn/low-speed motion as a
+successful static stop; project rejected
+launch-vector components before computing both angle and speed.
+Reason: user requested a deeper second check. New regressions reproduced six
+failures on the previous code: two stale CSV final-force values (10 vs 17 N),
+one force challenge falsely accepted a genuine turnaround trajectory and three
+out-of-quadrant launch drags used rejected components in speed magnitude.
+Two subsequent reproductions found a short .75 m trip falsely passed, while a
+valid 2 m trip beginning at x=2 m was rejected. Replace initial-zone gating with
+actual forward displacement and configured floating-point distance tolerance.
+Canonical file/section changed: 02 endpoint/setup contracts; 03 revision-3
+boundary semantics; this record. Modules: Physics model/catalog/view,
+analytic/view regressions, audit notes and README. Algorithmic impact: the
+eight evolution equations and integrator are unchanged; educational success,
+launch-input parameter mapping and measurement publication are corrected.
+Experimental impact: none on Core/research/report. Compatibility impact:
+model revision 3/new catalog hash; UI schema 17 and setup schema 1 unchanged.
+Known revision-1/2 setup hashes load as initial values, with existing validation.
+Existing results invalidated: prior force-stop flags, out-of-domain launch
+settings and stale endpoint exports are superseded; no frozen research result
+or valid model trajectory at unchanged physical inputs is invalidated.
+Git: continue feat/physics-lab; main/chemistry/personal untracked files preserved.
+Status: complete. Full suites passed on Python 3.11.9 and 3.12.14: 934 tests
+each, including 11 additional cases versus the first audit. A seeded local sweep
+passed 256 valid mixed-parameter configurations across the eight models, checking
+finite states and applicable energy/momentum relationships; this is observed QA,
+not a universal numerical error bound. Native UI QA repeated 652 frames across
+four window sizes, all eight scenes and F11 with no OpenGL errors. Export/load
+of JSON/CSV/view JSON/PNG passed, and the actual app processed 30 replay frames
+with error=null and worker_stopped=true. Local evidence: runs/physics-boundary-qa,
+runs/physics-qa and runs/ui/ui-20261018-124319-604798 (ignored artifacts).
+No new hand gesture, provider or research-filter change is included.
+
+## Earlier task — full bounded-mechanics audit, 2026-10-18
+
+Change: audit all eight SI models, formulas/assumptions, numerical integration,
+goals, export compatibility and physical diagrams before further gesture work.
+Correct along-incline velocity, pendulum damping-force and lever-reaction
+arrows, model-specific scalar/period labels, signed incline-friction notation,
+measured-period goal configuration and explicit lever/pulley idealizations.
+Reason: user requests a physics/formula audit before adding interactions.
+Canonical file/section changed: 02 schema/setup contract; 03 mechanics audit;
+this record. Code/modules affected: Physics model/catalog/view, metadata,
+independent analytic/conservation/diagram tests and review notes.
+Algorithmic impact: eight evolution equations, fixed step and bounds unchanged;
+derived tension/drag and physical display/goal semantics corrected.
+Experimental impact: no Core/RQ/report changes. Compatibility impact: model
+revision 2/catalog hash, UI schema 17 with added pendulum quantities. State file
+schema 1 unchanged; explicitly permit the known revision-1 setup hash with full
+parameter validation. Unknown mismatches rejected. Existing results invalidated:
+no research data/trajectory values; prior Physics diagrams/labels/goal wording
+are superseded and must not be presented as the corrected revision.
+Git: continue feat/physics-lab, preserve main/chemistry and personal untracked
+submission/PHAN_CONG_BAO_VE.md. Status: verified. Executed 923 full tests on
+Python 3.12.14 and Python 3.11.9; 23 added regressions cover analytic damped
+spring phase, nonlinear pendulum elliptic-period reference, Cartesian force
+balance, configured period goals, elevated projectile landing, collision loss,
+all pulley ratios, known-setup migration/unknown-hash rejection and diagram/
+quantity semantics. Native QA rendered 652 frames across four window sizes,
+all eight scenes/tool/lesson pages and F11, with zero GL errors. Inspected
+large incline and compact pendulum screenshots. Local runs/physics-qa/ ignored.
+Python 3.11 native save/load/export produced all four files with A/B final
+states; a pendulum export retained revision 2 and tension/drag CSV columns.
+Actual app replay ui-20261018-122908-734451 processed 30 MediaPipe frames,
+reported UI schema 17/no error and stopped its worker cleanly.
+git diff --check passed. Protected Core/config/chemistry/gesture/geometry/
+renderer paths have no diff against 343e919. The audit is validation against
+bounded ideal models, not a general-physics/commercial or device-accuracy claim.
+
+## Earlier task — model-only early contact-break freeze, 2026-10-18
+
+Change: freeze Physics model/ruler handles at a separate contact-hold boundary
+and discard their pending render-follow target at the displayed position.
+Reason: user reports a small displacement on release specifically in the model,
+not in the panel. In local UI session ui-20261018-092815-203515, body frames
+293..295 have raw pinch ratios approximately .274, .364, .457; frame 294 still
+has an active claim and position0 changes from 1.8515216557 to 1.8657805417 m
+before opening freezes at frame 295. This demonstrates an allowed movement
+window before the old .45 boundary, not ground-truth physical hand intent or
+accuracy. The opening boundary for model handles is now separately configured;
+panel/slider/view/menu boundaries are preserved.
+Canonical file/section changed: 02 model contact-break correction; this record.
+Code/modules affected: Physics input, UI setting and input/native regressions.
+Algorithmic impact: model-handle presentation only, no SI equation/filter change.
+Experimental impact: none. Compatibility impact: UI schema 16/catalog/state
+schema unchanged; new setting captured in resolved UI configuration. Existing
+results invalidated: no; Core/provider/research/config, shared gestures,
+chemistry, solid/fingertip logic and scene/panel layout are unchanged.
+Git: continue feat/physics-lab; main and personal untracked files remain intact.
+Status: verified with 900 full tests passed on Python 3.12.14 and Python 3.11.9.
+Nine added regressions cover the recorded scalar opening sequence over model
+handles and preserve panel/slider/orbit/zoom boundaries. Extended native GL
+regression grabs the actual model handle, moves it, opens to .364 with palm
+displacement and a pending follow target, and checks unchanged displayed
+position through confirmation/drop. Existing menu/tool/edge/F11 tests pass.
+Protected Core/config/chemistry/shared gesture/geometry/model/catalog/view/
+renderer paths have no diff against d28f851; git diff --check passed.
+Tests use recorded scalar ratios with synthetic palm geometry because the logs
+do not contain landmark trajectories. No real-hand success-rate claim is added.
+
+## Earlier task — Physics release latch and discoverable view tools, 2026-10-18
+
+Change: replace button-looking orbit/zoom drag handles with selectable tools;
+allow a fresh pinch anywhere outside the panel to control the selected view.
+Show active tool/instructions, preserve menu consumption and add explicit Edit
+return. Latch opening intent across the ambiguous pinch band; confirm release
+from real observations, or require tight contact and neutral rebase to resume.
+Reason: user reports unusable/unclear orbit and zoom plus intermittent sticking
+after opening. Code allowed an ambiguous ratio below the freeze threshold to
+resume the same claim before the old full-open release threshold was reached.
+Local sessions ui-20261018-091358-168674 and ui-20261018-091457-792076 have
+object/force/ruler claims but no orbit/zoom claims or menu-selector states;
+they do not contain full hand trajectories or intent labels and cannot establish
+individual failure causes or physical success rates.
+Canonical file/section changed: 02 Physics follow-up contract; this record.
+Code/modules affected: Physics input/view/settings, UI metadata, README/tests.
+Algorithmic impact: Physics presentation only. Experimental impact: none.
+Compatibility impact: UI schema 16 adds tool/opening diagnostics and release
+policy; SI catalog/hash/state schema unchanged. Existing results invalidated:
+no; Core/provider/research/config, shared gesture classes, accepted chemistry,
+solid/fingertip logic and physics equations remain unchanged.
+Git: continue feat/physics-lab; main/chemistry branch and personal untracked
+submission/PHAN_CONG_BAO_VE.md remain intact.
+Status: implemented and verified. Executed 891 full tests on Python 3.12.14
+and Python 3.11.9. Seven added regressions cover band-settling release, a single
+opening spike with tight neutral rebase, ambiguous return after loss, both tool
+targets/panel priority, menu-pinch consumption/fresh canvas grab and one-shot
+dwell tool selection. Extended native GL test selects and hand-drags both tools,
+checks SI invariance and partial-open release, returns to Edit and checks F11.
+Native visual QA rendered Edit/orbit/zoom at 640x600, 768x520 and 1360x860;
+zero GL errors, controls contained, active mode refreshed immediately. Inspected
+compact orbit and large zoom images in ignored runs/physics-tool-qa/.
+Actual Python 3.11 app replay ui-20261018-092443-860088 processed 30 MediaPipe
+frames, wrote a screenshot and stopped cleanly with no error (UI schema 16).
+Protected Core/config/chemistry/shared gesture/geometry/model/catalog/renderer
+paths have no diff against 91fa00f; git diff --check passed. No extra multi-
+finger gestures are added; more gesture classes do not establish better
+recognition/usability. No physical-hand success-rate or commercial claim.
+
+## Earlier task — Physics manipulation and view correction, 2026-10-18
+
+Change: stabilize Physics-only held edits using wrist/MCP translation, shared
+render-follow position for values/cursor, immediate freeze on opening/loss,
+neutral reacquisition, retained fit bounds and nearest-handle picking. Add
+bounded orbit and scene zoom handles, drag-to-edge docking with four restoring
+arrows, and panel texture reuse/parameter-readout throttling.
+Reason: user reports movement on release, uneven control and asks about view
+rotation/zoom, edge docking and effects on accepted tabs. Inspection found
+contact-midpoint displacement during folding, camera-cadence value updates vs
+independently smoothed cursor, continuous auto-fit and redundant panel uploads.
+These code paths explain possible symptoms; existing logs do not record full
+hand trajectories/intent and cannot establish each physical failure's cause.
+Canonical file/section changed: 02 Physics presentation contract; this record.
+Code/modules affected: Physics input/view, additional Physics-only UI settings,
+UI metadata, README and interaction/view/native regressions.
+Algorithmic impact: presentation control only; eight SI equations unchanged.
+Experimental impact: none. Compatibility impact: UI schema 15 records finished
+claims/movement policy; catalog content/hash and state schema 1 are unchanged,
+so previously saved Physics configurations retain compatibility.
+Existing results invalidated: no; Core/provider/raw/fixed/adaptive/replay,
+research/report and accepted chemistry/solid/fingertip logic are unchanged.
+Git: continue feat/physics-lab; main and chemistry branch remain intact. Preserve
+untracked personal submission/PHAN_CONG_BAO_VE.md and local QA artifacts.
+Status: implemented and verified. Executed 884 full tests on Python 3.12.14
+and Python 3.11.9. Seventeen added regressions cover finger-only motion, source
+vs render cadence, no post-release/loss tail, neutral rebase, consumed docking,
+two-hand view ownership, four-edge restore, hold vs throw intent, stable fit,
+bounded orbit/zoom, invalid plane edits, nearest-handle picking and texture
+reuse/readout refresh. Extended native GL regression also exercises real draw
+cadence release, hand-drag docking and orbit, then F11 restoration.
+Local native QA rendered 165 frames over 640x600, 768x520 and 1360x860 with
+all four docking edges and eight labs at different angles; zero GL errors.
+Inspected large angled pendulum and compact right-edge screenshots. Artifacts:
+runs/physics-refinement-qa/ (ignored). Actual Python 3.11 app replay run
+ui-20261018-091136-360338 processed 30 MediaPipe frames, wrote a screenshot,
+reported no error and stopped its worker cleanly; metadata uses UI schema 15.
+Protected Core/config/chemistry/solid/fingertip/model/catalog paths have no
+diff against 7b46be9. git diff --check passed. No physical accuracy or
+commercial-readiness claim is inferred from synthetic hands or automated tests.
+
+## Earlier task — eight-scenario applied mechanics tab, 2026-10-18
+
+Change: promote the user-approved Physics presentation scope into active work.
+Eight bounded SI experiments, common gesture controls, measurement/plot tools,
+A/B comparison, learning challenges and local save/export are required.
+Reason: user approved the complete pre-code checklist and requested implementation
+with a coherent Git workflow and useful innovation within that scope.
+Canonical file/section changed: 01 presentation scope; 02 Physics contract; this
+record. Code/modules affected: new submission physics model/catalog/view/input,
+minimal renderer/app integration and targeted tests/documentation.
+Algorithmic impact: presentation teaching models only. Experimental impact: none.
+Compatibility impact: Physics state schema 1, UI schema 14 with catalog hash and
+compact model/control diagnostics; no full trajectory copy in every frame log.
+Existing results invalidated: no; Core, fixed/adaptive/raw baselines, replay,
+research report/evidence and accepted chemistry remain frozen.
+Git: `feat/physics-lab` branches from chemistry milestone `825ac93`; retain main
+and chemistry branch, stage task files only, test coherent commits and push the
+development branch. Personal `submission/PHAN_CONG_BAO_VE.md` stays untracked.
+Status: the approved eight-scenario v1 functional scope is implemented. Model
+milestone `91ce10d` contains the independent SI models/catalog/49 math/config
+regressions; the following integration commit adds hand/mouse controls, native
+GL scenes, paged compact panels, two-point SI ruler, vectors/traces/energy/plots,
+independent A/B initial/input histories, predictions, configured challenges and
+JSON/CSV/view/image export. Static scenarios require explicit Check; dynamic
+goals pause at the achieved state. Help/formula/assumption pages and panel/scene
+zoom are accessible without a mouse. Hidden tabs pause without time debt.
+
+Executed validation on the complete working tree: 867 full tests passed on
+Python 3.12.14 and Python 3.11.9, including 78 new Physics regressions. They cover
+analytic trajectories, friction stop/reversal, momentum/energy accounting,
+nonlinear pendulum period, ideal machine relationships, extreme configured
+parameters, deterministic render-time partitioning, invalid/unbounded dt config,
+file validation, exclusive two-hand claims, short-loss rebasing, dwell/pinch
+one-shot semantics, SI projection/zoom and paged compact tool/help reachability.
+The native Windows Physics test exercises all eight scenes, hand-selected
+library/collapse/restore, immediate target geometry, semantic HUD refresh and
+F11 context restoration. A chemistry-native expectation was updated to pass its
+actual mode to scene_rect; extra solid controls wrap below the four-tab bar.
+
+Additional native QA rendered 652 scene/tool frames at 640x600, 800x600,
+960x660 and 1360x860, plus 1130 synthetic-gesture frames at 640x600, 768x520
+and 1360x860. All eight labs were hand-selectable; slider/header editing,
+loss/rebase, arrow restoration, camera preview and F11 passed. All contexts
+reported zero GL error. Inspected representative screenshots and fixed stale
+HUD titles, first-frame collapse target sizing, cumulative drag projection and
+inverted pulley-load drag. Local artifacts: `runs/physics-qa/`; these use
+recorded imagery/synthetic hands and do not measure physical-hand success rate.
+
+Actual app replay smokes on both interpreters processed 30 frames through
+MediaPipe in Physics mode, rendered a screenshot and stopped the worker cleanly
+without error. Python 3.11 check_setup/pip check passed, including the new catalog.
+`git diff --check` passed. Core/config/research/report and chemistry model/input/
+view/control/manipulation diffs against `825ac93` are empty. No research metric,
+real-hand accuracy, latency target, universal-device or commercial-readiness
+claim is added. Electricity/optics and general-purpose rigid-body simulation
+remain outside this increment; accepted main and chemistry branch stay intact.
+
+## Earlier task — chemistry pinch-selection stability correction, 2026-10-18
+
+Change: preserve armed aim through small movements inside the same button;
+after bounded fingertip capture, check observed palm translation relative to
+captured size rather than rejecting natural contact-finger movement. Preserve
+confirmation through a narrow configured hold-ratio band after tight samples;
+require multiple tight observations and the existing confirmation duration.
+Dispatch the captured target, and accept a smoothed visual anchor only when it
+still hits that target. Keep release/rearm, loss/identity cancellation, menu
+consumption, 1-second dwell and original manipulation controllers unchanged.
+
+Reason/evidence: user reports that pinch selects but is inconsistent. Local
+schema-12 sessions `ui-20261018-074603-796004` and
+`ui-20261018-074810-827878` show both completed selections and cancelled closes.
+In the latter, the raw ratio sequence at 12.664..12.793s is approximately
+0.4013, 0.1287, 0.1904, 0.2802; the final value barely exceeds tight acquisition
+0.28 and erased two prior tight samples before confirmation. Existing code
+also reset armed aim against an old origin, cancelled on folding-finger motion,
+and repeated hit-testing at a smoothed cursor could discard a captured action.
+These are decision-logic weaknesses; logs do not contain raw trajectories or
+human-intent labels and do not prove each cancellation's cause or success rate.
+
+Canonical files/sections changed: 02 point-and-pinch correction; this record.
+Code/modules affected: submission chemistry controls/input/view/settings,
+runtime metadata, README and tests. Algorithmic impact: presentation menu
+selection only. Experimental impact: none. Compatibility impact: UI schema 13
+adds actual selector ratio and cancellation reason to interaction logs. Existing
+results invalidated: no; Core/provider/filter/replay/research configuration,
+report data, molecular rules and accepted main remain unchanged. No missing
+hand geometry is invented; no accuracy/smoothness benchmark is asserted.
+
+Executed: 789 full tests passed on Python 3.12.14 and Python 3.11.9. Nine added
+regressions cover the recorded scalar threshold crossing (synthetic geometry),
+partial/spike rejection, armed movement inside a button, independent finger
+closure, excessive palm translation, smoothed-anchor validation and captured
+target dispatch. Existing release/loss/page-change/dwell/grab tests also pass.
+Native GL QA rendered 558 frames across six window sizes, including all three
+modes, one-shot/repeat/collapse/restore and F11. Buttons remained within the
+window and non-overlapping; contexts reported zero GL error. Artifacts are local
+under `runs/chemistry-point-pinch-qa/`, using recorded imagery and synthetic
+hands. This is software validation, not a physical-hand success-rate trial.
+`git diff --check` passed. Accepted main is unchanged.
+
+## Earlier task — responsive review and point-and-pinch selection, 2026-10-18
+
+Change: fit the initial window to desktop dimensions with configurable chrome
+margins; do not shrink subsequent user resizing/restoration repeatedly. Wrap
+controls at compact widths, reserve the extra solid-control row only where
+used, keep all author glyphs within their badge using real font metrics, and
+fit/clip sidebar content to its card. Fall back from a missing Windows panel
+font. Preserve camera-cover geometry, raster/glyph caching and F11 lifecycle.
+
+Default chemistry quick selection changes to open-hand aim plus confirmed raw
+XY thumb-index pinch. Capture the displayed cursor/target during a bounded
+close, require tight pinch and multiple observations, emit once, unlock after
+feedback, and require confirmed opening/fresh aim for another explicit click.
+Consume menu pinches across page changes so they cannot grab objects behind
+the palette. Keep the existing 1-second dwell and its normal leave/rearm
+behavior; a dwell activation also consumes the current menu gesture. Maintain
+existing atom/component/header manipulation and graph rules. The previous
+index-push selector is retained only as an explicit experimental configuration.
+
+Reason/evidence: user requested another smoothness/sharpness/layout review and
+a more practical selector, retaining dwell. The default 1360x860 window could
+exceed a 768-pixel-high laptop display. The narrow badge title was outside its
+card and 13px glyph rows overlapped by one bounding-box pixel. Schema-11 local
+sessions `ui-20261017-164032-225005` and `ui-20261018-071830-751249` contain aim/
+armed/cancelled states but no completed push click. This motivates replacing
+the default policy, not claiming a tracking accuracy improvement. Reference:
+Microsoft point-and-commit design, linked in 02; no device performance transfer.
+
+Canonical files/sections changed: 01 authorized presentation scope; 02 point-
+and-pinch contract; this record. Modules: submission controls/input/view/theme/
+renderer/app/settings/metadata, README and tests. Algorithmic impact: UI menu
+selection and responsive display only. Experimental impact: none. Compatibility
+impact: UI schema 12 records selector name and actual window/fullscreen in
+interaction logs. Existing results invalidated: no; Core/provider/filter/raw-
+fixed-adaptive/replay/config/report data, chemistry data and accepted main are
+unchanged. No new model, camera resolution increase or UI telemetry panel.
+
+Executed: 780 full tests passed on Python 3.12.14 and Python 3.11.9. Coverage
+includes gradual close, one-shot/release/re-aim, no depth dependency, invalid/
+loss/identity/time cancellation, partial/spike/shake rejection, actual-cursor
+capture, dwell fallback/no duplicate action, same-tile repeat, edge restore and
+no grab through a changed page or short loss during a consumed menu gesture.
+Layout tests cover ten badge widths and four
+desktop-fit examples. Legacy push tests now explicitly select the legacy mode.
+
+Native GL selector/layout QA rendered 558 frames at actual sizes 640x600,
+800x600, 960x660, 1248x640, 1334x688 and 1888x1080 (1920x1080 requested, fitted
+to the current desktop). All three modes' buttons remained inside the window
+and non-overlapping; selection/repeat/collapse/restore/F11 passed. An additional
+333 native motion frames checked header capture, brief-loss rebasing, two-to-
+one-hand transitions, resize texture reuse and F11 at three window sizes.
+All contexts reported zero GL error; representative screenshots were inspected.
+Artifacts: `runs/chemistry-point-pinch-qa/` (ignored). Recorded camera imagery
+and synthetic hands were used. No labeled physical-hand trial, >90% recognition
+claim, universal-display guarantee, or new latency/accuracy result is asserted.
+Camera-image detail still depends on the input resolution/lighting. Physics
+remains deferred; accepted main is unchanged.
+
+## Earlier task — renderer timing and chemistry hot-path audit, 2026-10-17
+
+Change: derive animation dt/draw CPU durations and electron phase from
+`perf_counter`; reset the dt origin on display-context rebuild. Keep snapshot
+freshness on its existing monotonic delivery clock. Project atom labels from
+the known camera geometry without per-atom GL state queries. Cache small glyph
+textures and draw them every frame independently of the full-window UI texture;
+only visible UI state or optional side-camera preview invalidates that overlay.
+Delete/rebuild glyph textures with each GL context. Distinguish pending opening
+from actual missing input and too-close two-hand span in molecular feedback.
+
+Reason/evidence: further user-requested audit. On this Windows Python 3.12.14,
+`get_clock_info` reports `GetTickCount64` / 0.015625 s for monotonic and
+`QueryPerformanceCounter` / 1e-7 s for perf_counter. The renderer previously
+used the coarse clock for following and CPU durations; session logs contain
+quantized draw times. Moving label coordinates also invalidated the full UI
+overlay, although only small glyphs had moved. These are code-level sources of
+stepped animation and avoidable rendering work, not a physical latency result.
+
+The newer `ui-20261017-162526-970468` session identifies `baf715e` / schema 10.
+It still contains real missing-hand samples and visible-hand pending release
+near the new hysteresis boundary. Processed frame timestamps continue during
+NO_HAND entries; those entries do not by themselves mean camera disconnection.
+No processed-frame gap exceeded the chemistry cancellation interval in that
+session. Do not keep raising grip thresholds or fabricate hand observations to
+hide this. Capture remains a single pending-packet live pump; no new queue,
+provider/model/filter/association tuning or quick-press change is introduced.
+
+Canonical files/sections changed: 02 presentation timing/render audit; this
+record. Modules: submission renderer, chemistry view, runtime metadata, README,
+render regressions. Algorithmic impact: presentation animation timing/render
+work and feedback only. Experimental impact: none; Core/replay timestamps,
+equations, research data and molecular rules unchanged. Compatibility impact:
+UI schema 11 records render clock implementation/resolution; prior coarse CPU
+duration logs must not be treated as a paired latency benchmark. Shared renderer
+timing also applies to solid/tips, without changing their recognition/controls.
+Existing results invalidated: no; accepted main and report evidence unchanged.
+
+Executed: 744 full tests passed on Python 3.12.14 and Python 3.11.9. New tests
+exercise advancing animation while the coarse clock stands still, label
+projection/clipping at four aspect ratios, independent moving labels/camera
+background with static UI reuse, real UI/preview refresh and honest pause text.
+Native GL QA rendered 513 frames at three window sizes, including header
+capture, one/two-hand transitions, short loss, resizing and F11. At each size,
+60 moving-label frames after warmup produced zero full-window UI uploads and
+zero new glyph uploads; native GLU projection and pure projection agreed within
+pixel rounding. Contexts reported zero GL error. Resize reuse still passed;
+a representative screenshot was inspected. Artifacts remain local under
+`runs/chemistry-render-audit-qa/`. These use recorded imagery and synthetic
+motion, not a new physical-hand success-rate or latency benchmark.
+
+## Earlier task — chemistry grab review after live feedback, 2026-10-17
+
+Change: restore main's observed contact anchors and component response rates;
+remove the previous captured-palm XY substitution. Atomic edits follow the
+filtered index and components/panel motion use the filtered pinch midpoint.
+Keep the cursor on the index throughout capture. Widen only chemistry held-
+grip release hysteresis from 0.45 to 0.60, retaining tight 0.28 acquisition,
+opening freeze/confirmation and bounded loss/identity cancellation. A recent
+header/corner aim survives bounded fingertip displacement while closing pinch;
+never acquire through a current button/atom, another page or hand generation.
+Retain the prior short-loss pause/rebase, released-hand removal, texture reuse
+and captured hit-test fixes. Add actual gate diagnostics in UI schema 10.
+
+Reason/evidence: the user reports jerky motion and failed header dragging.
+Session `ui-20261017-161053-978692` identifies `a819a95` and records repeated
+visible-hand pauses at raw ratios just above the 0.45 release threshold, as
+well as actual missing hands and identity changes. There was no processed-
+frame timestamp gap over 0.25 s in that session. Comparison with main shows
+the capture/provider/filter path unchanged; runtime differences are metadata.
+The new palm anchor discards independent contact movement, and higher display
+response passes more input steps to the screen. Restore the baseline behavior
+rather than claim those unvalidated changes are an improvement. The thin
+header previously required the post-pinch index to hit it anew.
+
+Canonical files/sections changed: 02 chemistry grab review; this record.
+Code/modules affected: submission chemistry input/controls/settings, metadata,
+README and regression tests. Algorithmic impact: presentation-only capture,
+hysteresis and following. Experimental impact: none. Compatibility impact:
+schema 10 adds gate state; settings separate push cancellation from grab
+release so the deferred quick-press policy keeps its previous value. Existing
+results invalidated: no. Core, solid/tips, chemical graph/data and main stay
+unchanged. True observation loss still freezes/cancels safely, not extrapolated.
+
+Executed: 737 full-project tests passed on Python 3.12.14 and Python 3.11.9.
+Regressions cover recorded threshold crossings, no partial-pinch acquisition,
+immediate freeze and release without drift, original-controller pose parity,
+contact movement independent of palm, index cursor continuity, cover-invariant
+pinch ratio and bounded header aim. Native GL QA rendered 333 frames across
+960x660, 1360x860 and 1920x1080 windows, including closing off the actual header,
+short loss/rebase, two-to-one-hand transition, resizing and fullscreen. All
+contexts reported zero GL error; active resize caused zero texture uploads,
+with at most one refresh on release. Representative screenshots were inspected.
+Local artifacts: `runs/chemistry-grab-review-qa/`. Recorded raw-ratio replay is
+diagnostic only: no human-intent labels, physical gesture success rate or new
+camera latency/accuracy result is claimed. No new physical-camera trial was
+requested. Quick press and physics remain deferred.
+
+## Earlier task — chemistry drag continuity, 2026-10-17
+
+Change: retain paused panel claims across brief loss/opening confirmation;
+rebase at the displayed pose on same-generation return. Use a captured
+pinch-to-palm XY offset for held chemistry motion, preserving raw pinch input.
+Explicitly remove a released hand from the component controller so two-to-one
+hand transitions do not stall for another loss-grace interval. Cancel all grips
+without linking on invalid/reversed/over-grace timestamps. Skip redundant scene
+picking for captured hands. Keep the panel texture resolution during resize,
+then update its final quantized resolution at most once on release if changed.
+Chemistry has separate configurable render-following rates for translation,
+rotation, scale and held atoms; no second LPF is applied to component poses.
+
+Reason: the user deferred the non-working quick press and prioritized smooth
+panel/atom dragging. Inspection found immediate panel-claim deletion during
+short loss and a released hand remaining inside the component controller's
+missing-hand grace. Raw contact-landmark noise could also move an otherwise
+stationary grip. Resize tier changes could trigger rasterization during a drag.
+
+Canonical files/sections changed: 02 chemistry drag continuity; this task record.
+Code/modules affected: submission chemistry input/scene/view/settings, runtime
+metadata, README and motion regressions. Algorithmic impact: presentation-only
+grip anchoring, ownership and render following. Experimental impact: none.
+Compatibility impact: presentation schema 9 identifies the new grip policy;
+the optional scene advance argument preserves existing callers. Existing
+results invalidated: no; Core/provider/Raw/Fixed/Adaptive, research configs,
+experiments and molecular data/rules remain unchanged. IndexPush, selection
+thresholds, solid/tips tabs and shared GrabController code are unchanged.
+The quick-press usability failure remains unresolved and outside this task.
+
+Tests added/updated: short/long panel loss, reacquisition away from the header,
+pending opening/bounce, two-hand loss/span rebasing, contact XY noise in atom
+and component modes, immediate two-to-one-hand continuation, timestamp
+cancellation without accidental bonding, captured hit-test reuse and deferred
+resize rasterization. Executed: 723 full-project tests passed on Python 3.12.14
+and Python 3.11.9. Native GL QA rendered 312 frames at 960x660, 1360x860 and
+1920x1080, including short-loss no-jump resume, hand release/continuation,
+resize and fullscreen. Each 60-frame active resize made zero texture uploads;
+release made zero uploads at 960x660 (same raster tier) and one at each larger
+size. All three contexts reported zero GL error; representative screenshots
+were inspected. Local artifacts: `runs/chemistry-motion-qa/` (ignored).
+`git diff --check` passed. Recorded imagery and synthetic hands were used;
+no new physical webcam trial, end-to-end latency or tracking-accuracy result
+is claimed. The accepted main and submission tag remain unchanged.
+
+## Earlier chemistry input follow-up — 2026-10-17
+
+Change: replaced the rejected 2D bend prototype with relative index push,
+bounded cursor capture and palm-relative direction/pose/noise checks. Kept
+1-second dwell, with a stability radius. Collapsed panels now dock as an inward
+arrow on the frame edge; header dragging to/beyond an edge docks without needing
+the fingertip to leave the camera. The arrow restores the prior page/pose/scale.
+Removed duplicate toolbar toggle/reset; reset is in the spatial panel. Added
+undoable clear-all. Hover feedback now draws as GPU geometry instead of
+rasterizing/uploading the text panel on each target change.
+
+Reason: user feedback rejected unreliable bend selection and duplicate toolbar
+controls. The latest retained local UI session recorded chemistry aim/press
+states but no completed quick selection. This is diagnostic evidence of that
+prototype's limitation, not a before/after tracking-accuracy benchmark.
+
+Canonical files/sections changed: 01 submission scope; 02 presentation input,
+docking/history and schema; this current task record.
+
+Code/modules affected: submission chemistry controls/input/view/scene/settings,
+dwell and toolbar; presentation metadata; corresponding submission tests.
+Algorithmic impact: presentation-only recognition/feedback; no MediaPipe model,
+provider thresholds, Core filters, gesture baseline or molecular grab threshold
+changes. Source coordinates supply push features; camera cover remains display
+geometry. Pointer lock ends after confirmation feedback or cancellation, rather
+than waiting indefinitely for a particular projected finger angle.
+
+Experimental impact: none. Compatibility impact: presentation schema 8 records
+the replacement policy and docking state; schema 7 sessions remain historical.
+Existing results invalidated: no; Core/replay/config/analysis and report evidence
+are unchanged. Physics remains deferred. The accepted main/submission tag is
+not part of this development branch update.
+
+Tests added/updated: push/retract, no repeated click, cursor unlock, cancellation,
+sideways shake, pure 2D bending, rigid wrist rotation/translation, one-frame z
+spike, all-edge docking/restore, inside-camera panel throw, corner-resize
+isolation, clear-all undo/redo and native toolbar/arrow regressions. Executed:
+711 full-project tests passed on Python 3.12.14 and Python 3.11.9. Native GL QA
+rendered 529 frames across 960x660, 1360x860, 1920x1080 and 1080x1000 windows,
+including one/two-hand molecular hold/release, anchored push selection, automatic
+edge docking, touchless dwell restore, clear-all/undo and repeated fullscreen.
+All four contexts reported zero GL error; each 30-frame panel translation
+sequence made zero panel texture uploads. Button-hover reuse has a regression
+test. Representative screenshots were inspected. Local scripts/results/images
+remain ignored under `runs/chemistry-spatial-qa/`; no camera was opened for this
+QA. `git diff --check` passed.
+
+The push is a conservative RGB landmark heuristic. It can still miss or confuse
+motion under occlusion/noise and is not equivalent to physical contact sensing.
+No new physical-hand latency/accuracy evaluation or optimum threshold claim is
+made. Dwell remains available without another model or inference pass.
+
+## Initial chemistry iteration (superseded UI policy) — 2026-10-17
+
+Initial authorized task: chemistry first, on `feat/chemistry-spatial-ui` from
+the accepted `main` commit `82359a1`. The submission tag/main remain unchanged.
+Physics-tab work is explicitly deferred.
+
+Implemented an aspect-preserving camera-cover viewport and the matching
+presentation-only landmark XY transform. Source snapshots, detector ROI and
+Core/research configuration are unchanged. Panel text uses quantized
+supersampled raster resolution and mipmaps. Stationary projection is cached;
+translation reuses the texture. The crystal palette supports header drag,
+corner resize, two-hand panel translation/scale and mouse drag/wheel. Panel
+claims are exclusive with molecular manipulation. Collapse retains a small
+title/restore bar and remembers the page; permanent toolbar toggle/reset and
+viewport bounds retain recovery after window/fullscreen changes.
+
+The existing 1-second dwell is retained. Optional quick selection uses stable
+straight-index aim followed by a confirmed image-space bend. It anchors the
+actual displayed cursor before the bend, shares the dwell latch across pages,
+and requires extension to rearm. Cancellation and loss do not invent a press.
+Presentation schema 7 records the policy and actual tap/panel diagnostic state.
+No model, inference worker, chemistry graph rules, molecular gesture thresholds,
+element data, presets or previous report results were changed.
+
+Executed: 700 full-project tests passed on Python 3.11.9 and Python 3.12.14.
+The current checkout module path was verified in the 3.11 environment. Native
+OpenGL QA rendered 371 frames across 960x660, 1360x860, 1920x1080 and 1080x1000
+windows with recorded camera imagery and synthetic input. Repeated fullscreen,
+all panel page sizes, collapsed restore, mouse drag, one/two-hand molecular
+hold/release and one-shot anchored quick selection passed. GL error was zero;
+30 translation frames per window caused zero panel texture uploads.
+Representative screenshots were inspected; local QA artifacts are in
+`runs/chemistry-spatial-qa/` and are not committed. `git diff --check` passed.
+
+These are software regression/display checks, not a new physical-hand latency,
+accuracy or low-light evaluation. RGB camera resolution, lighting, occlusion
+and viewing angle still limit input and camera detail; dwell/mouse remain
+available when the bend is ambiguous. Core experiments/report evidence remain
+the previously accepted results.
+
 ## Python compatibility correction — 2026-10-16
 
 `pyproject.toml` remains the package authority with `requires-python = ">=3.11"`.

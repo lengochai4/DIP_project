@@ -32,12 +32,162 @@ tracking, filter, gesture và logic 3D/chemistry giữ nguyên.
 
 ## Cách thao tác
 
+### Khối 3D và Đầu ngón — cập nhật 18/10/2026
+
+- **Đổi khối không chạm:** khi chưa cầm vật, xòe đủ năm ngón tại mép trái/phải
+  của khung cảnh, giữ ổn định khoảng 0,45 giây. Bảng bốn khối hiện tại mép đó.
+  Mở ngón và di tay để nhắm lại, rồi trỏ vào ô, giữ 1 giây hoặc chụm cái–trỏ
+  để chọn. Vòng tròn báo tiến trình. Chọn khối giữ nguyên vị trí, hướng, cỡ và
+  kéo dãn. Mở ngón sau chọn rồi chụm lại để cầm. Dấu ×/Esc đóng bảng; chuột,
+  menu cũ và phím 1–4 vẫn dùng được. Bảng không gọi khi đang cầm/kéo.
+- **Đầu ngón:** đỉnh chỉ bám các ngón đang duỗi của một/hai tay. Dòng trạng
+  thái ghi số đầu ngón của mỗi tay và điểm/đoạn/mặt/khối. Gần đồng phẳng tạo
+  mặt; chỉ hình có đủ độ lệch tương đối mới tạo khối. Đây không phải đo chiều
+  sâu hay kích thước vật lý. Màu/nút/nhãn phân biệt hai tay; H ẩn hướng dẫn,
+  kéo chuột xem góc khác. Nhãn có nền tương phản, bám theo mỗi lượt render;
+  UI tĩnh không dựng lại theo chuyển động của nhãn hoặc mỗi ảnh camera mới.
+  Camera phụ/xương tay dùng texture nhỏ riêng. Nút **Đặt lại** ở Khối 3D đặt lại cả vật và
+  góc nhìn như trước; chuyển tab vẫn giữ nội dung.
+
+Các khoảng giữ/ngưỡng là mặc định kỹ thuật trong `settings.yaml`, không phải
+tỷ lệ nhận diện đã đo. Từ UI schema 20 ghi chính sách và `solid_controls` riêng
+trong nhật ký; Core/Hóa học/các mô hình Vật lý giữ nguyên.
+
+UI schema 21 sửa riêng buông vật thể Hóa học: tách trỏ–cái khỏi vùng tiếp xúc
+sẽ đóng băng vật ngay trong lúc xác nhận buông. Chụm lại ngay thì gắn mốc mới,
+không kéo nhảy theo phần chuyển động còn chờ. Nếu cầm bằng hai tay, mở một
+tay sẽ đặt lại mốc cho tay còn lại. Kéo bảng và cách chọn nút giữ nguyên.
+
+### Vật lý ứng dụng — tám bài cơ học
+
+Chọn **Vật lý**, phím **V**, hoặc chạy trực tiếp:
+
+```powershell
+.\.venv-research\Scripts\python.exe -X utf8 -m submission.stem_ui.app --mode physics
+```
+
+Môi trường cài thông thường dùng `.venv-ui` thay cho `.venv-research`.
+Camera chỉ mở khi chọn **Bật camera**; vẫn có thể làm thí nghiệm bằng chuột
+khi camera tắt. Không cần cài thêm thư viện so với UI hiện có.
+
+- Nút tên bài mở thư viện 8 bài; dùng mũi tên phân trang khi khung nhỏ.
+- **Điều chỉnh:** kéo thanh thông số hoặc chọn −/+. Có phân trang để mọi
+  thông số đều truy cập được trên màn hình nhỏ. Hai tay có thể giữ hai tay
+  nắm khác nhau; một tay nắm chỉ thuộc một tay.
+- **Cầm vật và tay nắm trên cảnh:** có thể nhắm lên thân vật để cầm,
+  không cần trúng đúng chấm giữa. Các tay nắm vàng chỉnh lực, góc dốc, dây,
+  vector phóng hoặc mục tiêu theo bài; tới gần đổi màu và có hướng dẫn trên cảnh.
+  Bài va chạm dùng hai mũi tên **v₁/v₂** riêng để chỉnh vận tốc; không kéo
+  thân xe để đổi vận tốc nữa. Va chạm/đòn bẩy/ròng rọc có tay nắm **m**:
+  kéo lên/xuống để tăng/giảm khối lượng. Hai tải đòn bẩy kéo dọc thanh.
+  Cầm sẽ tạm dừng. **Thả để chạy** mặc định bật cho quả nặng lò xo/con lắc
+  và mũi tên phóng ném xiên, sau một lượt chỉnh có thay đổi đủ rõ rồi mở ngón
+  được xác nhận. Ném xiên có đường dự đoán khi đặt hướng phóng. Có thể tắt
+  Thả để chạy trong Đo/Lưu; nút **Chạy** vẫn dùng được ở mọi bài động.
+  Mất tay, đổi tab/khung, kéo bảng/thanh thông số hoặc chỉnh đích không tự chạy.
+  Khi đã cầm, di cả bàn tay để kéo; cử động riêng cái–trỏ không đẩy vật.
+  Vòng vàng đi cùng điểm điều khiển; vòng xám báo đang giữ nguyên khi mở ngón.
+  Khi đã bắt đầu mở, dao động nhẹ trong khoảng giữa không nối lại lượt kéo;
+  chỉ chụm sát lại mới hủy động tác buông, và điểm kéo được đặt lại trung tính.
+  Mất tay dừng kéo và ẩn con trỏ.
+  Khung cảnh giữ nguyên khi chỉnh/buông; Chạy, Đặt lại hoặc R mới căn lại.
+- **Hoàn tác trên tiêu đề bảng** trả cả trạng thái vật lý và số đo
+  về trước khi cầm nhưng luôn dừng mô phỏng. Trong lúc đang chỉnh,
+  nút đổi thành **Hủy** để hủy lượt đang cầm; có thể dùng tay còn lại để chọn.
+  Lịch sử tối đa 12 lượt; hai tay cùng chỉnh được gộp một lượt. Đổi bài,
+  Đặt lại hoặc mở thiết lập xóa lịch sử này. Đây là hoàn tác trong phiên,
+  không phải tải lại chuyển động từ tệp.
+- **Chọn nút:** mở cái–trỏ, trỏ vào nút đến vòng vàng rồi chụm; hoặc giữ
+  trỏ ổn định 1 giây. Mỗi lần chọn một lượt, mở rồi nhắm lại để chọn tiếp.
+- **Gọi lệnh nhanh:** khi đã buông vật, xòe đủ năm ngón ở vùng trống sát
+  mép trái/phải khung camera, giữ yên khoảng **0,45 giây** đến hết vòng vàng.
+  Bảng cố định ở mép có bốn mục: **Chạy/Tạm dừng** (bài tĩnh: **Kiểm tra**),
+  **Hoàn tác**, **Ẩn/Hiện bảng**, **Căn lại cảnh**. Di chuyển tay đang mở
+  để nhắm lại, rồi trỏ–chụm hoặc giữ 1 giây để chọn. Chọn xong bảng tự đóng;
+  có nút × để đóng riêng. Tay đang nằm dưới nút khi bảng xuất hiện không tự
+  chọn; sau khi đóng, cùng cú chụm không cầm xuyên xuống vật phía dưới.
+  Nếu mép trái đang bị bảng lớn che, dùng mép phải hoặc thu bảng trước.
+  Giữ nguyên thế xòe không gọi liên tục; hạ/đổi thế tay rồi gọi lại.
+- **Xem cảnh nhanh, không qua nút:** khi mô phỏng đang dừng ở **Chỉnh vật**,
+  đưa hai tay mở vào vùng trống, tránh bảng, vật và các tay nắm, rồi chụm
+  cả hai tay. Vòng vàng xác nhận trước khi vào Xem cảnh. Di hai tay để dời,
+  dang/khép để đổi cỡ, xoắn để nghiêng; còn một tay giữ thì kéo để xoay.
+  Buông cả hai tự về Chỉnh vật. Mất tay/đổi nhận dạng/ngắt nguồn sẽ hủy
+  chế độ nhanh và giữ nguyên cảnh. Đang cầm/chỉnh thông số thì thao tác cũ
+  được ưu tiên; hai tay chụm không tự chuyển chế độ lúc mô phỏng đang chạy.
+  Công cụ **Xem cảnh · 2 tay** trong Đo/Lưu vẫn giữ cách dùng cũ.
+- **Đo/Lưu:** bật/tắt vector, quỹ đạo, đồ thị, năng lượng, thước A–B; tiến
+  một bước, giữ lượt A, ghi dự đoán, lưu/mở thiết lập, xuất dữ liệu. Có các
+  trang công cụ; nút đổi đại lượng đồ thị cũng ở đây. A vàng, B xanh.
+- **Bài học:** ứng dụng, giả thiết, công thức, chú giải và nhiệm vụ đều có
+  phân trang. Bật thử thách rồi thiết lập, ghi dự đoán và chạy/kiểm tra.
+  Đạt điều kiện cơ học không thay thế phần tự giải thích kết quả.
+- **Chạy/Dừng**, **Đặt lại**, **1×/¼×** ở cuối bảng. Space chạy/dừng mô phỏng;
+  Enter vẫn bật/tắt camera, **S** tiến một bước. Với đòn bẩy/ròng rọc,
+  **Kiểm tra** đánh giá bài tĩnh.
+- Kéo tiêu đề bảng để dời; **−** thu thành mũi tên trên viền, chọn mũi tên
+  để mở lại. Kéo tiêu đề ra ngoài một trong bốn viền rồi giữ ngắn, hoặc kéo
+  xa hơn, sẽ tự thu tại viền đó; mở ngón rồi chọn mũi tên để mở lại bất cứ lúc nào.
+  Đo/Lưu có thu/phóng bảng và cảnh hoàn toàn bằng tay. Cuộn chuột
+  trên bảng đổi cỡ bảng, ngoài bảng đổi cỡ hiển thị cảnh. Nút góc nhìn đổi
+  giữa phối cảnh nghiêng và nhìn thẳng; **R** đặt lại góc/cỡ hiển thị.
+  **Đo/Lưu → Xoay cảnh / Đổi cỡ cảnh:** chọn bằng chụm hoặc giữ trỏ 1 giây.
+  Mở rõ cái–trỏ, đưa tay ra ngoài bảng rồi chụm lại để kéo trong vùng camera.
+  Xoay: di cả bàn tay ngang/dọc. Đổi cỡ: lên để gần hơn, xuống để xa hơn.
+  Mở ngón để buông. Chọn **Chỉnh vật** để trở về kéo vật/thông số;
+  chọn lại chế độ đang bật cũng tắt chế độ ấy. Hướng dẫn hiện ngay trên cảnh.
+  Góc xoay giới hạn để tránh nhìn cạnh mặt phẳng bài học và kéo sai hướng;
+  đây là đổi góc quan sát, không xoay hướng trọng lực hay đổi số đo SI.
+  Buông tay trước khi đổi thao tác. Chạy, Đặt lại, R hoặc đổi bài đều trở về
+  Chỉnh vật. Các điều khiển trong bảng vẫn dùng được khi đang xoay/đổi cỡ.
+  **Đo/Lưu → Xem cảnh · 2 tay:** một tay chụm kéo ngang/dọc để xoay;
+  hai tay chụm rồi cùng dời để di chuyển cảnh, dang/khép để đổi cỡ, xoắn
+  hai điểm giữ để nghiêng cảnh. Thêm/bớt tay đặt lại mốc tại vị trí đang thấy,
+  mở ngón hoặc mất dấu giữ nguyên cảnh; hai tay quá gần sẽ tạm ngừng đổi cỡ.
+  Chọn **Chỉnh vật** để trở lại thí nghiệm. **R** đặt lại cả vị trí/góc/cỡ.
+
+| Bài | Điều chỉnh / tình huống |
+|---|---|
+| Lực và ma sát | Khối lượng, lực có dấu, vị trí đầu, ma sát nghỉ/trượt, g; đẩy và dừng kiện hàng |
+| Mặt phẳng nghiêng | Góc dốc, tải, lực song song dốc, ma sát; đưa hàng lên cao |
+| Rơi và ném xiên | Độ cao, tốc độ/góc phóng, mục tiêu, g; ném bóng vào vùng đích |
+| Va chạm | Hai khối lượng/vận tốc và độ đàn hồi; động lượng, động năng trước/sau trên ray |
+| Lò xo và giảm chấn | Khối lượng, k, c, độ lệch đầu; giảm rung của mô hình dao động ngang |
+| Con lắc | Chiều dài, góc thả, khối lượng, cản quay, g; đo chu kỳ, so với xấp xỉ góc nhỏ |
+| Đòn bẩy | Hai tải, hai cánh tay đòn; cân bằng mômen của thanh lý tưởng |
+| Ròng rọc | Tải, 1–4 nhánh đỡ, dây đã kéo; lực cần, độ nâng và công của hệ lý tưởng |
+
+**Thử A/B:** chạy một cấu hình, chọn Giữ lượt A, đổi một thông số, Đặt lại
+rồi chạy B. Nếu hai lượt khác thời điểm hoặc lịch sử lực, UI ghi rõ. Lưu
+thiết lập vào `runs/ui-physics/setup.json`; mở lại bắt đầu từ thiết lập ấy,
+không phục hồi chuyển động đang chạy. Xuất tạo thư mục riêng có
+`experiment.json`, `measurements.csv` (UTF-8 BOM), `view.json` và `view.png`.
+JSON có cấu hình đầu, lịch sử lực, giả thiết, nguồn và định danh catalog.
+Model revision 3 giữ các sửa vector/nhãn đo của revision 2, sửa dữ liệu cuối
+khi đổi lực, điều kiện dừng thật và giới hạn vector phóng. Thiết lập revision
+1/2 đã biết vẫn mở được thành điều kiện ban đầu; không phục
+hồi chuyển động cũ. Chi tiết rà soát: [PHYSICS_AUDIT.md](PHYSICS_AUDIT.md).
+UI schema 19 ghi nhận chính sách tương tác và đường tắt; công thức/catalog SI, Core
+và hành vi các tab khác giữ nguyên. Các ngưỡng tương tác là cấu hình kỹ thuật,
+không phải kết quả kiểm định độ chính xác của webcam.
+
+Các số đo là **SI trong mô phỏng**; kích thước hình trên camera không đo
+chiều dài/lực thật. Lực kéo có thể chỉnh giữa lượt; đổi các thông số vật lý
+khác bắt đầu một lượt mới. Va chạm là một chiều, đòn bẩy là bài tĩnh,
+ròng rọc nâng chậm lý tưởng; đây không phải bộ mô phỏng cơ khí tổng quát.
+Mô hình/phạm vi và nguồn OpenStax nằm trong `physics_labs.yaml` và mục 26
+của `docs/03_ALGORITHM_AND_EXPERIMENTS.md`. Core và số liệu báo cáo giữ nguyên.
+
+Luồng mã: `physics_labs.yaml` → `physics.py` (SI, không phụ thuộc đồ họa) →
+`physics_input.py` (chọn/giữ có chủ sở hữu) → `physics_view.py` (camera/GL/
+bảng công cụ); `renderer.py`/`app.py` chỉ tích hợp tab và ghi log cục bộ.
+
 Thư viện **Mẫu phân tử 3D** có 32 mẫu, chia 4 trang; dùng **Trang trước/Trang sau**
 để chọn. Nhận tên dựa trên đồ thị liên kết, phân biệt etanol và đimetyl ete cùng
 công thức C₂H₆O. Vị trí là hình học minh họa; không tính phản ứng/năng lượng.
 Panel AR tái sử dụng texture khi chỉ di chuyển/trỏ qua nguyên tử; thông tin
 nguyên tố, trang và các điều khiển đổi thì cập nhật ngay. Nhận pinch dùng gate
-nhẹ riêng; các ngưỡng chụm/nhả và thời gian xác nhận không đổi.
+nhẹ riêng; hóa học cấu hình riêng ngưỡng chụm/nhả và thời gian xác nhận.
 
 ### Hóa học AR — panel và vật thể trực tiếp trên hình camera
 
@@ -50,6 +200,42 @@ rời mục tiêu trước khi chọn lần nữa; đổi trang không tự nh�
 dưới cùng vị trí ngón. Mất tay hoặc ngắt thời gian hủy tiến trình. Chuột
 vẫn chọn/kéo trực tiếp làm cách dự phòng.
 
+**Chọn nhanh mới:** mở cái–trỏ, trỏ vào nút và chờ vòng chuyển vàng rồi chụm
+sát cái–trỏ để xác nhận. App giữ mục tiêu trong lúc khép ngón, tránh trượt sang
+ô bên cạnh; mỗi lần chụm chọn một lần. Sau đó con trỏ theo tay trở lại dù vẫn
+chụm. Mở ngón và nhắm lại trước lượt tiếp theo, kể cả muốn chọn cùng một ô.
+Một lần chụm dùng chọn nút không tự chuyển thành cầm vật thể sau khi đổi trang
+hay thu bảng. Trên nguyên tử/tiêu đề, chụm vẫn là cầm/kéo như cũ.
+
+Xác nhận chọn có vùng trễ nhỏ để dao động lúc hai ngón đã chạm không xóa ngay
+tiến trình; vẫn cần nhiều mẫu chụm sát, không chọn từ một mẫu nhiễu. Khi đã giữ
+mục tiêu, ngón trỏ có thể co tự nhiên; dịch cả bàn tay quá xa hoặc mở ngón sẽ
+hủy. Việc kiểm tra lòng bàn tay này chỉ dùng cho chọn nút, không đổi điểm cầm
+vật thể hay cách kéo bảng.
+
+Giữ trỏ khoảng **1 giây** vẫn chọn như trước. Cách nhanh dùng khoảng cách
+XY chuẩn hóa giữa cái–trỏ, không suy tiếp xúc từ độ sâu đầu trỏ. Đây vẫn là
+heuristic từ webcam; chưa có dữ liệu gắn nhãn để khẳng định trên 90% chính xác.
+Nhánh thử đẩy trỏ cũ chỉ dùng khi cấu hình `chemistry_quick_select: index_push`;
+mặc định mới là `point_pinch`. Chuột vẫn là cách dự phòng tùy chọn.
+
+**Di chuyển bảng:** chụm cái–trỏ trên thanh tiêu đề rồi kéo; chụm vào góc dưới
+phải để đổi cỡ. Hai tay cùng chụm trên phần điều khiển bảng sẽ dời/đổi cỡ bảng,
+tách biệt với đổi cỡ phân tử. Chuột kéo tiêu đề/góc; lăn chuột trên bảng để
+thu/phóng. Kéo tiêu đề sát viền một nhịp hoặc ra ngoài viền để thu; cũng có thể
+chọn dấu **−** trên bảng. Khi thu chỉ còn **mũi tên ngay trên viền**: trỏ vào
+đó giữ 1 giây hoặc nhấn nhanh để mở, nhớ trang/cỡ bảng. Thả pinch trước khi
+chọn mũi tên để tránh vừa thu đã mở lại. Nút mũi tên vòng trên tiêu đề đặt lại
+bảng, không thay đổi phân tử. Hai nút thu/mở và đặt lại bảng trên thanh tab đã
+bỏ; thao tác này thực hiện trực tiếp trong cảnh. B vẫn là phím dự phòng.
+
+**Xóa tất cả** trong bảng dọn nguyên tử và liên kết; **Hoàn tác** khôi phục
+toàn bộ bằng một bước. Không xóa mẫu phân tử hay dữ liệu nguyên tố.
+
+Camera lấp đầy khung cảnh hóa học, giữ tỉ lệ và cắt đều phần ảnh dư ở hai cạnh
+hoặc trên/dưới. Con trỏ dùng cùng phép cắt để khớp ảnh; không kéo méo camera.
+Độ nét nền còn phụ thuộc độ phân giải/ánh sáng của nguồn camera.
+
 1. Chọn H, C, N, O, F, P, S, Cl trong bảng thường dùng hoặc mở bảng tuần
    hoàn đầy đủ 118 nguyên tố. Mỗi lượt chọn tạo một nguyên tử ở vùng thao tác.
 2. Bật **Ghép/tách**, chụm sát cái–trỏ ngay trên nguyên tử để kéo nó. Thả gần nguyên
@@ -60,6 +246,32 @@ vẫn chọn/kéo trực tiếp làm cách dự phòng.
    của cảnh rồi tách/khép để đổi cỡ; vặn/nghiêng để xoay cả khối. Tay thứ hai
    không cần bắt lại một nguyên tử nhỏ. Trong
    Ghép/tách, hai tay có thể kéo hai nguyên tử khác nhau độc lập.
+
+Khi đang cầm, điểm kéo dùng các đầu ngón đã lọc như bản main: cầm khối/bảng
+theo trung điểm cái–trỏ; ghép/tách theo đầu trỏ. Không thay tọa độ đầu ngón bằng
+một điểm neo giả theo lòng bàn tay. Con trỏ vẫn theo đầu trỏ cả khi bắt đầu kéo.
+Tiêu đề/góc vừa trỏ được nhớ tối đa 0,22 giây trong bán kính giới hạn để động tác
+khép ngón không làm hụt mục tiêu; không chiếm nút hay nguyên tử đang trỏ khác.
+Chụm đủ sát mới bắt đầu giữ; sau khi bắt thành công, khoảng chụm/nhả rộng hơn
+giúp dao động nhẹ không ngắt liên tục. Đây vẫn là ngưỡng ảnh, không đo tiếp xúc.
+Mất dấu ngắn: bảng/vật thể đứng
+yên, giữ lượt cầm và đặt lại mốc khi nhận được tay; mất quá thời gian cho phép
+hoặc đổi danh tính tay sẽ hủy. Mở ngón dừng chuyển động ngay trong lúc xác nhận
+buông. Chuyển hai tay về một tay không cần chờ thêm thời gian mất dấu.
+Khi đổi cỡ bảng, hình học vẫn theo tay; texture được giữ trong lúc kéo và cập
+nhật độ nét cuối khi buông nếu cần, tránh vẽ lại chữ giữa thao tác.
+
+Nhịp làm mượt và electron dùng đồng hồ độ phân giải cao, tách khỏi dấu thời gian
+nhận ảnh/mất tay. Nhãn H/O/... theo vật thể mỗi lượt vẽ bằng texture chữ nhỏ đã
+cache; di chuyển phân tử không dựng lại cả lớp giao diện cửa sổ. Thu/phóng/F11
+tạo lại đúng tài nguyên đồ họa. Thông báo đang xác nhận buông được phân biệt với
+mất nhận diện tay, không xem mọi lần dừng thao tác là camera mất kết nối.
+
+Cửa sổ mới mở tự vừa màn hình với khoảng chừa cho viền/taskbar. Khi khung hẹp,
+các nút chuyển xuống hàng riêng và tên tác giả nằm trọn trong bảng. F11/nút
+phóng to vẫn dùng toàn màn; resize sau khi mở không bị ép nhỏ lại theo khoảng
+chừa ban đầu. Camera nền giữ tỉ lệ; độ nét ảnh phụ thuộc nguồn RGB, không có
+cam kết làm ảnh 640×480 thành ảnh HD thật.
 
 **Nguyên tử / e** (O) hiện lớp electron minh họa cho nguyên tử đang chọn.
 Đổi cỡ bằng hai tay dùng **Cầm cả khối**: hạt nhân, vòng electron và các
@@ -72,10 +284,19 @@ không tự đoán số neutron. Mẫu 3D có H₂O, CO₂, CH₄, NH₃, H₂, 
 Tên mẫu được đối chiếu đồ thị liên kết; công thức cùng số nguyên tử chưa
 đủ để gọi tên phân tử. Hình học do người dùng kéo và tọa độ mẫu chỉ minh họa.
 
-**Thu bảng** (B) giữ một nút nhỏ trong cảnh để mở lại. **Về giữa cảnh** (R)
+**Thu bảng** (B) giữ mũi tên nhỏ ở viền để mở lại. **Về giữa cảnh** (R)
 đưa vật thể bị kéo ra ngoài về vùng thao tác. H ẩn/hiện hướng dẫn trong
 panel. Hoàn tác/làm lại dùng Z/Y; Backspace xóa nguyên tử đang chọn trong
 Ghép/tách, hoặc cả thành phần liên thông trong Cầm cả khối.
+
+Thiết kế điều khiển bảng tham khảo
+[Microsoft Point and commit](https://learn.microsoft.com/en-us/windows/mixed-reality/design/point-and-commit)
+và [Meta Hands UI](https://developers.meta.com/vr/design/hands-ui-best-practices/).
+Nhấn tương đối tham khảo cách tách trỏ/chọn của
+[Ultraleap AirPush](https://docs.ultraleap.com/TouchFree/touchless-interfaces/interactions.html).
+Feature được tự xây cho webcam theo [ngữ nghĩa landmark MediaPipe](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker/python),
+không sử dụng SDK/cảm biến độ sâu của Ultraleap hay coi model-relative z là
+độ sâu camera đo được.
 
 **Lưu / Mở đã lưu** (L/J) dùng `runs/ui-chemistry/workspace.json` trên máy.
 Lưu gồm nguyên tử, vị trí ở đơn vị cảnh và liên kết; không lưu video. Bản

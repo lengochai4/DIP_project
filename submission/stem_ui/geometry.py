@@ -95,6 +95,20 @@ def preview_position(landmark, rectangle, mirror=True):
     nx = 1-landmark.x if mirror else landmark.x
     return (x + nx*w, y + landmark.y*h)
 
+
+def project_live_tip(position, view, rotation, center, fit, zoom):
+    """Match the existing T(camera) R(view) S(fit) T(-center) GL transform."""
+    x,y,w,h=view
+    point=rotation@(np.asarray(position)-(np.asarray(center) if center is not None else 0))*fit
+    point+=np.array((0,-.1,-9/zoom))
+    depth=-point[2]
+    if not .1<depth<100: return None
+    tangent=math.tan(math.radians(44)/2)
+    nx=.5+point[0]/(2*depth*tangent*(w/h))
+    ny=.5-point[1]/(2*depth*tangent)
+    if not (0<=nx<=1 and 0<=ny<=1): return None
+    return x+nx*w,y+ny*h
+
 def live_mesh(tips, thickness, min_depth_ratio=.06):
     """Observed vertices only: 3D hull, planar surface or segment.
 

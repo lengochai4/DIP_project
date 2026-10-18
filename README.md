@@ -1,277 +1,145 @@
 # DIP Touchless STEM
 
-## Chạy giao diện nộp đồ án
+Ứng dụng học tập STEM với mô hình 3D điều khiển bằng một webcam RGB, hỗ trợ
+một hoặc hai tay của cùng người dùng. Phần nghiên cứu tập trung vào xử lý ảnh
+và lọc tín hiệu chuyển động; bốn tab ứng dụng minh họa khả năng tương tác.
 
-Giao diện đã chốt: `submission/stem_ui/`. Xem
-**[Hướng dẫn cài và chạy bằng tiếng Việt](HUONG_DAN_CHAY.md)**.
+**Bản chốt sau vấn đáp ngày 18/10/2026:** nhánh `main`, tag
+[`submission-2026-10-18`](https://github.com/lengochai4/DIP_project/tree/submission-2026-10-18).
+Các tag `submission-2026-10-16` và `submission-2026-10-16-r2` giữ nguyên bản cũ.
 
-Bản nộp ngày **16/10/2026**: nhánh `main`, tag `submission-2026-10-16-r2`.
-Giữ tag `submission-2026-10-16` làm bản trước khi sửa bộ cài Python.
-Chi tiết cài đặt, model SHA-256 và test tại
-[biên bản kiểm tra](submission/stem_ui/QA_CHECKLIST.md).
+## Cài và chạy nhanh
 
-Windows, Python **>=3.11 64-bit** theo `pyproject.toml`, tại thư mục gốc source:
+Windows 10/11, Python **>=3.11 64-bit** theo `pyproject.toml`, webcam và driver
+đồ họa hỗ trợ OpenGL. Bộ kiểm tra đã chạy bằng Python 3.11.9 và 3.12.14;
+phiên bản Python khác còn phụ thuộc wheel của các thư viện native.
 
-```powershell
-python -X utf8 -m submission.setup_ui
-.\.venv-ui\Scripts\python.exe -X utf8 -m submission.stem_ui.app
-```
-
-Hoặc nhấp đúp **Cai_dat_UI.bat** một lần, sau đó **Chay_UI.bat**.
-Bộ cài tạo môi trường riêng, để pip chọn thư viện tương thích theo `pyproject.toml`
-và tải model có kiểm tra SHA-256. Bản snapshot 3.12 chỉ dùng khi chọn `--locked`.
-Phiên bản Python mới vẫn cần được các thư viện native hỗ trợ; bộ cài không
-cam kết mọi phiên bản tương lai đều chạy. Camera chỉ bật khi bấm **Bật camera**.
-Các phần dưới mô tả Core và quy
-trình nghiên cứu; `.[dev]` riêng lẻ chưa cài thư viện dựng giao diện.
-
-**Real-Time Touchless 3D STEM Interaction Using Adaptive Image Preprocessing and Motion Signal Filtering with a Single RGB Camera**
-
-## 1. Overview
-
-DIP Touchless STEM is a Digital Image Processing final-term project that uses a single RGB webcam for real-time touchless interaction with rendered 3D STEM objects.
-
-The project focuses on the processing pipeline rather than building a feature-heavy 3D application.
-
-Main topics:
-
-- ROI-based image processing;
-- illumination assessment;
-- adaptive CLAHE;
-- hand landmark tracking through MediaPipe;
-- canonical Fixed 1-Euro filtering;
-- bounded Adaptive 1-Euro filtering;
-- gesture mapping;
-- renderer-independent `InteractionState`;
-- reproducible comparison of Raw / Fixed / Adaptive processing.
-
-The 3D STEM application is an extension/demo layer. The DIP Core is the primary academic component.
-
----
-
-## 2. Requirements
-
-Recommended development environment:
-
-```text
-Python 3.11
-Git
-Windows PowerShell
-```
-
-Python compatibility is defined by `pyproject.toml`.
-
-Do not assume that a globally installed Python package is part of the project environment.
-
----
-
-## 3. Setup
-
-Clone the repository:
+Clone repo, hoặc tải ZIP của `main`/tag bản chốt rồi giải nén. Mở terminal tại
+thư mục chứa `pyproject.toml`:
 
 ```powershell
 git clone https://github.com/lengochai4/DIP_project.git
 cd DIP_project
+python -X utf8 -m submission.setup_ui
+.\.venv-ui\Scripts\python.exe -X utf8 -m submission.stem_ui.app
 ```
 
-Create a virtual environment:
+Nếu tải ZIP thì bỏ hai lệnh `git clone`/`cd`, mở terminal trong thư mục source
+đã giải nén. Có nhiều Python thì dùng `py -3.11 -X utf8 -m submission.setup_ui`
+hoặc `py -3.12 -X utf8 -m submission.setup_ui` để chọn môi trường cài.
 
-```powershell
-python -m venv .venv
+Hoặc nhấp đúp **Cai_dat_UI.bat** một lần, sau đó **Chay_UI.bat**. Bộ cài tạo
+`.venv-ui`, cài thư viện theo `pyproject.toml`, tải model và kiểm tra SHA-256.
+Cần Internet lần cài đầu; webcam xử lý trên máy sau khi cài. Camera chỉ mở khi
+bấm **Bật camera**. Không cần thư mục `.venv-research` của người phát triển.
+
+Hướng dẫn đầy đủ, cập nhật source và xử lý lỗi:
+**[HUONG_DAN_CHAY.md](HUONG_DAN_CHAY.md)**.
+
+## Bốn tab của ứng dụng
+
+| Tab | Chức năng chính | Cách thao tác |
+|---|---|---|
+| **Khối 3D** | Lập phương, tứ diện, bát diện, cầu; di chuyển, xoay, đổi cỡ, kéo dãn | Chụm cái–trỏ để cầm, mở để buông; hai tay để phối hợp. Xòe tay ở mép trống khoảng 0,45 giây gọi bảng đổi khối, nhắm lại rồi giữ trỏ 1 giây hoặc chụm chọn. Đổi khối giữ nguyên tư thế/cỡ. |
+| **Đầu ngón** | Các ngón đang duỗi tạo đỉnh sống; điểm, đoạn, mặt hoặc khối | Duỗi/gập ngón để thay đỉnh, tận dụng một/hai tay. Có số ngón từng tay và nhãn theo hình; không thêm đỉnh hoặc độ dày giả. |
+| **Hóa học AR** | Bảng nguyên tố nổi, nguyên tử/electron, mẫu phân tử và ghép/tách liên kết | Trỏ 1 giây hoặc mở–nhắm–chụm để chọn. Cầm cả khối bằng một/hai tay; Ghép/tách để kéo từng nguyên tử. Bảng kéo/đổi cỡ/thu ra viền và mở lại được; có hoàn tác, lưu/mở. |
+| **Vật lý** | Tám bài cơ học, tay nắm thông số, vector, đồ thị, năng lượng, thử thách, A/B, lưu/xuất | Chụm kéo vật/tay nắm, mở để buông. Có xem cảnh một/hai tay, bảng thu gọn và bảng lệnh nhanh bằng xòe tay ở mép. |
+
+Tám bài Vật lý: lực–ma sát, mặt phẳng nghiêng, rơi–ném xiên, va chạm 1D,
+lò xo–giảm chấn, con lắc, đòn bẩy và ròng rọc lý tưởng. Mỗi bài có tham số SI,
+giả thiết, công thức và tình huống học tập. Bài tĩnh dùng **Kiểm tra**; bài động
+dùng **Chạy/Dừng**. Một số vật hỗ trợ thả để chạy sau lượt chỉnh có chủ ý.
+
+Phím chung: **H** ẩn/hiện hướng dẫn, **F11** phóng to/thu khung, **Tab** đổi tab,
+**Enter** bật/tắt camera. Chuột là đường điều khiển dự phòng. **DroidCam** cho
+nhập IP/port Wi-Fi của điện thoại; chỉ một nguồn camera hoạt động tại một thời điểm.
+
+[Hướng dẫn thao tác](submission/stem_ui/README.md) ·
+[Đối chiếu công thức Vật lý](submission/stem_ui/PHYSICS_AUDIT.md) ·
+[Kịch bản quay video 3 phút rưỡi](submission/KICH_BAN_VIDEO.md)
+
+## Luồng xử lý và giới hạn
+
+```text
+Webcam RGB / video phát lại
+  → frame, màu và timestamp
+  → ROI + đánh giá ánh sáng HSV + CLAHE/bypass theo điều kiện
+  → MediaPipe: điểm mốc bàn tay
+  → kiểm tra quan sát + lọc tín hiệu theo thời gian
+  → cử chỉ / ánh xạ tọa độ
+  → giao diện STEM 3D
 ```
 
-Activate it on Windows PowerShell:
+`src/dip_touchless/` chứa DIP Core và các baseline Raw / canonical Fixed 1-Euro /
+bounded Adaptive 1-Euro. `submission/stem_ui/` là lớp trình bày riêng, có snapshot
+và cấu hình tương tác phục vụ UI; không gộp log hai tay/UI vào kết quả nghiên cứu.
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
+- Mất tay là trạng thái thiếu quan sát, không thay bằng điểm bằng 0 hay tự đoán chuyển động.
+- z của model là tương đối, **không phải độ sâu camera đo bằng mét**. Nền camera
+  là ghép hiển thị, không định vị vật trong phòng như kính AR.
+- Hóa học dùng dữ liệu có nguồn và đối chiếu topology cho mẫu đã hỗ trợ;
+  ghép/tách không tạo nguyên tố mới hay chứng minh phản ứng/độ bền phân tử.
+- Số đo SI thuộc mô hình Vật lý lý tưởng, không đo lực/chiều dài thật từ tay.
+  Đòn bẩy kiểm tra tĩnh; ròng rọc nâng chậm, bỏ qua ma sát/quán tính.
+- Đây là nguyên mẫu học tập có kiểm tra phần mềm, phục vụ trình diễn và phát triển
+  tiếp; chưa có cơ sở cam kết tỷ lệ nhận đúng hoặc độ trễ trên mọi máy.
 
-Upgrade pip:
-
-```powershell
-python -m pip install --upgrade pip
-```
-
-Install the project and development dependencies:
-
-```powershell
-python -m pip install -e ".[dev]"
-```
-
-Verify the environment:
-
-```powershell
-python --version
-pytest --version
-```
-
-Run the test suite:
-
-```powershell
-pytest
-```
-
----
-
-## 4. Project structure
+## Code và tài liệu
 
 ```text
 DIP_project/
-├── src/
-│   └── dip_touchless/       # DIP Core package
-├── extensions/
-│   └── stem3d/              # 3D STEM application layer
-├── tests/                   # Automated tests
-├── config/                  # Runtime / experiment configuration
-├── experiments/             # Experiment runners
-├── analysis/                # Metrics, plots and result analysis
-├── data/                    # Local/recorded experiment inputs
-├── results/                 # Generated experiment results
-├── docs/                    # Canonical specifications
-├── AGENTS.md                # AI/contributor entry instructions
-├── pyproject.toml
-└── README.md
+├── src/dip_touchless/         # DIP Core: thu ảnh, tiền xử lý, tracking, lọc, tương tác
+├── submission/stem_ui/       # App bốn tab, OpenGL, cử chỉ và dữ liệu STEM
+│   ├── app.py                # Điểm chạy UI
+│   ├── chemistry*.py         # Dữ liệu/đồ thị và tương tác Hóa học
+│   ├── physics*.py           # Mô hình SI, tương tác và trình bày Vật lý
+│   └── physics_labs.yaml     # Tham số, giả thiết, công thức và nguồn tám bài
+├── config/                   # Cấu hình Core và thực nghiệm
+├── experiments/              # Replay/thực nghiệm; UI dùng hàm tạo bộ lọc ở đây
+├── analysis/                 # Phân tích và dựng kết quả nghiên cứu
+├── tests/                    # Kiểm tra tự động
+├── models/README.md          # Nguồn/checksum model; binary tải lúc cài
+├── docs/                     # Sáu đặc tả chuẩn và trạng thái dự án
+├── reports/core-final/       # Nguồn báo cáo Core
+├── HUONG_DAN_CHAY.md          # Cài/chạy và xử lý lỗi
+└── submission/KICH_BAN_VIDEO.md
 ```
 
-Generated/local data under `data/`, `results/`, runtime logs and `.venv/` should not be committed unless explicitly required.
+**Giữ nguyên source khi nộp**, không xóa `experiments/` hay các thư mục vì nghĩ UI
+không dùng. ZIP GitHub không có môi trường Python, model binary, log/video `runs/`
+hoặc Word/PDF/PowerPoint cục bộ; tài liệu nộp và dữ liệu thực nghiệm nếu được yêu cầu
+phải gửi kèm riêng. Đổi tên thư mục được, chạy từ nơi chứa `pyproject.toml`.
 
----
+## Kiểm chứng đã thực hiện
 
-## 5. Canonical specifications
+Trước khi chốt bản sửa buông vật thể Hóa học `688f6b4`, toàn bộ **1.091 test đã
+qua trên Python 3.11.9 và 3.12.14**. Có kiểm tra native OpenGL, chuyển tab,
+resize/F11, lưu/xuất, cầm/buông, mất tay và nhập lại. Hồ sơ/giới hạn bằng chứng:
+[QA_CHECKLIST.md](submission/stem_ui/QA_CHECKLIST.md). Theo yêu cầu người dùng,
+lần bàn giao/merge này không chạy thêm test, không đổi mã thực thi so với bản đã chốt.
 
-The README is an introduction only.
-
-Normative project decisions are defined in exactly these six files:
-
-```text
-docs/
-├── 00_GOVERNANCE.md
-├── 01_MASTER_SPEC.md
-├── 02_ARCHITECTURE_AND_CONTRACTS.md
-├── 03_ALGORITHM_AND_EXPERIMENTS.md
-├── 04_IMPLEMENTATION_TESTING_GUIDE.md
-└── 05_PROJECT_STATUS_AND_ROADMAP.md
-```
-
-Their responsibilities are:
-
-- `00_GOVERNANCE.md` — source-of-truth, precedence and change discipline;
-- `01_MASTER_SPEC.md` — scope, non-goals, research questions and contribution boundary;
-- `02_ARCHITECTURE_AND_CONTRACTS.md` — architecture, module boundaries and public contracts;
-- `03_ALGORITHM_AND_EXPERIMENTS.md` — algorithms, baselines and experiment definitions;
-- `04_IMPLEMENTATION_TESTING_GUIDE.md` — implementation gates, testing and coding rules;
-- `05_PROJECT_STATUS_AND_ROADMAP.md` — current stage, tasks, risks and Definition of Done.
-
-If this README conflicts with a canonical specification, the canonical specification takes precedence.
-
----
-
-## 6. Development workflow
-
-The project is developed incrementally by gates:
-
-```text
-G0 — Foundation / contracts / config / logging
-G1 — Raw + Replay baseline
-G2 — DIP preprocessing
-G3 — Canonical Fixed 1-Euro
-G4 — Bounded Adaptive 1-Euro
-G5 — Gesture + 3D STEM extension
-G6 — Minimal experiment tooling
-G7 — Final evaluation and delivery
-```
-
-Do not skip ahead to renderer polish before the DIP Core is stable.
-
-Each meaningful task should follow:
-
-```text
-implement
-→ run targeted tests
-→ inspect git diff/status
-→ commit
-```
-
-Example:
+Để tự kiểm tra cài đặt hoặc chạy bộ test khi cần:
 
 ```powershell
-pytest
-git status
-git diff
-
-git add <task-files>
-git commit -m "feat: describe the completed task"
+.\.venv-ui\Scripts\python.exe -X utf8 -m submission.check_setup
+.\.venv-ui\Scripts\python.exe -X utf8 -m pytest -q
 ```
 
-Do not claim tests passed unless they were actually executed.
+Test phần mềm/phát lại không thay thế đánh giá thao tác thật trên webcam.
+Nguồn báo cáo nghiên cứu: [BAO_CAO_CORE.md](reports/core-final/BAO_CAO_CORE.md).
 
----
+## Phát triển và đặc tả
 
-## 7. Branch workflow
+Sáu file `docs/00_GOVERNANCE.md` đến `docs/05_PROJECT_STATUS_AND_ROADMAP.md` là
+nguồn quyết định chuẩn; README chỉ hướng dẫn sử dụng. Đọc [AGENTS.md](AGENTS.md)
+trước khi sửa. Làm thay đổi mới trên nhánh riêng, giữ `main` và tag bản nộp
+làm mốc đối chiếu; không sửa lịch sử các tag đã chia sẻ.
 
-`main` contains stable shared work.
+## Nhóm tác giả
 
-Each team member should develop on their own branch.
+- **24110107 — Nguyễn Đăk Lộc**
+- **24110103 — Trần Gia Kiệt**
+- **24110089 — Lê Ngọc Hải**
 
-Example:
-
-```text
-main
-loc
-member-a
-member-b
-```
-
-Typical workflow:
-
-```powershell
-git switch loc
-
-# work + commits
-
-pytest
-git status
-git push
-```
-
-For this project, small commits may be kept locally during a gate and pushed when the gate is complete or when a remote backup/share point is needed.
-
-Merge into `main` only after the relevant tests pass and the changes have been reviewed.
-
----
-
-## 8. Important project rules
-
-- DIP Core is the academic center of the project.
-- The 3D application consumes `InteractionState` and must not control Core algorithms directly.
-- Raw and canonical Fixed 1-Euro must remain available as baselines.
-- Canonical Fixed 1-Euro includes derivative low-pass filtering with `d_cutoff`.
-- Missing hand tracking must not be represented by fake zero landmarks.
-- Do not invent tracking confidence or measurement quality.
-- Handedness score is not tracking confidence.
-- Do not silently change algorithm equations, contracts or experiment protocol.
-- Do not fabricate FPS, latency, jitter reduction, accuracy or other experimental results.
-- Do not add YOLO, depth cameras, Transformers, cloud inference or multi-camera processing unless the project scope is explicitly changed.
-- Any quantitative result must come from an actual recorded experiment.
-
----
-
-## 9. Current status
-
-See:
-
-```text
-docs/05_PROJECT_STATUS_AND_ROADMAP.md
-```
-
-for the current project gate, task, blockers and Definition of Done.
-
-Do not infer implementation completion from this README.
-
-## Author
-```
-Nguyen Dak Loc - 24110107
-Le Ngoc Hai - 24110089
-Tran Gia Kiet - 24110103
-```
-This project is supported by Assoc.Prof.Hoang Van Dung and Ho Chi Minh City University of Technology and Engineering.
+This project is supported by Assoc.Prof. Hoang Van Dung and Ho Chi Minh City
+University of Technology and Engineering.
