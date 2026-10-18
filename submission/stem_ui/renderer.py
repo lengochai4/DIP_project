@@ -80,7 +80,7 @@ class SubmissionRenderer:
         pygame.display.set_caption('DIP Touchless STEM • Đồ án')
         font_path = Path('C:/Windows/Fonts/segoeui.ttf')
         self.fonts = {size:pygame.font.Font(str(font_path) if font_path.is_file() else None,size)
-                      for size in (12,13,14,15,17,20,24,28,32)}
+                      for size in (11,12,13,14,15,17,20,24,28,32)}
         self.quadric = glu.gluNewQuadric()
         self.clock = pygame.time.Clock()
         self.unit_sphere = gl.glGenLists(1)
@@ -187,7 +187,10 @@ class SubmissionRenderer:
         self._window=None
 
     def reset(self):
-        if self.mode=='physics': self.physics.command('frame'); return
+        if self.mode=='physics':
+            self.physics.command('reset')
+            self.physics.command('frame')
+            return
         if self.mode=='chemistry':
             self.chemistry.input.command('frame'); self.chemistry.input.command('compact'); return
         self.yaw=32.; self.pitch=20.; self.zoom=1.
@@ -798,8 +801,8 @@ class SubmissionRenderer:
             pygame.draw.polygon(overlay,MUTED,((mx+115,my+15),(mx+123,my+15),(mx+119,my+20)))
             label={'uniform':'Hai tay: đổi cỡ','stretch':'Hai tay: kéo dãn','distance':'Một tay: đổi cỡ','depth':'Một tay: tiến/lùi'}[self.grab.scale_mode]
             self._button(overlay,label,(168,my,152,36) if w<1200 else (660,sy,152,36),'scale_mode',self.grab.scale_mode!='uniform')
-        if w>=800 or self.mode=='solid':
-            self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại' if self.mode=='solid' else 'Đặt lại góc nhìn',(w-168,sy+46 if w<800 else sy,148,36),'reset')
+        if w>=800 or self.mode in ('solid','physics'):
+            self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại ban đầu' if self.mode in ('solid','physics') else 'Đặt lại góc nhìn',(w-168,sy+46 if w<800 else sy,148,36),'reset')
         # Scene frame is only an outline, leaving the camera unobstructed.
         pygame.draw.rect(overlay,(53,105,124,190),view,1,border_radius=18)
         pygame.draw.line(overlay,ACCENT,(vx+20,vy),(vx+92,vy),2)
@@ -839,25 +842,44 @@ class SubmissionRenderer:
             else:
                 self._wrap(overlay,'Bật camera để thao tác trực tiếp bằng tay.',(px+18,py+68),pw-36,17)
                 self._button(overlay,'Đổi camera',(px+18,py+min(176,max(0,vh-52)),pw-36,36),'next_camera')
-            if self.help_visible and self.mode not in ('chemistry','physics') and vw<820 and vh>=240:
+            if self.help_visible and self.mode!='chemistry' and vw<820 and vh>=240:
                 y=py+chmax+108
                 self._text(overlay,'THAO TÁC',(px+18,y),13,ACCENT); y+=26
-                lines=self._solid_instructions() if self.mode=='solid' else ('Duỗi ngón: tạo đỉnh sống.','Gập ngón: bỏ đỉnh.','Hai tay: tạo hình cùng lúc.','Gần đồng phẳng: hình tạo thành mặt.')
-                if vh<400: lines=('Chụm: cầm. Mở: buông.',) if self.mode=='solid' else ('Duỗi: thêm. Gập: bỏ đỉnh.',)
+                if self.mode=='physics':
+                    lines=('Chụm điểm vàng: kéo lực/vật.','Mở ngón: buông/thả.','SPACE: Chạy/Dừng.','R: Đặt lại ban đầu.')
+                elif self.mode=='solid':
+                    lines=self._solid_instructions()
+                else:
+                    lines=('Duỗi ngón: tạo đỉnh sống.','Gập ngón: bỏ đỉnh.','Hai tay: tạo hình cùng lúc.','Gần đồng phẳng: hình tạo thành mặt.')
+                if vh<400:
+                    lines=('SPACE: Chạy/Dừng. R: Đặt lại.',) if self.mode=='physics' else (('Chụm: cầm. Mở: buông.',) if self.mode=='solid' else ('Duỗi: thêm. Gập: bỏ đỉnh.',))
                 for line in lines: y=self._wrap(overlay,line,(px+18,y),pw-36,13,INK)
                 if vh>=400: self._text(overlay,'H: ẩn hướng dẫn',(px+18,y+4),12,MUTED)
             elif vh>=240:
                 self._wrap(overlay,'Đưa một hoặc hai tay vào khung. Tránh che đầu ngón và chồng hai lòng bàn tay.',(px+18,py+chmax+108),pw-36,15)
             overlay.set_clip(previous_clip)
-        if self.help_visible and self.mode not in ('chemistry','physics') and not (self.camera_visible and vw<820):
-            hw=min(342,vw-36); hx=vx+18; hy=vy+54
-            self._card(overlay,(hx,hy,hw,184),231,True)
-            self._text(overlay,'THAO TÁC BẰNG TAY',(hx+16,hy+15),13,ACCENT)
-            instructions=('\n'.join(self._solid_instructions()) if self.mode=='solid' else
-                'Duỗi: tạo đỉnh; gập: bỏ đỉnh.\nDùng các ngón của một hoặc hai tay.\nGần đồng phẳng: hình tạo thành mặt.\nKéo chuột để nhìn từ góc khác.')
-            y=hy+45
-            for line in instructions.split('\n'): y=self._wrap(overlay,line,(hx+16,y),hw-32,15,INK)
-            self._text(overlay,'H: ẩn hướng dẫn  •  F11: phóng to',(hx+16,hy+157),12,MUTED)
+        if self.help_visible and self.mode!='chemistry' and not (self.camera_visible and vw<820):
+            if self.mode=='physics':
+                panel_r=getattr(self.physics,'panel_rect',None)
+                hx=(panel_r.right+14) if (panel_r and not getattr(self.physics,'collapsed',False)) else (vx+18)
+                max_right=(w-20-min(300,w//4)-14) if self.camera_visible else (vx+vw-18)
+                hw=min(380,max(260,max_right-hx))
+                card_h=248; hy=vy+14
+                self._card(overlay,(hx,hy,hw,card_h),235,True)
+                self._text(overlay,'HƯỚNG DẪN MÔ PHỎNG VẬT LÝ',(hx+16,hy+14),13,ACCENT)
+                y=hy+36
+                for line in self._physics_instructions():
+                    y=self._wrap(overlay,line,(hx+16,y),hw-32,12,INK)
+                self._text(overlay,'H: ẩn hướng dẫn  •  SPACE: Chạy/Dừng  •  R: Đặt lại ban đầu',(hx+16,hy+card_h-20),12,MUTED)
+            else:
+                hw=min(342,vw-36); hx=vx+18; hy=vy+54
+                self._card(overlay,(hx,hy,hw,184),231,True)
+                self._text(overlay,'THAO TÁC BẰNG TAY',(hx+16,hy+15),13,ACCENT)
+                instructions=('\n'.join(self._solid_instructions()) if self.mode=='solid' else
+                    'Duỗi: tạo đỉnh; gập: bỏ đỉnh.\nDùng các ngón của một hoặc hai tay.\nGần đồng phẳng: hình tạo thành mặt.\nKéo chuột để nhìn từ góc khác.')
+                y=hy+45
+                for line in instructions.split('\n'): y=self._wrap(overlay,line,(hx+16,y),hw-32,15,INK)
+                self._text(overlay,'H: ẩn hướng dẫn  •  F11: phóng to',(hx+16,hy+157),12,MUTED)
         if self.menu and self.mode=='solid':
             for i,name in enumerate(NAMES): self._button(overlay,name,(26 if w<1200 else 518,sy+(90 if w<1200 else 44)+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
         footer=pygame.Rect(20,h-55,w-40,45)
@@ -879,7 +901,10 @@ class SubmissionRenderer:
             elif len(claims)>1: label='Đang giữ bằng hai tay • Tách / khép để đổi cỡ • Mở ngón để buông'
             elif claims: label='Đang cầm • Chụm tay còn lại trong vùng trống để xoay / đổi cỡ'
             elif scene.electrons: label+=(' • Chọn Cầm cả khối để dùng hai tay đổi cỡ' if scene.edit else ' • Cầm nguyên tử, chụm tay còn lại để đổi cỡ cả lớp e')
-        elif self.mode=='physics': label=self.physics.model.message
+        elif self.mode=='physics':
+            m=self.physics.model
+            run_state='Đang chạy' if m.running else 'Tạm dừng'
+            label=f"Vật lý: {m.spec['title']} ({run_state}, t={m.time:.2f}s) • {m.message or 'Chụm điểm vàng để tác dụng lực • SPACE: Chạy/Dừng • R: Đặt lại ban đầu'}"
         else: label='Kéo chuột để xem góc khác  •  Cuộn để gần / xa  •  R để đặt lại'
         if error: label=error
         if replay: label='Phát lại  •  '+label
@@ -907,6 +932,18 @@ class SubmissionRenderer:
                'depth':'Một tay: gần / xa để tiến / lùi.'}[mode]
         return ('Chụm: cầm. Mở: buông. Một tay dời / xoay.',extra,
                 'Xòe tay ở mép trống để chọn khối.')
+
+    def _physics_instructions(self):
+        return (
+            '• Chụm ngón vào điểm vàng: Kéo lực F / chỉnh góc / kéo vật thể.',
+            '• Mở ngón tay: Buông lực hoặc thả rơi vật thể.',
+            '• Phím SPACE: Bắt đầu / Tạm dừng mô phỏng vật lý.',
+            '• Nút "Đặt lại ban đầu" (phím R): Khôi phục vật về trạng thái gốc.',
+            '• Phím S: Chạy từng bước (step) để quan sát chi tiết chuyển động.',
+            '• Bảng bên trái: Tab [Bài học] lý thuyết SI, Tab [Điều chỉnh] thông số.',
+            '• Tab [Đo / Lưu]: Bật hiển thị Vector lực, Đồ thị, Năng lượng.',
+            '• Hai tay chụm vùng trống: Xoay và đổi góc nhìn không gian 3D.'
+        )
 
     def _draw_droidcam_dialog(self,overlay,source_kind,error=None):
         w,h=self.size
