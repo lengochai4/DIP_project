@@ -32,6 +32,27 @@ tracking, filter, gesture và logic 3D/chemistry giữ nguyên.
 
 ## Cách thao tác
 
+### Khối 3D và Đầu ngón — cập nhật 18/10/2026
+
+- **Đổi khối không chạm:** khi chưa cầm vật, xòe đủ năm ngón tại mép trái/phải
+  của khung cảnh, giữ ổn định khoảng 0,45 giây. Bảng bốn khối hiện tại mép đó.
+  Mở ngón và di tay để nhắm lại, rồi trỏ vào ô, giữ 1 giây hoặc chụm cái–trỏ
+  để chọn. Vòng tròn báo tiến trình. Chọn khối giữ nguyên vị trí, hướng, cỡ và
+  kéo dãn. Mở ngón sau chọn rồi chụm lại để cầm. Dấu ×/Esc đóng bảng; chuột,
+  menu cũ và phím 1–4 vẫn dùng được. Bảng không gọi khi đang cầm/kéo.
+- **Đầu ngón:** đỉnh chỉ bám các ngón đang duỗi của một/hai tay. Dòng trạng
+  thái ghi số đầu ngón của mỗi tay và điểm/đoạn/mặt/khối. Gần đồng phẳng tạo
+  mặt; chỉ hình có đủ độ lệch tương đối mới tạo khối. Đây không phải đo chiều
+  sâu hay kích thước vật lý. Màu/nút/nhãn phân biệt hai tay; H ẩn hướng dẫn,
+  kéo chuột xem góc khác. Nhãn có nền tương phản, bám theo mỗi lượt render;
+  UI tĩnh không dựng lại theo chuyển động của nhãn hoặc mỗi ảnh camera mới.
+  Camera phụ/xương tay dùng texture nhỏ riêng. Nút **Đặt lại** ở Khối 3D đặt lại cả vật và
+  góc nhìn như trước; chuyển tab vẫn giữ nội dung.
+
+Các khoảng giữ/ngưỡng là mặc định kỹ thuật trong `settings.yaml`, không phải
+tỷ lệ nhận diện đã đo. UI schema 20 ghi chính sách và `solid_controls` riêng
+trong nhật ký; Core/Hóa học/các mô hình Vật lý giữ nguyên.
+
 ### Vật lý ứng dụng — tám bài cơ học
 
 Chọn **Vật lý**, phím **V**, hoặc chạy trực tiếp:

@@ -311,6 +311,33 @@ Consumes `InteractionState` only. It MAY manage renderer/scene/application behav
 
 ### Additive submission presentation boundary — 2026-10-14
 
+#### Solid palette and live geometry feedback — authorized 2026-10-18
+
+Only the solid tab can summon the new shape palette. It reuses the source-XY
+open-palm recognizer with an isolated solid configuration copy; it cannot open
+during an active/pending grip, mouse drag or legacy shape menu. The palette is
+modal, requires observed opening plus deliberate re-aim after appearance or
+reacquisition, and supports the existing PointPinch and observed 1-second dwell.
+Both methods dispatch at most one choice. All visible hands' menu intents stay
+consumed after dismissal until observed opening, including generation changes.
+Missing/stale input, source/viewport changes and timestamp discontinuity cancel
+pending input without clearing scene content. No gesture/filter equation changes.
+
+Four shape choices preserve position, rotation, scale and stretch. Basic-tab
+transitions clear pending input/mouse drags while preserving object pose. The
+existing full reset remains full reset and is labeled accordingly. Fingertip
+geometry continues using all and only observed extended tips; counts include
+interior nodes. Collinear/planar geometry is described without invented volume.
+
+Fingertip glyph textures are small context-owned sprites, positioned each render
+with an analytic projection matching the existing camera/view/fit matrices.
+Labels are clipped to the scene and recreated after context changes. Static
+basic-tab UI uploads only on semantic changes. Side-camera pixels/skeletons use
+a separate small reusable texture, with preview/hover refresh capped at the
+existing overlay cadence. Source observations and render-following rates
+are unchanged. UI schema 20 records the presentation policy; Core/research,
+chemistry, mechanics equations and setup formats retain their existing identity.
+
 #### Visual refresh and chemistry confirmation — authorized 2026-10-14
 
 The user requested a visual-only refresh using the supplied design/assets,

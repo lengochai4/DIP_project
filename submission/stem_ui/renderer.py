@@ -10,11 +10,13 @@ import pygame
 from pygame._sdl2.video import Window
 from OpenGL import GL as gl, GLU as glu
 from .geometry import (Tip, FingerSelection, live_mesh, solid_mesh,
-                       world_position, preview_position, TIPS)
+                       world_position, preview_position, project_live_tip, TIPS)
 from .geometry import bone_transforms
 from .manipulation import GrabController
 from .chemistry_view import CameraChemistryView
 from .physics_view import PhysicsView
+from .solid_palette import SolidPalette, tip_summary
+from .screen_sprites import ScreenSprites
 from .theme import BG, PANEL, INK, MUTED, ACCENT, GOLD, AUTHORS, card, glass, outline, atom_mark, header_height, scene_rect, fit_desktop_window
 
 COLORS = ((.20,.72,.90),(.28,.46,.82),(.48,.87,.94),(.47,.60,.79))
@@ -47,6 +49,10 @@ class SubmissionRenderer:
         self.last_reset = set()
         self.dragging = False
         self.grab = GrabController(settings)
+        self.solid_palette = SolidPalette(settings)
+        self.sprites = ScreenSprites(settings['floating_cache_capacity'])
+        self.palette_cursor_points = {}
+        self.solid_context = None
         self.capture_path = None
         self.last_draw_at = None
         self.live_points = {}
@@ -94,6 +100,8 @@ class SubmissionRenderer:
             self.solid_lists[kind]=display_list
 
     def _set_display(self):
+        self.sprites.close()
+        self._suspend_solid()
         self.chemistry.close()
         self.physics.close()
         for display_list in getattr(self,'solid_lists',{}).values():
@@ -141,6 +149,7 @@ class SubmissionRenderer:
         gl.glTexImage2D(gl.GL_TEXTURE_2D,0,gl.GL_RGBA,*self.size,0,gl.GL_RGBA,gl.GL_UNSIGNED_BYTE,None)
         self.overlay_surface=pygame.Surface(self.size,pygame.SRCALPHA)
         self.last_overlay_at=0.0; self.last_overlay_key=None
+        self.basic_preview_key=None
         self.last_draw_at=None
         if hasattr(self,'solid_lists'):
             self.chemistry.open()
@@ -159,6 +168,7 @@ class SubmissionRenderer:
                 self.solid_lists[kind]=display_list
 
     def close(self):
+        self.sprites.close()
         self.chemistry.close()
         self.physics.close()
         for display_list in getattr(self,'solid_lists',{}).values():
@@ -184,6 +194,16 @@ class SubmissionRenderer:
         self.object_yaw=self.object_pitch=0.; self.object_scale=1.
         self.grab.reset()
         self.fit_center=None; self.fit_identity=None
+
+    def _suspend_solid(self):
+        self.dragging=False; self.grab.release(); self.solid_palette.suspend()
+        self.palette_cursor_points.clear(); self.solid_context=None
+
+    def enter_basic(self, mode):
+        if self.mode != mode:
+            self._suspend_solid(); self.chemistry.input.release(); self.physics.suspend()
+            self.last_identity=None
+        self.mode=mode; self.menu=False
 
     def events(self):
         actions = []
@@ -216,7 +236,9 @@ class SubmissionRenderer:
                                 self.droidcam_port+=ch
                     continue
                 if key == pygame.K_ESCAPE:
-                    if self.fullscreen:
+                    if self.solid_palette.open:
+                        self.solid_palette.transition(False)
+                    elif self.fullscreen:
                         self.toggle_fullscreen()
                     elif self.menu:
                         self.menu=False
@@ -247,18 +269,24 @@ class SubmissionRenderer:
                     self.chemistry.input.command({pygame.K_e:'edit',pygame.K_o:'electrons',pygame.K_t:'table',pygame.K_z:'undo',
                         pygame.K_y:'redo',pygame.K_BACKSPACE:'delete',pygame.K_l:'save',pygame.K_j:'load'}[key])
                 elif key == pygame.K_TAB:
-                    if self.mode=='solid': self.mode='tips'
+                    if self.mode=='solid': self.enter_basic('tips')
                     elif self.mode=='tips': self.enter_chemistry()
                     elif self.mode=='chemistry': self.enter_physics()
-                    else: self.mode='solid'; self.chemistry.input.release(); self.physics.suspend()
+                    else: self.enter_basic('solid')
                 elif pygame.K_1 <= key <= pygame.K_4:
-                    self.kind=KINDS[key-pygame.K_1]; self.mode='solid'
-                    self.physics.suspend()
+                    self.enter_basic('solid'); self.kind=KINDS[key-pygame.K_1]
+                    if self.solid_palette.open: self.solid_palette.transition(False)
             elif event.type == pygame.MOUSEWHEEL:
                 if self.mode=='chemistry' and not self.droidcam_dialog: self.chemistry.wheel(event.y,pygame.mouse.get_pos())
                 elif self.mode=='physics' and not self.droidcam_dialog: self.physics.wheel(event.y,pygame.mouse.get_pos())
-                elif not self.droidcam_dialog: self.zoom=float(np.clip(self.zoom*math.exp(event.y*.08),.55,1.8))
+                elif not self.droidcam_dialog and not self.solid_palette.open: self.zoom=float(np.clip(self.zoom*math.exp(event.y*.08),.55,1.8))
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button==1:
+                if self.mode=='solid' and self.solid_palette.open and not self.droidcam_dialog:
+                    action=next((a for rect,a in self.solid_palette.targets if rect.collidepoint(event.pos)),None)
+                    if action:
+                        if action in KINDS: self.kind=action
+                        self.solid_palette.transition(False)
+                    continue
                 action=next((a for rect,a in reversed(self.buttons) if rect.collidepoint(event.pos)),None)
                 if self.droidcam_dialog:
                     if action=='droidcam_host': self.droidcam_field='host'
@@ -268,9 +296,9 @@ class SubmissionRenderer:
                     continue
                 if action:
                     if action.startswith('kind:'):
-                        self.kind=action.split(':')[1]; self.mode='solid'; self.menu=False
+                        self.enter_basic('solid'); self.kind=action.split(':')[1]; self.menu=False
                     elif action in ('solid','tips'):
-                        self.mode=action; self.chemistry.input.release(); self.physics.suspend()
+                        self.enter_basic(action)
                     elif action=='chemistry':
                         self.enter_chemistry()
                     elif action=='physics':
@@ -279,7 +307,7 @@ class SubmissionRenderer:
                         self.camera_visible=not self.camera_visible
                     elif action=='droidcam':
                         self.droidcam_dialog=True; self.droidcam_field='host'
-                        self.dragging=False; self.grab.release(); self.chemistry.input.release()
+                        self._suspend_solid(); self.chemistry.input.release()
                         self.physics.suspend()
                     elif action=='help':
                         self.help_visible=not self.help_visible
@@ -325,11 +353,13 @@ class SubmissionRenderer:
         self._set_display()
 
     def enter_chemistry(self):
+        self._suspend_solid()
         self.mode='chemistry'; self.camera_visible=False; self.menu=False
         self.physics.suspend()
         self.grab.release(); self.chemistry.input.release()
 
     def enter_physics(self):
+        self._suspend_solid()
         self.mode='physics'; self.camera_visible=False; self.menu=False
         self.grab.release(); self.chemistry.input.release(); self.physics.suspend()
 
@@ -380,6 +410,9 @@ class SubmissionRenderer:
             return self._draw_chemistry(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,draw_dt,draw_started)
         if self.mode=='physics':
             return self._draw_physics(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,draw_dt,draw_started)
+        context=(self.mode,run_id,view,snapshot.image.shape[:2] if snapshot is not None else None)
+        if context!=self.solid_context:
+            self._suspend_solid(); self.solid_context=context; self.last_identity=None
         px=math.radians(self.pitch); yx=math.radians(self.yaw)
         rx=np.array(((1,0,0),(0,math.cos(px),-math.sin(px)),(0,math.sin(px),math.cos(px))))
         ry=np.array(((math.cos(yx),0,math.sin(yx)),(0,1,0),(-math.sin(yx),0,math.cos(yx))))
@@ -418,9 +451,17 @@ class SubmissionRenderer:
                     self.selectors[hand.slot].reset()
                 self.selectors[hand.slot].update(hand.raw_landmarks or hand.landmarks,snapshot.image.shape[1]/snapshot.image.shape[0])
             if self.mode=='solid' and fresh:
-                self.grab.update(hands,snapshot.timestamp_s,snapshot.image.shape[1]/snapshot.image.shape[0],view_rotation)
+                aspect=snapshot.image.shape[1]/snapshot.image.shape[0]
+                if not self.solid_palette.open:
+                    self.grab.update(self.solid_palette.grab_hands(hands,aspect),snapshot.timestamp_s,aspect,view_rotation)
+                chosen=self.solid_palette.update(hands,snapshot.timestamp_s,aspect,view,
+                    busy=self.dragging or bool(self.grab.slots) or any(g.held or g.pending_since is not None for g in self.grab.grips.values()) or self.menu)
+                if chosen in KINDS: self.kind=chosen
+                if chosen is not None or self.solid_palette.open:
+                    self.dragging=False; self.grab.release()
         if not fresh or self.mode!='solid':
             self.grab.release()
+            if self.mode=='solid': self.solid_palette.suspend(); self.palette_cursor_points.clear()
         self.grab.advance(draw_dt)
         self.last_identity=identity; self.last_slots=present
         self.selector_generation={hand.slot:hand.generation for hand in hands}
@@ -431,7 +472,6 @@ class SubmissionRenderer:
                     tips.append(Tip(hand.slot,l.index,world_position(l,aspect,self.settings)))
         generation={hand.slot:hand.generation for hand in hands}
         targets={(tip.hand,generation[tip.hand],tip.index):np.array(tip.position) for tip in tips}
-        alpha=1-math.exp(-math.tau*self.settings['live_response_hz']*max(0,draw_dt))
         hand_targets={(hand.slot,hand.generation,l.index):np.array(world_position(l,snapshot.image.shape[1]/snapshot.image.shape[0],self.settings))
                       for hand in hands for l in hand.landmarks}
         self.hand_points={key:self._follow_point(self.hand_points.get(key,value),value,draw_dt)
@@ -485,21 +525,47 @@ class SubmissionRenderer:
                 gl.glColor3f(*COLORS[tip.hand]); gl.glPushMatrix(); gl.glTranslatef(*tip.position)
                 gl.glScalef(*([self.settings['tip_radius']/fit]*3))
                 gl.glCallList(self.unit_sphere); gl.glPopMatrix()
-                x,y,z=glu.gluProject(*tip.position)
-                if 0<z<1:
-                    world_labels.append((f'{tip.hand+1}.{TIPS.index(tip.index)+1}',(int(x)+8,h-int(y)-10)))
+                # Analytic projection avoids driver matrix queries per fingertip.
+                projected=project_live_tip(tip.position,view,view_rotation,self.fit_center,fit,self.zoom)
+                if projected is not None:
+                    x,y=projected
+                    world_labels.append((f'{tip.hand+1}.{TIPS.index(tip.index)+1}',(int(x)+8,int(y)-10),COLORS[tip.hand]))
             gl.glPopMatrix()
         gl.glDisable(gl.GL_SCISSOR_TEST)
         overlay_key=(self.size,self.camera_visible,self.help_visible,self.menu,self.mode,self.kind,
                      self.fullscreen,self.grab.scale_mode,active,error,status,camera_index,source_kind,self.droidcam_dialog,
-                     self.droidcam_host,self.droidcam_port,self.droidcam_field)
-        # UI/preview is refreshed separately; 3D following remains render-rate.
-        if overlay_key!=self.last_overlay_key or now-self.last_overlay_at>=1/self.settings['overlay_fps']:
-            overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,tips,fresh,world_labels)
+                     self.droidcam_host,self.droidcam_port,self.droidcam_field,fresh,len(hands),
+                     self.grab.feedback,tuple(bool(self.grab.grips.get(s) and self.grab.grips[s].held) for s in (0,1)),
+                     tip_summary(tips,getattr(self,'live_mesh_mode','points')) if self.mode=='tips' else None)
+        hover=next((action for rect,action in reversed(self.buttons) if rect.collidepoint(pygame.mouse.get_pos())),None)
+        dynamic=hover
+        # Static controls upload only on a semantic change. Side preview/mouse
+        # hover remain bounded; fingertip labels now follow independently.
+        if (overlay_key!=self.last_overlay_key or
+            (dynamic!=getattr(self,'basic_dynamic_key',None) and now-self.last_overlay_at>=1/self.settings['overlay_fps'])):
+            overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,tips,fresh,[])
             self.last_overlay_at=now; self.last_overlay_key=overlay_key
+            self.basic_dynamic_key=dynamic
         else:
             overlay=None
+        self.sprites.begin(self.size)
+        gl.glEnable(gl.GL_SCISSOR_TEST); gl.glScissor(vx,h-vy-vh,vw,vh)
+        for text,position,color in world_labels:
+            rgb=tuple(round((.45+.55*c)*255) for c in color)
+            key=('tip',text,rgb); tile=None
+            if key not in self.sprites.items:
+                glyph=self._label(text,13,rgb)
+                tile=pygame.Surface((glyph.get_width()+6,glyph.get_height()+2),pygame.SRCALPHA)
+                pygame.draw.rect(tile,(*BG,225),tile.get_rect(),border_radius=4)
+                tile.blit(glyph,(3,1))
+            self.sprites.draw(key,tile,position)
+        gl.glDisable(gl.GL_SCISSOR_TEST)
+        # Guidance/cards stay above labels, as with the original raster UI.
         self._overlay(overlay)
+        self._draw_basic_preview(snapshot,view,hands,fresh,active,run_id,now)
+        gl.glEnable(gl.GL_SCISSOR_TEST); gl.glScissor(vx,h-vy-vh,vw,vh)
+        if self.mode=='solid': self._draw_solid_palette(view,draw_dt)
+        gl.glDisable(gl.GL_SCISSOR_TEST)
         if self.capture_path:
             self._capture_back(self.capture_path)
             self.capture_path=None
@@ -512,6 +578,94 @@ class SubmissionRenderer:
         error=float(np.linalg.norm(target-current))
         hz=min(self.settings['live_response_max_hz'],self.settings['live_response_hz']+error*self.settings['live_response_gain'])
         return current+(1-math.exp(-math.tau*hz*max(0,dt)))*(target-current)
+
+    def _draw_basic_preview(self,snapshot,view,hands,fresh,active,run_id,now):
+        if not self.camera_visible or snapshot is None or not active: return
+        w,h=self.size; vx,vy,vw,vh=view
+        pw=min(300,w//4); px=w-20-pw
+        cwmax=pw-28; chmax=min(220,int(cwmax*.75),max(40,vh-180))
+        ih,iw=snapshot.image.shape[:2]; ratio=min(cwmax/iw,chmax/ih)
+        cw,ch=round(iw*ratio),round(ih*ratio)
+        rect=(px+(pw-cw)//2,vy+47+(chmax-ch)//2,cw,ch)
+        semantic=(rect,fresh,tuple((hand.slot,hand.generation,tuple(sorted(self.selectors[hand.slot].active)),
+            bool(self.grab.grips.get(hand.slot) and self.grab.grips[hand.slot].held)) for hand in hands))
+        key=(run_id,snapshot.frame_id,semantic)
+        changed=(semantic!=getattr(self,'basic_preview_semantic',None)
+                 or now-getattr(self,'basic_preview_at',-math.inf)>=1/self.settings['overlay_fps'])
+        if key!=getattr(self,'basic_preview_key',None) and changed:
+            small=cv2.resize(snapshot.image,(cw,ch),interpolation=cv2.INTER_AREA)
+            rgb=cv2.cvtColor(small,cv2.COLOR_BGR2RGB)
+            if self.settings['mirror']: rgb=rgb[:,::-1]
+            surface=pygame.image.frombuffer(np.ascontiguousarray(rgb).tobytes(),(cw,ch),'RGB').copy()
+            for hand in hands:
+                color=ACCENT if hand.slot==0 else GOLD
+                positions={l.index:preview_position(l,(0,0,cw,ch),self.settings['mirror']) for l in hand.landmarks}
+                for chain in ((0,1,2,3,4),(0,5,6,7,8),(5,9,10,11,12),(9,13,14,15,16),(13,17,18,19,20),(0,17)):
+                    pygame.draw.lines(surface,color,False,[positions[i] for i in chain],2)
+                for tip in self.selectors[hand.slot].active: pygame.draw.circle(surface,color,positions[tip],5,2)
+                grip=self.grab.grips.get(hand.slot)
+                pygame.draw.circle(surface,GOLD if grip and grip.held else color,positions[8],9,2)
+            self.basic_preview_surface=surface; self.basic_preview_key=key
+            self.basic_preview_semantic=semantic; self.basic_preview_at=now
+        self.sprites.draw(('basic-preview',),self.basic_preview_surface,rect[:2],version=self.basic_preview_key)
+
+    def _draw_solid_palette(self,view,dt):
+        palette=self.solid_palette; x,y,w,h=view
+        if palette.open:
+            rect=palette.rect
+            key=('solid-palette',rect.size,self.kind,bool(palette.anchors))
+            surface=None
+            if key not in self.sprites.items:
+                surface=glass(rect.size,250,16,True,self.settings['ui_card_supersample']).copy()
+                self._text(surface,'CHỌN KHỐI',(12,12),15,ACCENT)
+                for target,action in palette.targets:
+                    local=target.move(-rect.x,-rect.y)
+                    if action=='close':
+                        label=self._label('×',20,INK)
+                    else:
+                        on=action==self.kind
+                        surface.blit(glass(local.size,250,10,on,self.settings['ui_card_supersample']),local)
+                        surface.blit(outline(local.size,ACCENT if on else MUTED,samples=self.settings['ui_card_supersample']),local)
+                        label=self._label(NAMES[KINDS.index(action)],15,INK)
+                    surface.blit(label,label.get_rect(center=local.center))
+                text='Mở ngón, di tay để nhắm lại' if palette.anchors else 'Giữ 1 giây hoặc chụm để chọn'
+                self._text(surface,text,(12,rect.h-29),12,MUTED)
+            gl.glEnable(gl.GL_BLEND); gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA)
+            gl.glColor4f(0,0,0,.30); gl.glBegin(gl.GL_QUADS)
+            for point in ((x,y),(x+w,y),(x+w,y+h),(x,y+h)): gl.glVertex2f(*point)
+            gl.glEnd(); gl.glDisable(gl.GL_BLEND)
+            self.sprites.draw(key,surface,rect.topleft)
+            for target,action in palette.targets:
+                if action not in palette.hover.values(): continue
+                gl.glColor3f(*(c/255 for c in GOLD)); gl.glLineWidth(2); gl.glBegin(gl.GL_LINE_LOOP)
+                for p in (target.topleft,target.topright,target.bottomright,target.bottomleft): gl.glVertex2f(*p)
+                gl.glEnd()
+            targets={(k,palette.hands[k].generation):np.array((x+p[0]*w,y+p[1]*h))
+                     for k,p in palette.pointers.items() if k in palette.hands}
+        else:
+            targets={}
+            if palette.shortcut.progress:
+                _,p,progress=palette.shortcut.progress
+                targets[('summon',0)]=np.array((x+p[0]*w,y+p[1]*h))
+        alpha=-math.expm1(-math.tau*self.settings['solid_cursor_response_hz']*max(0,dt))
+        self.palette_cursor_points={k:self.palette_cursor_points.get(k,p)+(p-self.palette_cursor_points.get(k,p))*alpha for k,p in targets.items()}
+        for token,point in self.palette_cursor_points.items():
+            slot=token[0]; state=palette.tap.states.get(slot); dwell=palette.dwell.states.get(slot)
+            progress=(state.progress if state and state.phase=='press' else dwell.progress if dwell else 0.)
+            if slot=='summon': progress=palette.shortcut.progress[2]
+            if state and state.locked:
+                point=targets[token]; self.palette_cursor_points[token]=point
+            gl.glColor3f(*(c/255 for c in (GOLD if state and state.locked else ACCENT)))
+            gl.glLineWidth(2); gl.glBegin(gl.GL_LINE_LOOP)
+            for i in range(40):
+                a=math.tau*i/40; gl.glVertex2f(point[0]+12*math.cos(a),point[1]+12*math.sin(a))
+            gl.glEnd()
+            if progress:
+                gl.glLineWidth(4); gl.glBegin(gl.GL_LINE_STRIP)
+                for i in range(int(progress*48)+1):
+                    a=-math.pi/2+math.tau*i/48; gl.glVertex2f(point[0]+16*math.cos(a),point[1]+16*math.sin(a))
+                gl.glEnd()
+        gl.glLineWidth(1)
 
     def _draw_chemistry(self,snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,dt,draw_started):
         w,h=self.size
@@ -645,13 +799,14 @@ class SubmissionRenderer:
             label={'uniform':'Hai tay: đổi cỡ','stretch':'Hai tay: kéo dãn','distance':'Một tay: đổi cỡ','depth':'Một tay: tiến/lùi'}[self.grab.scale_mode]
             self._button(overlay,label,(168,my,152,36) if w<1200 else (660,sy,152,36),'scale_mode',self.grab.scale_mode!='uniform')
         if w>=800 or self.mode=='solid':
-            self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại góc nhìn',(w-168,sy+46 if w<800 else sy,148,36),'reset')
+            self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại' if self.mode=='solid' else 'Đặt lại góc nhìn',(w-168,sy+46 if w<800 else sy,148,36),'reset')
         # Scene frame is only an outline, leaving the camera unobstructed.
         pygame.draw.rect(overlay,(53,105,124,190),view,1,border_radius=18)
         pygame.draw.line(overlay,ACCENT,(vx+20,vy),(vx+92,vy),2)
         pygame.draw.line(overlay,GOLD,(vx+vw-92,vy+vh-1),(vx+vw-20,vy+vh-1),2)
         if self.mode not in ('chemistry','physics'):
             feedback=self.grab.feedback if self.mode=='solid' and self.grab.slots else ('Đưa tay vào camera để bắt đầu' if not hands else 'Duỗi ngón để tạo hình' if self.mode=='tips' else 'Chụm cái–trỏ để cầm khối')
+            if self.mode=='tips': feedback=tip_summary(tips,getattr(self,'live_mesh_mode','points'))
             self._text(overlay,feedback,(vx+18,vy+16),15,ACCENT if hands else MUTED)
         for label,pos in world_labels: self._text(overlay,label,pos,13,INK)
         if self.camera_visible:
@@ -665,13 +820,13 @@ class SubmissionRenderer:
                 ratio=min(cwmax/iw,chmax/ih); cw,ch=round(iw*ratio),round(ih*ratio)
                 rect=(px+(pw-cw)//2,py+47+(chmax-ch)//2,cw,ch)
                 preview_key=(run_id,snapshot.frame_id,cw,ch)
-                if self.preview_key!=preview_key:
+                if self.mode in ('chemistry','physics') and self.preview_key!=preview_key:
                     small=cv2.resize(bgr,(cw,ch),interpolation=cv2.INTER_AREA)
                     rgb=np.ascontiguousarray(cv2.cvtColor(small,cv2.COLOR_BGR2RGB))
                     if self.settings['mirror']: rgb=np.ascontiguousarray(rgb[:,::-1])
                     self.preview_surface=pygame.image.frombuffer(rgb.tobytes(),(cw,ch),'RGB').copy(); self.preview_key=preview_key
-                overlay.blit(self.preview_surface,rect[:2])
-                if fresh:
+                if self.mode in ('chemistry','physics'): overlay.blit(self.preview_surface,rect[:2])
+                if fresh and self.mode in ('chemistry','physics'):
                     for hand in hands:
                         color=ACCENT if hand.slot==0 else GOLD
                         positions={l.index:preview_position(l,rect,self.settings['mirror']) for l in hand.landmarks}
@@ -687,7 +842,7 @@ class SubmissionRenderer:
             if self.help_visible and self.mode not in ('chemistry','physics') and vw<820 and vh>=240:
                 y=py+chmax+108
                 self._text(overlay,'THAO TÁC',(px+18,y),13,ACCENT); y+=26
-                lines=('Chụm để cầm; mở ngón để buông.','Một tay: dời và xoay.','Hai tay: tách / khép để đổi cỡ.') if self.mode=='solid' else ('Duỗi ngón: tạo đỉnh sống.','Gập ngón: bỏ đỉnh.','Hai tay: tạo hình cùng lúc.')
+                lines=self._solid_instructions() if self.mode=='solid' else ('Duỗi ngón: tạo đỉnh sống.','Gập ngón: bỏ đỉnh.','Hai tay: tạo hình cùng lúc.','Gần đồng phẳng: hình tạo thành mặt.')
                 if vh<400: lines=('Chụm: cầm. Mở: buông.',) if self.mode=='solid' else ('Duỗi: thêm. Gập: bỏ đỉnh.',)
                 for line in lines: y=self._wrap(overlay,line,(px+18,y),pw-36,13,INK)
                 if vh>=400: self._text(overlay,'H: ẩn hướng dẫn',(px+18,y+4),12,MUTED)
@@ -698,8 +853,8 @@ class SubmissionRenderer:
             hw=min(342,vw-36); hx=vx+18; hy=vy+54
             self._card(overlay,(hx,hy,hw,184),231,True)
             self._text(overlay,'THAO TÁC BẰNG TAY',(hx+16,hy+15),13,ACCENT)
-            instructions=('Chụm cái–trỏ để cầm; mở ngón để buông.\nMột tay di chuyển và xoay khối.\nHai tay kéo gần / xa để đổi cỡ và nghiêng.' if self.mode=='solid' else
-                'Duỗi các ngón để tạo đỉnh sống.\nDùng tất cả ngón của một hoặc hai tay.\nGập ngón để bỏ đỉnh; xoay góc nhìn bằng chuột.')
+            instructions=('\n'.join(self._solid_instructions()) if self.mode=='solid' else
+                'Duỗi: tạo đỉnh; gập: bỏ đỉnh.\nDùng các ngón của một hoặc hai tay.\nGần đồng phẳng: hình tạo thành mặt.\nKéo chuột để nhìn từ góc khác.')
             y=hy+45
             for line in instructions.split('\n'): y=self._wrap(overlay,line,(hx+16,y),hw-32,15,INK)
             self._text(overlay,'H: ẩn hướng dẫn  •  F11: phóng to',(hx+16,hy+157),12,MUTED)
@@ -743,6 +898,15 @@ class SubmissionRenderer:
         if self.droidcam_dialog and not replay:
             self._draw_droidcam_dialog(overlay,source_kind,error)
         return overlay
+
+    def _solid_instructions(self):
+        mode=self.grab.scale_mode
+        extra={'uniform':'Hai tay: tách / khép để đổi cỡ.',
+               'stretch':'Hai tay: kéo dãn theo một trục.',
+               'distance':'Một tay: gần / xa để đổi cỡ.',
+               'depth':'Một tay: gần / xa để tiến / lùi.'}[mode]
+        return ('Chụm: cầm. Mở: buông. Một tay dời / xoay.',extra,
+                'Xòe tay ở mép trống để chọn khối.')
 
     def _draw_droidcam_dialog(self,overlay,source_kind,error=None):
         w,h=self.size

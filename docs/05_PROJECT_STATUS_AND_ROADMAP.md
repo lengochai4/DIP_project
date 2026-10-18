@@ -1,6 +1,37 @@
 # 05 — Project Status and Roadmap
 
-## Current task — Physics quick commands and temporary scene shortcut, 2026-10-18
+## Current task — solid palette and fingertip presentation, 2026-10-18
+
+Change: touchless four-shape palette, observed geometry feedback, render-rate
+tip labels and semantic-only basic-tab UI uploads.
+Reason: user approved improving the first two tabs while preserving accepted
+chemistry/physics manipulation and research semantics.
+Canonical file/section changed: 01 authorized scope, 02 presentation boundary,
+03 presentation policy, this record.
+Code/modules affected: solid_palette, screen_sprites, renderer, geometry
+projection helper, UI settings/metadata and UI/native regressions.
+Algorithmic impact: presentation selection/feedback only; source filtering,
+live geometry and solid object manipulation equations unchanged.
+Experimental impact: none on Core/report. Compatibility impact: UI schema 20;
+model revision 3/catalog/setup identity unchanged.
+Tests added/updated: modal re-aim, dwell/pinch, grip priority, no grab-through,
+loss/identity/time/source/viewport cancellation, tip classification, projection,
+static UI uploads, context resource lifecycle and four-tab native GL.
+Existing results invalidated: no Core/model results; UI recordings retain their
+previous policy identity. Status: complete. Full suites passed 1084 tests each
+on Python 3.11.9 and 3.12.14, adding 55 cases. After a final glyph-contrast
+adjustment, 77 targeted presentation/native/release checks passed again.
+Native GL QA rendered 320 frames across 640x600, 800x600, 960x660 and 1360x860,
+all four tabs, side-camera toggles, both menu edges and F11 round trips; no GL
+errors or header button overlaps were reported. Inspected compact/menu/tip images.
+Actual Python 3.11 app replays processed 30 MediaPipe frames in each mode,
+all with error=null, worker_stopped=true and UI schema 20; solid_controls logs
+were parsed. Local artifacts: runs/solid-palette-qa, including app-results.json
+and native-results.json. These software/synthetic checks do not establish
+real-hand accuracy, physical latency or universal smoothness.
+Continue feat/physics-lab; preserve main, chemistry branch and personal files.
+
+## Earlier task — Physics quick commands and temporary scene shortcut, 2026-10-18
 
 Change: stable open palm at a free side edge summons four existing commands;
 fresh two-hand pinch in empty space enters temporary scene viewing while paused.

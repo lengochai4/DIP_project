@@ -122,6 +122,7 @@ def main():
                     'scale':grip.pose.scale,'stretch':grip.pose.stretch.tolist(),
                     'position':grip.pose.position.tolist(),'rotation':grip.pose.rotation.tolist(),
                     'mode':renderer.mode,'live_mesh_mode':getattr(renderer,'live_mesh_mode',None),
+                    'solid_controls':renderer.solid_palette.diagnostics() if renderer.mode=='solid' else None,
                     'draw_cpu_ms_excluding_swap_and_cap':renderer.last_draw_cpu_ms,
                     'render_msaa_samples':renderer.actual_msaa_samples,
                     'window_size':list(renderer.size),'fullscreen':renderer.fullscreen,

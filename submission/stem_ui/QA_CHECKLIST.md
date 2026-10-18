@@ -1,5 +1,26 @@
 # Checklist rà soát UI nộp đồ án
 
+## Hai tab đầu và hồi quy bốn tab — 18/10/2026
+
+- UI schema 20: **1084 test qua trên Python 3.11.9 và 3.12.14**, thêm 55 ca.
+  Sau chỉnh tương phản nhãn, chạy lại **77 ca** trình bày/native/buông tay: qua.
+- Bảng bốn khối: xòe tay ở mép, nhắm lại, dwell 1 giây/chụm chọn; giữ nguyên
+  pose/cỡ/kéo dãn. Kiểm tra ưu tiên cầm, mất dấu, đổi nhận dạng, thời gian,
+  đổi nguồn/khung hình, chặn chọn/cầm xuyên, đóng bằng chuột và cả hai tay.
+- Đầu ngón: phân loại điểm/đoạn/mặt/khối theo hình hiện có; số đỉnh từng tay;
+  phép chiếu đối chiếu ma trận độc lập, nhãn nhỏ có nền tương phản và bám theo
+  render. Hình vẫn chỉ dùng đỉnh quan sát, không tự thêm độ dày/đỉnh.
+- UI tĩnh hai tab đầu không tải lại theo mỗi ảnh; preview/xương tay dùng
+  texture nhỏ tái sử dụng. Kiểm tra cấp phát/cập nhật/đổi cỡ/xóa context và
+  cache, cả khi camera phụ bật/tắt. Không thay ngưỡng/lọc chuyển động cũ.
+- Native QA 320 frame, bốn kích thước 640×600 đến 1360×860, cả bốn tab,
+  tám bài Vật lý, camera phụ, bảng hai mép và F11: không lỗi GL/chồng nút.
+  App thật phát lại 30 frame qua MediaPipe cho mỗi tab, dừng worker sạch,
+  nhật ký schema 20 đọc được. Artifact cục bộ: `runs/solid-palette-qa`.
+- Core, profile nghiên cứu, code Hóa học, mô hình/catalog Vật lý và bộ nhận
+  cầm dùng chung không thay đổi. Các ca giả lập/phát lại không chứng minh
+  tỷ lệ nhận đúng tay thật hay không lag ở mọi webcam/máy.
+
 ## Nhánh phát triển Vật lý sau vấn đáp — 18/10/2026
 
 Lượt đường tắt UI schema 19: **1029 test qua trên Python 3.11.9 và 3.12.14**,

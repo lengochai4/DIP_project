@@ -114,6 +114,17 @@ The term **3D** means interaction with a rendered 3D scene. MediaPipe/model-rela
 
 ### Submission presentation scope — authorized 2026-10-14
 
+#### Solid and fingertip presentation refinement — authorized 2026-10-18
+
+The user authorized a modal four-shape palette summoned by a stable open palm
+at a free side edge, with deliberate re-aim followed by 1-second dwell or
+point-and-pinch selection. Shape changes preserve displayed object pose/scale.
+Fingertip mode adds observed node counts, hand colors and point/segment/surface/
+hull classification, with render-rate labels and less static UI rasterization.
+No extra fingertip vertices, new depth claims, Core/filter changes or chemistry/
+mechanics behavior changes are authorized. Commercial opportunity is a goal,
+not evidence of measured commercial readiness or universal tracking stability.
+
 #### Applied mechanics laboratory — authorized 2026-10-18
 
 The user additionally authorized two optional Physics shortcuts: a stable open

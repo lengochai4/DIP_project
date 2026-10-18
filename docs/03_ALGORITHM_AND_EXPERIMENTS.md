@@ -1787,3 +1787,12 @@ fresh open-to-pinch evidence for the paused two-hand scene shortcut. Missing or
 invalid samples never advance timers. Feature thresholds are engineering defaults,
 not measured recognition accuracy. No new physical equation, provider, Core
 filter, replay baseline or research result. UI schema 19 distinguishes recordings.
+
+### Solid palette and fingertip feedback — 2026-10-18
+
+The solid palette reuses observed source-XY open-palm features with isolated
+solid thresholds; modal PointPinch/dwell and release/re-aim guards are entirely
+presentation state. No missing observation advances gesture progress. Existing
+solid motion smoothing and live-mesh equations remain unchanged. Analytic
+screen projection replaces per-tip driver queries without changing geometry.
+UI schema 20 distinguishes this policy; no Core experimental result is invalidated.
