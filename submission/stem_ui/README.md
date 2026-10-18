@@ -101,8 +101,9 @@ thiết lập vào `runs/ui-physics/setup.json`; mở lại bắt đầu từ th
 không phục hồi chuyển động đang chạy. Xuất tạo thư mục riêng có
 `experiment.json`, `measurements.csv` (UTF-8 BOM), `view.json` và `view.png`.
 JSON có cấu hình đầu, lịch sử lực, giả thiết, nguồn và định danh catalog.
-Model revision 2 bổ sung lực căng/lực cản con lắc và sửa hướng vector/nhãn đo.
-Thiết lập revision 1 đã biết vẫn mở được thành điều kiện ban đầu; không phục
+Model revision 3 giữ các sửa vector/nhãn đo của revision 2, sửa dữ liệu cuối
+khi đổi lực, điều kiện dừng thật và giới hạn vector phóng. Thiết lập revision
+1/2 đã biết vẫn mở được thành điều kiện ban đầu; không phục
 hồi chuyển động cũ. Chi tiết rà soát: [PHYSICS_AUDIT.md](PHYSICS_AUDIT.md).
 
 Các số đo là **SI trong mô phỏng**; kích thước hình trên camera không đo

@@ -251,3 +251,13 @@ def test_physics_readouts_distinguish_scalar_components_and_ideal_periods():
     assert 'b=0' in v.measurement_label('period_small_s')[0]
     v.command('lab:projectile'); assert v.measurement_label('velocity_m_s')[0]=='Tốc độ'
     v.command('lab:spring'); assert 'c=0' in v.measurement_label('period_small_s')[0]
+
+
+@pytest.mark.parametrize('delta,expected',(((-1.,.2),(0.,.6)),((1.,-.2),(3.,0.)),((-1.,-.2),(0.,0.))))
+def test_launch_handle_projects_into_allowed_quadrant_before_computing_speed(delta,expected):
+    v=view(); v.command('lab:projectile'); v.model.set_parameter('speed',0.); v.setup_projection()
+    a=np.array((0.,v.model.params['height'])); b=a+delta
+    start,end=v.space.project(v.world(a)),v.space.project(v.world(b))
+    v.drag('drag:launch',start,end,v.capture('drag:launch'))
+    angle=math.radians(v.model.params['angle']); speed=v.model.params['speed']
+    assert (speed*math.cos(angle),speed*math.sin(angle))==pytest.approx(expected,abs=1e-10)

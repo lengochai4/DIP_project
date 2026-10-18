@@ -1,8 +1,9 @@
 schema: 1
-model_revision: 2
-# Revision 1 setup parameters/bounds are unchanged; load as fresh initial values.
+model_revision: 3
+# Revision 1/2 setup parameters/bounds are unchanged; load as fresh initial values.
 compatible_setup_hashes:
   - 8f0a24f1bfce193d05c4d4b9c5f685c5c0658717b2c8be998c4d313a710f9402
+  - f27e940293e274c0131e250b859f36ca9104c01daba6e45789dacb7648957d13
 view:
   ui_refresh_hz: 15
   cursor_response_hz: 18
@@ -45,6 +46,8 @@ engine:
   collision_separation_m: 3.0
   collision_contact_m: 0.4
 goals:
+  forces_min_travel_m: 2
+  forces_position_tolerance_m: 0.000000001  # Floating-point boundary tolerance, not camera accuracy.
   forces_min_position_m: 2
   forces_max_position_m: 4
   incline_height_m: 1
@@ -70,7 +73,7 @@ labs:
     application: Đẩy kiện hàng • Khi nào vật bắt đầu trượt?
     assumptions: Vật trượt trên mặt phẳng ngang; ma sát Coulomb, không cản không khí.
     formula: ΣF = ma; |F nghỉ| ≤ μsN; F trượt = μkN
-    challenge: Làm vật đi ít nhất 2 m, sau đó dừng trong vùng 2–4 m bằng cách thay lực.
+    challenge: Đưa vật theo chiều dương ít nhất 2 m so với vị trí đầu, rồi dừng hẳn trong vùng 2–4 m bằng cách thay lực.
     params:
       mass: [Khối lượng, kg, 0.2, 10, 0.2, 2]
       force: [Lực kéo, N, -40, 40, 1, 10]

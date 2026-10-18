@@ -4,6 +4,7 @@ OpenStax mechanics sources are in physics_labs.yaml. The nonlinear pendulum
 reference uses K(k)=pi/(2 AGM(1,sqrt(1-k²))), NIST DLMF 19.8.5.
 """
 import json
+import csv
 import math
 import pytest
 from submission.stem_ui.physics import PhysicsLab,load_catalog
@@ -96,13 +97,71 @@ def test_all_ideal_pulley_ratios_balance_force_work_and_displacement(strands):
     assert [v['work_j'],v['potential_j']]==pytest.approx([20*4/strands]*2)
 
 
-def test_old_setup_is_migrated_as_initial_parameters_but_unknown_catalog_is_rejected(tmp_path):
+@pytest.mark.parametrize('legacy_hash',(
+    '8f0a24f1bfce193d05c4d4b9c5f685c5c0658717b2c8be998c4d313a710f9402',
+    'f27e940293e274c0131e250b859f36ca9104c01daba6e45789dacb7648957d13'))
+def test_old_setup_is_migrated_as_initial_parameters_but_unknown_catalog_is_rejected(tmp_path,legacy_hash):
     lab=PhysicsLab('pendulum'); lab.set_parameter('length',1.4)
-    old=lab.configuration(); old['catalog_hash']='8f0a24f1bfce193d05c4d4b9c5f685c5c0658717b2c8be998c4d313a710f9402'
+    old=lab.configuration(); old['catalog_hash']=legacy_hash
     path=tmp_path/'old.json'; path.write_text(json.dumps(old),encoding='utf8')
     restored=PhysicsLab(); restored.load(path)
     assert restored.params==lab.params and restored.time==0 and not restored.running
-    assert restored.snapshot()['model']['revision']==2
+    assert restored.snapshot()['model']['revision']==3
     before=restored.configuration(); old['catalog_hash']='0'*64; path.write_text(json.dumps(old),encoding='utf8')
     with pytest.raises(ValueError): restored.load(path)
     assert restored.configuration()==before
+
+
+@pytest.mark.parametrize('seconds',(0.,.05))
+def test_csv_final_matches_json_after_live_force_edit_at_existing_sample_time(tmp_path,seconds):
+    lab=PhysicsLab(); evolve(lab,seconds)
+    assert lab.samples[-1]['time_s']==lab.time
+    lab.set_parameter('force',17.)
+    folder=lab.export(tmp_path/'export')
+    final=json.loads((folder/'experiment.json').read_text(encoding='utf8'))['final']
+    assert lab.snapshot()['samples'][-1]==final
+    with (folder/'measurements.csv').open(encoding='utf-8-sig',newline='') as f: rows=list(csv.DictReader(f))
+    assert float(rows[-1]['applied_n'])==final['applied_n']
+    assert float(rows[-1]['acceleration_m_s2'])==final['acceleration_m_s2']
+
+
+def test_force_challenge_rejects_transient_turnaround_as_a_stationary_stop():
+    lab=PhysicsLab(); lab.params.update(mass=1.,gravity=10.,mu_s=.4,mu_k=.2,force=10.)
+    lab.reset(); lab.challenge=True
+    evolve(lab,.6); lab.set_parameter('force',-10.); evolve(lab,.5)
+    assert not lab.achieved  # The object turns around in the target zone; it never sticks.
+
+
+def test_force_challenge_accepts_a_genuine_static_stop_in_target_zone():
+    lab=PhysicsLab(); lab.params.update(mass=1.,gravity=10.,mu_s=.4,mu_k=.2,force=10.)
+    lab.reset(); lab.challenge=True
+    evolve(lab,.5); lab.set_parameter('force',-2.); evolve(lab,1.2)
+    assert lab.achieved and lab.q==pytest.approx([3.,0.],abs=1e-10)
+
+
+def test_force_edit_updates_existing_event_sample_and_snapshot_does_not_mutate_history():
+    lab=PhysicsLab(); lab.set_parameter('force',17.); evolve(lab,.05)
+    assert lab.samples[0]['applied_n']==17.
+    history=[row.copy() for row in lab.samples]
+    evolve(lab,.01); before=[row.copy() for row in lab.samples]
+    snapshot=lab.snapshot()
+    assert snapshot['samples'][-1]==snapshot['final']
+    assert list(lab.samples)==before
+    snapshot['samples'][0]['applied_n']=-99.
+    assert list(lab.samples)==before and before[0]==history[0]
+
+
+def test_force_challenge_rejects_short_travel_from_a_nearby_initial_position():
+    lab=PhysicsLab(); lab.params.update(position0=1.5,mass=1.,gravity=10.,mu_s=.4,mu_k=.2,force=10.)
+    lab.reset(); lab.challenge=True
+    evolve(lab,.25); lab.set_parameter('force',-2.); evolve(lab,.8)
+    assert lab.q==pytest.approx([2.25,0.],abs=1e-10)
+    assert not lab.achieved  # Only .75 m forward, despite a real stop in the zone.
+
+
+def test_force_challenge_accepts_two_meter_travel_starting_at_zone_boundary():
+    lab=PhysicsLab(); lab.params.update(position0=2.,mass=1.,gravity=10.,mu_s=.2,mu_k=.2,force=4.)
+    lab.reset(); lab.challenge=True
+    evolve(lab,1.); lab.set_parameter('force',0.); evolve(lab,1.1)
+    assert lab.q==pytest.approx([4.,0.],abs=1e-10)
+    assert lab.achieved

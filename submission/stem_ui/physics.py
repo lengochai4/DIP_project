@@ -105,6 +105,8 @@ class PhysicsLab:
             if self.inputs and self.inputs[-1]['time_s']==self.time and self.inputs[-1]['parameter']==key:
                 self.inputs[-1]=event
             else: self.inputs.append(event)
+            if self.samples and self.samples[-1]['time_s']==self.time:
+                self.samples[-1]=self.metrics()  # Post-edit value at the event timestamp.
             self.revision+=1
         else: self.reset()
         return True
@@ -248,7 +250,11 @@ class PhysicsLab:
     def _check_goal(self):
         if not self.challenge or self.achieved: return
         p=self.params; v=self.metrics(); e=self.engine; limits=self.catalog['goals']; goal=False
-        if self.lab=='forces': goal=self.initial_params['position0']<limits['forces_min_position_m'] and limits['forces_min_position_m']<=v['position_m']<=limits['forces_max_position_m'] and abs(v['velocity_m_s'])<=e['settle_speed_m_s'] and self.time>=e['min_challenge_time_s']
+        if self.lab=='forces':
+            epsilon=limits['forces_position_tolerance_m']
+            progressed=v['position_m']-self.initial_params['position0']+epsilon>=limits['forces_min_travel_m']
+            in_zone=limits['forces_min_position_m']-epsilon<=v['position_m']<=limits['forces_max_position_m']+epsilon
+            goal=progressed and in_zone and v['velocity_m_s']==0. and v['acceleration_m_s2']==0. and self.time>=e['min_challenge_time_s']
         elif self.lab=='incline': goal=v['height_m']-self.initial_params['position0']*math.sin(math.radians(p['angle']))>=limits['incline_height_m'] and 0<p['force']<=limits['incline_max_force_n']
         elif self.lab=='projectile': goal=self.landed and v['target_error_m']<=e['target_tolerance_m']
         elif self.lab=='collision': goal=self.collided
@@ -267,8 +273,11 @@ class PhysicsLab:
     def configuration(self): return {'schema':self.schema,'catalog_hash':self.catalog_hash,'lab':self.lab,'params':self.params.copy(),'challenge':self.challenge}
 
     def snapshot(self):
+        final=self.metrics(); rows=[row.copy() for row in self.samples]
+        if rows and rows[-1]['time_s']==self.time: rows[-1]=final.copy()
+        else: rows.append(final.copy())
         return {'configuration':self.configuration(),'initial_params':self.initial_params.copy(),
-                'inputs':copy.deepcopy(self.inputs),'samples':list(self.samples),'final':self.metrics(),
+                'inputs':copy.deepcopy(self.inputs),'samples':rows,'final':final,
                 'prediction':self.prediction,'achieved':self.achieved,'finished':self.finished,'landed':self.landed,
                 'model':{'revision':self.catalog.get('model_revision',1),'assumptions':self.spec['assumptions'],'formula':self.spec['formula'],
                     'engine':self.engine,'sources':self.catalog['sources']}}
@@ -307,8 +316,7 @@ class PhysicsLab:
         folder=Path(folder); folder.mkdir(parents=True,exist_ok=True)
         data=self.snapshot(); data['reference']=self.reference
         (folder/'experiment.json').write_text(json.dumps(data,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
-        rows=list(self.samples)
-        if not rows or rows[-1]['time_s']!=self.time: rows.append(self.metrics())
+        rows=data['samples']
         output=io.StringIO(newline=''); writer=csv.DictWriter(output,fieldnames=list(rows[-1]))
         writer.writeheader(); writer.writerows(rows)
         (folder/'measurements.csv').write_text(output.getvalue(),encoding='utf-8-sig')

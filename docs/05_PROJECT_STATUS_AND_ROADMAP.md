@@ -1,6 +1,42 @@
 # 05 — Project Status and Roadmap
 
-## Current task — full bounded-mechanics audit, 2026-10-18
+## Current task — second mechanics boundary audit, 2026-10-18
+
+Change: correct same-time live-force samples and exported endpoints; require
+enough forward displacement and reject a transient turn/low-speed motion as a
+successful static stop; project rejected
+launch-vector components before computing both angle and speed.
+Reason: user requested a deeper second check. New regressions reproduced six
+failures on the previous code: two stale CSV final-force values (10 vs 17 N),
+one force challenge falsely accepted a genuine turnaround trajectory and three
+out-of-quadrant launch drags used rejected components in speed magnitude.
+Two subsequent reproductions found a short .75 m trip falsely passed, while a
+valid 2 m trip beginning at x=2 m was rejected. Replace initial-zone gating with
+actual forward displacement and configured floating-point distance tolerance.
+Canonical file/section changed: 02 endpoint/setup contracts; 03 revision-3
+boundary semantics; this record. Modules: Physics model/catalog/view,
+analytic/view regressions, audit notes and README. Algorithmic impact: the
+eight evolution equations and integrator are unchanged; educational success,
+launch-input parameter mapping and measurement publication are corrected.
+Experimental impact: none on Core/research/report. Compatibility impact:
+model revision 3/new catalog hash; UI schema 17 and setup schema 1 unchanged.
+Known revision-1/2 setup hashes load as initial values, with existing validation.
+Existing results invalidated: prior force-stop flags, out-of-domain launch
+settings and stale endpoint exports are superseded; no frozen research result
+or valid model trajectory at unchanged physical inputs is invalidated.
+Git: continue feat/physics-lab; main/chemistry/personal untracked files preserved.
+Status: complete. Full suites passed on Python 3.11.9 and 3.12.14: 934 tests
+each, including 11 additional cases versus the first audit. A seeded local sweep
+passed 256 valid mixed-parameter configurations across the eight models, checking
+finite states and applicable energy/momentum relationships; this is observed QA,
+not a universal numerical error bound. Native UI QA repeated 652 frames across
+four window sizes, all eight scenes and F11 with no OpenGL errors. Export/load
+of JSON/CSV/view JSON/PNG passed, and the actual app processed 30 replay frames
+with error=null and worker_stopped=true. Local evidence: runs/physics-boundary-qa,
+runs/physics-qa and runs/ui/ui-20261018-124319-604798 (ignored artifacts).
+No new hand gesture, provider or research-filter change is included.
+
+## Earlier task — full bounded-mechanics audit, 2026-10-18
 
 Change: audit all eight SI models, formulas/assumptions, numerical integration,
 goals, export compatibility and physical diagrams before further gesture work.

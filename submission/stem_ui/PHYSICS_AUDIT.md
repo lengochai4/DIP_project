@@ -3,7 +3,7 @@
 Đây là bản ghi kiểm tra, không thay thế đặc tả chuẩn trong `docs/01..05`.
 Phạm vi: tám mô hình cơ học lý tưởng, đơn vị SI. Tay đặt thông số mô phỏng,
 không đo lực, độ dài hay vận tốc thật từ webcam. Không thay đổi Core hoặc số
-liệu báo cáo DIP. Model revision hiện tại: **2**.
+liệu báo cáo DIP. Model revision hiện tại: **3**.
 
 | Bài | Quan hệ đã đối chiếu | Giới hạn cần nhớ |
 |---|---|---|
@@ -42,11 +42,35 @@ những ca đã chạy; chúng không chứng minh mọi cấu hình đều khô
 Vector có giới hạn độ dài để dễ nhìn; số đo SI không bị giới hạn theo mũi tên.
 Đạt thử thách chỉ là đạt điều kiện mô phỏng, không thay phần giải thích kiến thức.
 
-Kết quả đã chạy: **923 test qua trên Python 3.11.9 và 3.12.14**, trong đó có 23
+Lượt rà đầu: **923 test qua trên Python 3.11.9 và 3.12.14**, trong đó có 23
 ca bổ sung cho lượt rà soát này. Đồ họa native chạy 652 frame trên bốn kích thước
 cửa sổ, tám bài và F11, không báo lỗi OpenGL. Kiểm tra lưu/mở, JSON/CSV/ảnh và
 chạy app bằng replay 30 frame đều hoàn tất; worker dừng sạch. Đây là kiểm tra
 phần mềm và mô hình lý tưởng, không phải kiểm định thiết bị đo thực tế.
+
+## Rà lại lần hai — revision 3
+
+Tìm thêm ba trường hợp biên và tái hiện lỗi trước khi sửa:
+
+- Đổi lực ngay tại một mẫu đã ghi có thể làm CSV giữ lực/gia tốc cũ, khác JSON cuối. Nay cập nhật mẫu tại thời điểm đổi lực bằng giá trị sau sửa; snapshot/CSV luôn chứa cùng điểm cuối mới nhất và không sửa lịch sử khi xuất. Lượt A đã giữ vẫn độc lập.
+- Vật giảm tốc rồi đảo chiều trong vùng đích từng bị chấm như đã dừng; xuất phát gần đích cũng có thể được chấm dù chưa đi đủ 2 m. Nay bài Lực yêu cầu đủ dịch chuyển theo chiều dương, vận tốc bằng 0 và lực được ma sát nghỉ cân bằng. Bộ giải dừng chính xác cho phép kiểm tra đứng yên; dung sai vị trí chỉ xử lý sai số dấu phẩy động, không phải độ chính xác camera.
+- Kéo vector phóng sang trái/xuống dưới miền góc 0–90° từng loại thành phần ấy khi tính góc nhưng vẫn cộng vào độ lớn tốc độ. Nay chiếu vào miền cho phép trước khi tính cả góc lẫn tốc độ.
+
+Giữ nguyên phương trình chuyển động và nhận diện cử chỉ. Thiết lập revision
+1/2 đã biết được mở lại thành điều kiện ban đầu; các dấu đạt bài và dữ liệu
+xuất ở các trường hợp lỗi cũ không được coi như kết quả revision 3.
+
+Kết quả lượt hai: **934 test qua trên Python 3.11.9 và 3.12.14**, tăng 11 ca
+so với lượt đầu. Quét bổ sung 256 cấu hình hợp lệ trên tám bài, kiểm tra trạng
+thái hữu hạn và các quan hệ năng lượng/động lượng tương ứng, đều qua. Đây là
+các cấu hình đã chạy, không phải chứng minh cho mọi tổ hợp thông số.
+
+Đã chạy lại đồ họa 652 frame ở bốn kích thước cửa sổ, đủ tám bài và F11,
+không báo lỗi OpenGL; kiểm tra ảnh bài Lực ở khung 640×600 cho thấy nội dung
+thử thách mới vừa khung. Xuất/mở JSON, CSV, cấu hình góc nhìn và PNG đều qua.
+App thật chạy thêm 30 frame replay, không báo lỗi và worker dừng sạch.
+Bằng chứng cục bộ nằm trong `runs/physics-boundary-qa`, `runs/physics-qa`
+và phiên `runs/ui/ui-20261018-124319-604798`; không đưa dữ liệu chạy vào Git.
 
 ## Nguồn đối chiếu
 

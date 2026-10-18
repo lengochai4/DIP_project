@@ -1736,3 +1736,33 @@ bounds, as new initial conditions. Unknown mismatched catalogs remain rejected.
 Earlier Physics images/challenge descriptions are superseded; prior model
 trajectory values and frozen Core/report/research results remain valid. Do not
 treat legacy export rows as if they contain revision-2 force fields.
+
+### Follow-up boundary audit — model revision 3, 2026-10-18
+
+For the forces challenge, "stop" means actual static rest in this exact-stop
+Coulomb model: velocity is zero and the current force can be balanced by static
+friction (zero acceleration). A low-speed turnaround or continuing uniform
+motion does not satisfy this criterion. This tightens educational success
+evaluation; the evolution equations and stop-event integrator are unchanged.
+Require forward displacement from the actual initial position of at least
+forces_min_travel_m as well as the configured stopping zone. Initial position
+need not be strictly before that zone if both conditions can be met. Use the
+configured forces_position_tolerance_m only for floating-point distance/zone
+boundary roundoff; it is not a webcam/physical-measurement accuracy claim.
+
+Project the launch-handle vector into the declared first-quadrant domain before
+deriving both angle and speed, then apply the existing speed cap. Rejected
+negative components must not add kinetic energy in the allowed direction.
+
+Snapshots/exports include the current final measurement: replace a stale sample
+at that same simulation timestamp, or append the current endpoint if between
+sampling instants. Preserve prior input events and do not mutate live sample
+history during export. CSV final rows and JSON final/snapshot endpoints must
+agree after a paused live-force edit. This applies to frozen A/B references too.
+Revision 3 identifies the tightened goal, corrected launch mapping and endpoint
+publication; UI field schema remains 17. Known revision-1/2 setup hashes may
+migrate to the unchanged initial-parameter schema. Earlier goal flags, out-of-
+domain launch settings and stale endpoint exports are superseded, not rewritten.
+Live-force edits at an already sampled timestamp replace that sample with the
+post-edit value; this defines right-continuous force/acceleration at input
+events without inserting repeated same-time rows. Frozen references stay intact.

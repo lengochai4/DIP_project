@@ -372,7 +372,8 @@ class PhysicsView:
             m.set_parameter(key,new)
         elif action=='drag:launch':
             angle=math.radians(value['angle']); vector=np.array((math.cos(angle),math.sin(angle)))*value['speed']+delta*self.cfg['launch_drag_gain']
-            m.set_parameter('angle',math.degrees(math.atan2(max(0,vector[1]),max(0,vector[0]))))
+            vector=np.maximum(vector,0.)
+            m.set_parameter('angle',math.degrees(math.atan2(vector[1],vector[0])))
             m.set_parameter('speed',float(np.linalg.norm(vector)))
         elif action=='drag:force': m.set_parameter('force',value['force']+delta[0]*self.cfg['force_drag_gain'])
         elif action=='drag:angle': m.set_parameter('angle',value['angle']-dy*self.cfg['angle_drag_gain_deg'])

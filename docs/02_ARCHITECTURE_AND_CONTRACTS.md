@@ -86,6 +86,13 @@ evolution equations/bounds remain those in 03. A known revision-1 setup hash
 may migrate to fresh initial parameters after complete existing validation;
 this is not restoration of old runtime state or acceptance of unknown hashes.
 
+Second audit (2026-10-18): model revision 3 preserves UI field schema 17 but
+corrects endpoint publication, launch-domain projection and force-stop success
+semantics as owned by 03. Snapshot/reference/CSV/JSON endpoints must agree after
+a live edit. Export never mutates the live sample buffer; same-time force input
+events deliberately update their live post-edit sample. Both known setup hashes
+from model revisions 1 and 2 are migratable to fresh initial parameters.
+
 Design reference (affordances and separate movement/rotation/scale targets):
 [Microsoft direct manipulation](https://learn.microsoft.com/en-us/windows/mixed-reality/design/direct-manipulation).
 This guides presentation design; it transfers no HoloLens accuracy/performance
