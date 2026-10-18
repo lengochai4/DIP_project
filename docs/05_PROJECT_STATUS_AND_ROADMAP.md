@@ -1,6 +1,45 @@
 # 05 — Project Status and Roadmap
 
-## Current task — Physics manipulation and view correction, 2026-10-18
+## Current task — Physics release latch and discoverable view tools, 2026-10-18
+
+Change: replace button-looking orbit/zoom drag handles with selectable tools;
+allow a fresh pinch anywhere outside the panel to control the selected view.
+Show active tool/instructions, preserve menu consumption and add explicit Edit
+return. Latch opening intent across the ambiguous pinch band; confirm release
+from real observations, or require tight contact and neutral rebase to resume.
+Reason: user reports unusable/unclear orbit and zoom plus intermittent sticking
+after opening. Code allowed an ambiguous ratio below the freeze threshold to
+resume the same claim before the old full-open release threshold was reached.
+Local sessions ui-20261018-091358-168674 and ui-20261018-091457-792076 have
+object/force/ruler claims but no orbit/zoom claims or menu-selector states;
+they do not contain full hand trajectories or intent labels and cannot establish
+individual failure causes or physical success rates.
+Canonical file/section changed: 02 Physics follow-up contract; this record.
+Code/modules affected: Physics input/view/settings, UI metadata, README/tests.
+Algorithmic impact: Physics presentation only. Experimental impact: none.
+Compatibility impact: UI schema 16 adds tool/opening diagnostics and release
+policy; SI catalog/hash/state schema unchanged. Existing results invalidated:
+no; Core/provider/research/config, shared gesture classes, accepted chemistry,
+solid/fingertip logic and physics equations remain unchanged.
+Git: continue feat/physics-lab; main/chemistry branch and personal untracked
+submission/PHAN_CONG_BAO_VE.md remain intact.
+Status: implemented and verified. Executed 891 full tests on Python 3.12.14
+and Python 3.11.9. Seven added regressions cover band-settling release, a single
+opening spike with tight neutral rebase, ambiguous return after loss, both tool
+targets/panel priority, menu-pinch consumption/fresh canvas grab and one-shot
+dwell tool selection. Extended native GL test selects and hand-drags both tools,
+checks SI invariance and partial-open release, returns to Edit and checks F11.
+Native visual QA rendered Edit/orbit/zoom at 640x600, 768x520 and 1360x860;
+zero GL errors, controls contained, active mode refreshed immediately. Inspected
+compact orbit and large zoom images in ignored runs/physics-tool-qa/.
+Actual Python 3.11 app replay ui-20261018-092443-860088 processed 30 MediaPipe
+frames, wrote a screenshot and stopped cleanly with no error (UI schema 16).
+Protected Core/config/chemistry/shared gesture/geometry/model/catalog/renderer
+paths have no diff against 91fa00f; git diff --check passed. No extra multi-
+finger gestures are added; more gesture classes do not establish better
+recognition/usability. No physical-hand success-rate or commercial claim.
+
+## Earlier task — Physics manipulation and view correction, 2026-10-18
 
 Change: stabilize Physics-only held edits using wrist/MCP translation, shared
 render-follow position for values/cursor, immediate freeze on opening/loss,

@@ -76,11 +76,24 @@ def test_native_physics_scenarios_hand_palette_and_fullscreen(tmp_path):
             for _ in range(5):draw([at(nx-.15,ny,1)])
             choose('restore');assert not v.collapsed
             choose('page:tools')
-            while not any(a=='drag:orbit' for rect,a in v.targets):v.command('tools_next');draw()
-            original=v.model.configuration();nx,ny=handle('drag:orbit');yaw=v.yaw
+            choose('tool:orbit');assert v.tool=='orbit' and v.hud_semantic[-1]=='orbit'
+            original=v.model.configuration();nx,ny=.85,.6;yaw=v.yaw
+            for _ in range(4):draw([at(nx,ny,.1)])
+            assert not v.input.claims  # The menu close is consumed.
+            for ratio in [1.]*8+[.1]*4:draw([at(nx,ny,ratio)])
+            assert v.input.claims[0].target=='drag:orbit'
             for _ in range(8):draw([at(nx+.1,ny+.04,.1)])
             assert v.yaw>yaw and v.model.configuration()==original
             for _ in range(5):draw([at(nx+.1,ny+.04,1)])
+            choose('tool:zoom');assert v.tool=='zoom';zoom=v.zoom
+            for ratio in [1.]*8+[.1]*4:draw([at(nx,ny,ratio)])
+            assert v.input.claims[0].target=='drag:zoom'
+            for _ in range(8):draw([at(nx,ny-.1,.1)])
+            assert v.zoom>zoom and v.model.configuration()==original
+            # Partially opening then settling in the middle band must release.
+            for ratio in [.5,.38,.38,.38]:draw([at(nx,ny,.5 if ratio==.5 else ratio)])
+            assert not v.input.claims
+            choose('tool:edit');assert v.tool=='edit'
             v.command('frame');draw()
             original=v.model.configuration();size=r.size
             r.toggle_fullscreen();draw();r.toggle_fullscreen();draw()

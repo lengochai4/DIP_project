@@ -32,7 +32,7 @@ def test_every_scenario_and_parameter_tool_are_reachable_in_compact_panels(size)
         for page in range(v.tools_pages):
             v._paint_panel(); actions|={a for r,a in v.targets}; v.command('tools_next')
         assert {'save','load','export','keep','step','graph_next','predict:yes','predict:no'}<=actions
-        assert {'panel_larger','panel_smaller','zoom_in','zoom_out','drag:orbit','drag:zoom'}<=actions
+        assert {'panel_larger','panel_smaller','zoom_in','zoom_out','tool:orbit','tool:zoom','tool:edit'}<=actions
         v.page='lesson'; v._paint_panel(); lesson=[]
         for _ in range(v.lesson_pages):
             v._paint_panel(); lesson.extend(v.visible_lesson_lines); v.command('lesson_next')
@@ -172,3 +172,41 @@ def test_near_parallel_or_backward_plane_edit_freezes_without_extreme_values():
     v.yaw=0; v.setup_projection()
     projection=(np.array((0.,0.,v.space.distance+1)),v.rotation,v.mid,v.scale,v.space)
     assert v.to_model((.5,.5),projection) is None
+
+
+@pytest.mark.parametrize('tool',('orbit','zoom'))
+def test_view_tool_selects_camera_canvas_and_preserves_panel_controls(tool):
+    v=view(); before=v.model.configuration(); v.page='tools'; v._paint_panel()
+    assert {'tool:orbit','tool:zoom','tool:edit'}<={a for r,a in v.targets}
+    v.command('tool:'+tool); v._paint_panel()
+    assert v.hit((.85,.6))=='drag:'+tool
+    rect=next(r for r,a in v.targets if a=='tool:edit')
+    assert v.hit((rect.centerx/v.content[2],rect.centery/v.content[3]))=='tool:edit'
+    assert v.hit((-.1,.6)) is None
+    v.command('tool:edit'); assert v.tool=='edit' and v.model.configuration()==before
+
+
+def test_tool_menu_pinch_does_not_become_scene_drag_until_open_and_close_again():
+    from test_point_pinch import sample
+    v=view(); v.page='tools'; v._paint_panel()
+    rect=next(r for r,a in v.targets if a=='tool:orbit')
+    x,y=rect.centerx/v.content[2],rect.centery/v.content[3]
+    for delta,ratio in ((0,1),(.06,1),(.12,1),(.17,.4),(.22,.1),(.27,.1)):
+        v.input.update([sample(ratio,nx=x,ny=y)],1+delta,4/3)
+    assert v.tool=='orbit'
+    for t in (1.3,1.35,1.4): v.input.update([sample(.1,nx=.85,ny=.6)],t,4/3)
+    assert not v.input.claims
+    for t in (1.5,1.58,1.65): v.input.update([sample(1,nx=.85,ny=.6)],t,4/3)
+    for t in (1.7,1.75): v.input.update([sample(.1,nx=.85,ny=.6)],t,4/3)
+    assert v.input.claims[0].target=='drag:orbit'
+    v.input.update([sample(.1,nx=.9,ny=.65)],1.8,4/3); v.input.advance(.05)
+    assert v.yaw>v.cfg['default_yaw_deg']
+
+
+def test_dwell_tool_choice_stays_selected_without_toggling_on_continued_hover():
+    from test_point_pinch import sample
+    v=view(); v.page='tools'; v._paint_panel()
+    rect=next(r for r,a in v.targets if a=='tool:zoom')
+    x,y=rect.centerx/v.content[2],rect.centery/v.content[3]
+    for t in np.arange(1,4,.04): v.input.update([sample(1,nx=x,ny=y)],float(t),4/3)
+    assert v.tool=='zoom' and not v.input.claims

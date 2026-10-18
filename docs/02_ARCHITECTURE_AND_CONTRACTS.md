@@ -53,6 +53,23 @@ commands refresh immediately. Physics gesture/view tuning is captured in UI
 settings; the SI catalog/hash and saved-state schema remain unchanged. UI log
 schema 15 adds consumed-finish state and names the Physics movement policy.
 
+Follow-up correction (2026-10-18): orbit and zoom are explicit selectable view
+tools, not button-looking drag handles. Dwell/pinch selects the tool; keep that
+menu gesture consumed. After opening, a fresh pinch anywhere in the camera
+canvas outside the panel controls rotates/resizes the scene. Panel commands
+retain priority, visible tool/help identifies the active mode, and Edit, run,
+reset, frame or lab selection returns to normal manipulation. Selecting the
+active tool again also returns to Edit. Do not couple these view changes to SI.
+
+Once a Physics claim crosses the opening threshold, keep it frozen while the
+ratio remains between tight acquisition and opening. Confirm release from
+configured duration and valid-observation count even if the ratio settles back
+into that band; only tight contact cancels opening and neutrally rebases.
+Reset pending opening evidence on loss; ambiguous contact cannot resume a
+paused claim. Missing observations never count as opening samples. Shared
+PointPinch, PinchGate and chemistry behavior are unchanged. UI schema 16 records
+active Physics tool and per-claim opening state, and names the release policy.
+
 Design reference (affordances and separate movement/rotation/scale targets):
 [Microsoft direct manipulation](https://learn.microsoft.com/en-us/windows/mixed-reality/design/direct-manipulation).
 This guides presentation design; it transfers no HoloLens accuracy/performance

@@ -53,6 +53,8 @@ khi camera tắt. Không cần cài thêm thư viện so với UI hiện có.
   **Chạy** để bắt đầu. Mất tay không tạo cú ném/thả ngoài ý muốn.
   Khi đã cầm, di cả bàn tay để kéo; cử động riêng cái–trỏ không đẩy vật.
   Vòng vàng đi cùng điểm điều khiển; vòng xám báo đang giữ nguyên khi mở ngón.
+  Khi đã bắt đầu mở, dao động nhẹ trong khoảng giữa không nối lại lượt kéo;
+  chỉ chụm sát lại mới hủy động tác buông, và điểm kéo được đặt lại trung tính.
   Mất tay dừng kéo và ẩn con trỏ.
   Khung cảnh giữ nguyên khi chỉnh/buông; Chạy, Đặt lại hoặc R mới căn lại.
 - **Chọn nút:** mở cái–trỏ, trỏ vào nút đến vòng vàng rồi chụm; hoặc giữ
@@ -72,12 +74,15 @@ khi camera tắt. Không cần cài thêm thư viện so với UI hiện có.
   Đo/Lưu có thu/phóng bảng và cảnh hoàn toàn bằng tay. Cuộn chuột
   trên bảng đổi cỡ bảng, ngoài bảng đổi cỡ hiển thị cảnh. Nút góc nhìn đổi
   giữa phối cảnh nghiêng và nhìn thẳng; **R** đặt lại góc/cỡ hiển thị.
-  **Kéo xoay cảnh:** chụm trên tay nắm rồi di tay ngang/dọc; **Kéo cỡ cảnh:**
-  kéo lên để gần hơn, xuống để xa hơn. Cả hai có trên các trang Đo/Lưu.
+  **Đo/Lưu → Xoay cảnh / Đổi cỡ cảnh:** chọn bằng chụm hoặc giữ trỏ 1 giây.
+  Mở rõ cái–trỏ, đưa tay ra ngoài bảng rồi chụm lại để kéo trong vùng camera.
+  Xoay: di cả bàn tay ngang/dọc. Đổi cỡ: lên để gần hơn, xuống để xa hơn.
+  Mở ngón để buông. Chọn **Chỉnh vật** để trở về kéo vật/thông số;
+  chọn lại chế độ đang bật cũng tắt chế độ ấy. Hướng dẫn hiện ngay trên cảnh.
   Góc xoay giới hạn để tránh nhìn cạnh mặt phẳng bài học và kéo sai hướng;
   đây là đổi góc quan sát, không xoay hướng trọng lực hay đổi số đo SI.
-  Buông tay trước khi chỉnh một tay nắm khác; tay nắm đổi góc/cỡ cảnh không
-  dùng đồng thời với tay nắm thông số.
+  Buông tay trước khi đổi thao tác. Chạy, Đặt lại, R hoặc đổi bài đều trở về
+  Chỉnh vật. Các điều khiển trong bảng vẫn dùng được khi đang xoay/đổi cỡ.
 
 | Bài | Điều chỉnh / tình huống |
 |---|---|

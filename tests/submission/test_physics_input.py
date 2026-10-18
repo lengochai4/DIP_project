@@ -148,3 +148,30 @@ def test_scene_transform_cannot_compete_with_parameter_edit(first,second):
     host.action=second
     for t in (2.1,2.15): control.update([sample(.1),sample(.1,slot=1)],t,4/3)
     assert len(control.claims)==1 and control.claims[0].target==first
+
+
+def test_opening_band_confirms_release_without_reaching_old_full_open_threshold():
+    host,control=held()
+    control.update([sample(.5,nx=.4)],1.1,4/3); control.advance(.01)
+    count=len(host.moves)
+    control.update([sample(.38,nx=.5)],1.13,4/3); control.advance(.01)
+    assert control.claims[0].paused and len(host.moves)==count
+    control.update([sample(.36,nx=.6)],1.16,4/3); control.advance(.01)
+    assert not control.claims and len(host.moves)==count
+    for t in (1.2,1.24,1.28): control.update([sample(.35)],t,4/3); control.advance(.01)
+    assert not control.claims and len(host.moves)==count
+
+
+def test_tight_contact_cancels_single_opening_spike_with_neutral_rebase():
+    host,control=held(); control.update([sample(.5,nx=.4)],1.1,4/3)
+    control.update([sample(.1,nx=.6)],1.13,4/3); control.advance(.01)
+    assert not control.claims[0].paused and control.claims[0].opening_since is None
+    assert host.moves[-1][1]==pytest.approx(host.moves[-1][2])
+
+
+def test_lost_hand_cannot_resume_in_ambiguous_pinch_band():
+    host,control=held(); control.update([],1.1,4/3)
+    control.update([sample(.38,nx=.6)],1.15,4/3); control.advance(.01)
+    assert control.claims[0].paused and not host.moves
+    control.update([sample(.1,nx=.7)],1.2,4/3); control.advance(.01)
+    assert host.moves[-1][1]==pytest.approx(host.moves[-1][2])

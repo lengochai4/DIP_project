@@ -29,6 +29,7 @@ class PhysicsView:
         self.cfg=self.model.catalog['view']; self.input=PhysicsInput(settings,self)
         self.space=CameraSpace(4/3); self.content=(0,0,960,640)
         self.page='adjust'; self.param_page=0; self.library=False; self.collapsed=False
+        self.tool='edit'
         self.panel_scale=1.; self.panel_offset=np.zeros(2); self.zoom=1.
         self.dock_edge='left'; self.dock_position=.25; self.dock_pending=None; self.edit_bounds=None
         self.yaw=self.cfg['default_yaw_deg']; self.pitch=self.cfg['default_pitch_deg']; self.flags={'vectors':True,'trace':True,'energy':False,'graph':False,'measure':True}
@@ -41,7 +42,7 @@ class PhysicsView:
         self.layout(); self.setup_projection()
 
     @property
-    def page_key(self): return f'{self.model.lab}/{self.page}/{self.param_page}/{self.library}/{self.collapsed}/{getattr(self,"library_page",0)}/{getattr(self,"tools_page",0)}'
+    def page_key(self): return f'{self.model.lab}/{self.page}/{self.param_page}/{self.library}/{self.collapsed}/{getattr(self,"library_page",0)}/{getattr(self,"tools_page",0)}/{self.tool}'
 
     def open(self):
         self.textures={}; self.camera_key=None; self.last_ui=-math.inf; self.ui_dirty=True
@@ -62,6 +63,7 @@ class PhysicsView:
     def command(self,action):
         m=self.model; self.ui_dirty=True; self.panel_force=True
         if action.startswith('lab:'):
+            self.tool='edit'
             m.choose(action.split(':',1)[1]); self.library=False; self.param_page=0; self.input.aims.clear(); self.measure_points=None; self.edit_bounds=None
         elif action=='library': self.library=not self.library
         elif action.startswith('page:'): self.page=action.split(':')[1]; self.library=False
@@ -69,13 +71,14 @@ class PhysicsView:
             if self.input.claims or self.mouse_claim:
                 m.message='Buông tay nắm trước khi chạy'; return
             self.edit_bounds=None
+            self.tool='edit'
             m.toggle()
             if m.static: m._check_goal()
         elif action=='step':
             if self.input.claims or self.mouse_claim:
                 m.message='Buông tay nắm trước khi tiến bước'; return
             m.running=False; m.step()
-        elif action=='reset': m.reset(); self.edit_bounds=None
+        elif action=='reset': m.reset(); self.edit_bounds=None; self.tool='edit'
         elif action=='slow': m.speed=.25 if m.speed==1 else 1.
         elif action=='param_next': self.param_page=(self.param_page+1)%self.page_count
         elif action=='param_prev': self.param_page=(self.param_page-1)%self.page_count
@@ -112,6 +115,16 @@ class PhysicsView:
         elif action=='frame':
             self.input.release(); self.mouse_claim=None; self.zoom=1.; self.panel_offset[:]=0
             self.yaw=self.cfg['default_yaw_deg']; self.pitch=self.cfg['default_pitch_deg']; self.edit_bounds=None
+            self.tool='edit'
+        elif action.startswith('tool:'):
+            tool=action.split(':')[1]
+            if tool not in ('edit','orbit','zoom'): return
+            # Keep the menu selector consumed; its closing pinch must not turn
+            # into a view grab behind the newly selected tool.
+            self.input.claims.clear(); self.input.gates.clear(); self.input.aims.clear(); self.mouse_claim=None
+            self.tool='edit' if tool==self.tool else tool
+            m.message=('Đã chọn Chỉnh vật • Chụm vào điểm vàng để chỉnh' if self.tool=='edit' else
+                       'Đã chọn '+{'orbit':'Xoay cảnh','zoom':'Đổi cỡ cảnh'}[self.tool]+' • Mở rõ cái–trỏ rồi chụm trong vùng camera')
         elif action=='compact': self.collapsed=True
         elif action=='restore': self.collapsed=False
         elif action in ('save','load','export'):
@@ -237,12 +250,12 @@ class PhysicsView:
         for i,(key,spec) in enumerate(items): self._button(surface,spec['title'],(10,body.y+i*31,body.w,27),'lab:'+key,key==self.model.lab)
 
     def _paint_tools(self,surface,body):
-        actions=[('Vector','flag:vectors'),('Quỹ đạo','flag:trace'),('Năng lượng','flag:energy'),('Đồ thị','flag:graph'),
+        actions=[('Xoay cảnh','tool:orbit'),('Đổi cỡ cảnh','tool:zoom'),('Chỉnh vật','tool:edit'),
+                 ('Vector','flag:vectors'),('Quỹ đạo','flag:trace'),('Năng lượng','flag:energy'),('Đồ thị','flag:graph'),
                  ('Đo đạc','flag:measure'),('Góc nhìn','view'),('Một bước','step'),('Giữ lượt A','keep'),
                  ('Lưu thiết lập','save'),('Mở thiết lập','load'),('Xuất CSV/ảnh','export'),('Xóa vết','clear_trace'),('Đổi đồ thị','graph_next'),
                  ('Dự đoán: đạt','predict:yes'),('Dự đoán: chưa','predict:no'),('Bảng lớn +','panel_larger'),('Bảng nhỏ −','panel_smaller'),
                  ('Cảnh gần +','zoom_in'),('Cảnh xa −','zoom_out')]
-        actions += [('Kéo xoay cảnh','drag:orbit'),('Kéo cỡ cảnh','drag:zoom')]
         capacity=max(2,(body.h//31)*2); pages=math.ceil(len(actions)/capacity)
         self.tools_page=getattr(self,'tools_page',0)%pages
         visible=capacity
@@ -250,13 +263,14 @@ class PhysicsView:
         items=actions[self.tools_page*visible:(self.tools_page+1)*visible]
         bw=(body.w-4)//2
         for n,(label,action) in enumerate(items):
-            self._button(surface,label,(10+(bw+4)*(n%2),body.y+(n//2)*31,bw,27),action,self.flags.get(action.split(':')[-1],False))
+            on=(self.tool==action.split(':')[-1]) if action.startswith('tool:') else self.flags.get(action.split(':')[-1],False)
+            self._button(surface,label,(10+(bw+4)*(n%2),body.y+(n//2)*31,bw,27),action,on)
         self.tools_pages=pages
 
     def _paint_lesson(self,surface,body):
         parts=[self.model.spec[k] for k in ('application','assumptions','formula')]
         parts+=['Độ dài, lực và vận tốc là giá trị mô phỏng SI; không phải số đo tay trong camera.',
-                'Chụm để cầm, di cả bàn tay để kéo; mở ngón để dừng. Kéo tiêu đề ra ngoài viền để thu, chọn mũi tên để mở. Đo/Lưu có tay nắm Kéo xoay cảnh và Kéo cỡ cảnh; R khôi phục khung nhìn. Góc xoay có giới hạn để tránh nhìn cạnh mặt phẳng bài học.',
+                'Chụm để cầm, di cả bàn tay để kéo; mở ngón để dừng. Kéo tiêu đề ra ngoài viền để thu, chọn mũi tên để mở. Đo/Lưu: chọn Xoay cảnh hoặc Đổi cỡ cảnh, mở ngón rồi chụm trong vùng camera để kéo. Chọn Chỉnh vật để quay lại; R khôi phục khung nhìn. Góc xoay có giới hạn để tránh nhìn cạnh mặt phẳng bài học.',
                 'Vector: lực kéo vàng, ma sát đỏ, phản lực/lực căng xanh lam, trọng lực tím, vận tốc xanh lá, gia tốc trắng. Độ dài mũi tên được giới hạn để dễ quan sát.',
                 self.model.spec['challenge'],'Đo/Lưu: ghi dự đoán trước lượt chạy. Giữ A, đổi một thông số, đặt lại và chạy B; đối chiếu cùng thời điểm.']
         font=self._font(12); lines=[]
@@ -276,6 +290,8 @@ class PhysicsView:
         for rect,action in reversed(self.targets):
             if rect.collidepoint(px,py): return action
         if not self.collapsed and self.panel_rect.collidepoint(px,py): return None
+        if self.tool in ('orbit','zoom'):
+            return 'drag:'+self.tool if 0<=point[0]<=1 and 0<=point[1]<=1 else None
         nearby=[]
         for order,(position,action) in enumerate(self.handles):
             projected=self.space.project(position)
@@ -531,7 +547,7 @@ class PhysicsView:
         self._draw_object_labels()
         self._sync_panel()
         self._quad(self.panel_rect)
-        semantic=(self.model.lab,self.model.running,self.model.challenge,self.model.achieved,self.model.prediction,tuple(self.flags.items()),self.graph,self.stage.size,self.renderer.help_visible,id(self.model.reference))
+        semantic=(self.model.lab,self.model.running,self.model.challenge,self.model.achieved,self.model.prediction,tuple(self.flags.items()),self.graph,self.stage.size,self.renderer.help_visible,id(self.model.reference),self.tool)
         if semantic!=getattr(self,'hud_semantic',None) or now-self.last_ui>=1/self.cfg['ui_refresh_hz'] or 'hud' not in self.textures:
             hud=self._paint_hud(fresh); self._texture('hud',hud,key=now); self.last_ui=now
             self.hud_semantic=semantic
@@ -741,7 +757,11 @@ class PhysicsView:
         w,h=self.stage.size; surface=pygame.Surface((w,h),pygame.SRCALPHA); m=self.model; values=m.metrics()
         y=self._text(surface,m.spec['title'],(8,0),15 if w<250 else 19,INK,w-16)
         y=self._text(surface,f't = {m.time:.2f} s • '+('Bài tĩnh' if m.static else 'Đang chạy' if m.running else 'Tạm dừng'),(8,y+3),12,ACCENT,w-16)
-        if self.renderer.help_visible and w>=250:
+        if self.tool!='edit':
+            text=('XOAY CẢNH • Kéo ngang/dọc' if self.tool=='orbit' else 'ĐỔI CỠ CẢNH • Kéo lên gần / xuống xa')
+            y=self._text(surface,text,(8,y+4),12,GOLD,w-16)
+            y=self._text(surface,'Mở ngón rồi chụm trong vùng camera để kéo. Chọn Chỉnh vật để quay lại.',(8,y+3),12,INK,w-16)
+        if self.tool=='edit' and self.renderer.help_visible and w>=250:
             instruction='Chụm vào điểm vàng để chỉnh • Trỏ nút rồi chụm / giữ 1s'
             y=self._text(surface,instruction,(8,y+4),12,MUTED,w-16)
             if self.page=='lesson':

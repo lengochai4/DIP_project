@@ -18,6 +18,8 @@ class PhysicsClaim:
     target_point: object = None
     cursor_origin: object = None
     finished: bool = False
+    opening_since: float | None = None
+    opening_samples: int = 0
 
 
 class PhysicsInput:
@@ -53,6 +55,7 @@ class PhysicsInput:
             gate.update((observed.get(key,hand),) if hand else (),t,source_aspect or aspect)
             if hand is None:
                 if claim:
+                    claim.opening_since=None; claim.opening_samples=0
                     if gate.slots: claim.paused=True
                     else: self.claims.pop(key)
                 continue
@@ -72,7 +75,13 @@ class PhysicsInput:
             grip=self._grip_point(hand)
             if claim:
                 if not gate.slots: self.claims.pop(key)
-                elif gate.suspended or gate.grips[key].ratio>=self.settings['physics_drag_freeze_ratio'] or claim.finished:
+                elif self._opening(claim,gate.grips[key].ratio,t):
+                    claim.paused=True
+                    if (t-claim.opening_since>=self.settings['physics_drag_release_s']-1e-9 and
+                        claim.opening_samples>=self.settings['physics_drag_release_observations']):
+                        self.claims.pop(key); gate.reset(); self.aims.pop(key,None)
+                elif (gate.suspended or claim.finished or
+                      (claim.paused and gate.grips[key].ratio>self.grab_settings['grip_press_ratio'])):
                     claim.paused=True
                 else:
                     if claim.paused:
@@ -116,6 +125,18 @@ class PhysicsInput:
         x=sum(p.x for p in points)/len(points); y=sum(p.y for p in points)/len(points)
         return (1-x if self.settings['mirror'] else x,y)
 
+    def _opening(self,claim,ratio,t):
+        # Once opening starts, the hysteresis band is still a release, not a
+        # fresh hold. Only a tight contact cancels it, rebasing before motion.
+        if ratio<=self.grab_settings['grip_press_ratio']:
+            claim.opening_since=None; claim.opening_samples=0
+        elif ratio>=self.settings['physics_drag_freeze_ratio'] and claim.opening_since is None:
+            claim.opening_since=t
+        if claim.opening_since is not None:
+            claim.opening_samples+=1
+            return True
+        return False
+
     def advance(self,dt):
         """Follow the last real observation at render rate; never coast on release."""
         if not math.isfinite(dt) or dt<=0: return
@@ -128,5 +149,7 @@ class PhysicsInput:
             self.pointers[key]=tuple(claim.cursor_origin+claim.position-np.array(claim.origin))
 
     def diagnostics(self):
-        return {'claims':{str(k):{'target':v.target,'generation':v.generation,'paused':v.paused,'finished':v.finished} for k,v in self.claims.items()},
+        return {'tool':getattr(self.host,'tool','edit'),
+                'claims':{str(k):{'target':v.target,'generation':v.generation,'paused':v.paused,'finished':v.finished,
+                                'opening':v.opening_since is not None} for k,v in self.claims.items()},
                 'selection':{str(k):{'target':v.target,'phase':v.phase,'ratio':v.ratio,'cancel_reason':v.reason} for k,v in self.tap.states.items()}}
