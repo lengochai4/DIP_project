@@ -9,6 +9,7 @@ from OpenGL import GL as gl,GLU as glu
 from .camera_space import CameraSpace,SpatialPanel,CameraCover
 from .chemistry import ChemistryScene
 from .chemistry_input import ChemistryInput
+from .chemistry_controls import PointPinch
 from .theme import ACCENT, GOLD, INK, MUTED, glass
 
 
@@ -255,7 +256,10 @@ class CameraChemistryView:
                 previous=self.cursor_points.get(key)
                 if previous is not None:
                     anchor=self.space.project(previous)
-                    state.anchor=anchor; self.input.pointers[slot]=anchor
+                    # Only freeze a displayed point on the intended button.
+                    # A lagging cursor outside it must not replace valid aim.
+                    if not isinstance(self.input.tap,PointPinch) or self.input.hit(self.space,*anchor)==state.target[1]:
+                        state.anchor=anchor; self.input.pointers[slot]=anchor
         self.press_cursors=active
 
     def draw(self,snapshot,view,fresh,dt,run_id):

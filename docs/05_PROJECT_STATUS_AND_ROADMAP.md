@@ -1,6 +1,49 @@
 # 05 — Project Status and Roadmap
 
-## Current task — responsive review and point-and-pinch selection, 2026-10-18
+## Current task — chemistry pinch-selection stability correction, 2026-10-18
+
+Change: preserve armed aim through small movements inside the same button;
+after bounded fingertip capture, check observed palm translation relative to
+captured size rather than rejecting natural contact-finger movement. Preserve
+confirmation through a narrow configured hold-ratio band after tight samples;
+require multiple tight observations and the existing confirmation duration.
+Dispatch the captured target, and accept a smoothed visual anchor only when it
+still hits that target. Keep release/rearm, loss/identity cancellation, menu
+consumption, 1-second dwell and original manipulation controllers unchanged.
+
+Reason/evidence: user reports that pinch selects but is inconsistent. Local
+schema-12 sessions `ui-20261018-074603-796004` and
+`ui-20261018-074810-827878` show both completed selections and cancelled closes.
+In the latter, the raw ratio sequence at 12.664..12.793s is approximately
+0.4013, 0.1287, 0.1904, 0.2802; the final value barely exceeds tight acquisition
+0.28 and erased two prior tight samples before confirmation. Existing code
+also reset armed aim against an old origin, cancelled on folding-finger motion,
+and repeated hit-testing at a smoothed cursor could discard a captured action.
+These are decision-logic weaknesses; logs do not contain raw trajectories or
+human-intent labels and do not prove each cancellation's cause or success rate.
+
+Canonical files/sections changed: 02 point-and-pinch correction; this record.
+Code/modules affected: submission chemistry controls/input/view/settings,
+runtime metadata, README and tests. Algorithmic impact: presentation menu
+selection only. Experimental impact: none. Compatibility impact: UI schema 13
+adds actual selector ratio and cancellation reason to interaction logs. Existing
+results invalidated: no; Core/provider/filter/replay/research configuration,
+report data, molecular rules and accepted main remain unchanged. No missing
+hand geometry is invented; no accuracy/smoothness benchmark is asserted.
+
+Executed: 789 full tests passed on Python 3.12.14 and Python 3.11.9. Nine added
+regressions cover the recorded scalar threshold crossing (synthetic geometry),
+partial/spike rejection, armed movement inside a button, independent finger
+closure, excessive palm translation, smoothed-anchor validation and captured
+target dispatch. Existing release/loss/page-change/dwell/grab tests also pass.
+Native GL QA rendered 558 frames across six window sizes, including all three
+modes, one-shot/repeat/collapse/restore and F11. Buttons remained within the
+window and non-overlapping; contexts reported zero GL error. Artifacts are local
+under `runs/chemistry-point-pinch-qa/`, using recorded imagery and synthetic
+hands. This is software validation, not a physical-hand success-rate trial.
+`git diff --check` passed. Accepted main is unchanged.
+
+## Earlier task — responsive review and point-and-pinch selection, 2026-10-18
 
 Change: fit the initial window to desktop dimensions with configurable chrome
 margins; do not shrink subsequent user resizing/restoration repeatedly. Wrap

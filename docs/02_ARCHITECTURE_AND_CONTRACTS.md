@@ -331,6 +331,19 @@ behind the button. This retains no missing hand geometry and does not freeze
 the ordinary cursor. An incomplete cancelled capture still permits dwell.
 All tunable aim/capture/timeout/observation settings live in submission settings.
 
+Selection-stability correction, 2026-10-18: after initial stable aim, small
+movements inside the same button update the armed origin instead of repeatedly
+restarting aim against an old origin. Initial capture still bounds fingertip
+displacement; after capture, cancellation bounds observed XY palm translation
+relative to captured palm size, allowing independent finger closure. This is a
+decision check only, not a synthetic palm-based cursor or manipulation anchor.
+Require at least two tight contact observations; a separate narrow hold-ratio
+band preserves confirmation through small contact jitter. Partial pinches and
+one tight spike cannot confirm. The captured target owns dispatch until release
+or cancellation, and a smoothed cursor may replace its visual anchor only when
+it lies on that same target. UI schema 13 adds observed selector ratio and
+cancellation reason. Dwell, object/header gates, movement and Core stay unchanged.
+
 The initial window is fitted to the current desktop minus configured chrome
 margins. Later user resizing/fullscreen restoration is not repeatedly shrunk.
 At compact widths the top controls and solid controls wrap to extra rows;

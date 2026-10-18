@@ -86,6 +86,8 @@ chemistry_click_capture_radius: 0.06
 chemistry_click_timeout_s: 0.45
 chemistry_click_feedback_s: 0.12
 chemistry_click_observations: 2
+chemistry_click_hold_ratio: 0.34
+chemistry_click_palm_motion_ratio: 0.45
 chemistry_push_point_deg: 145.0
 chemistry_push_arm_s: 0.18
 chemistry_push_confirm_s: 0.045

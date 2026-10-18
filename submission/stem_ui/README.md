@@ -57,6 +57,12 @@ chụm. Mở ngón và nhắm lại trước lượt tiếp theo, kể cả mu�
 Một lần chụm dùng chọn nút không tự chuyển thành cầm vật thể sau khi đổi trang
 hay thu bảng. Trên nguyên tử/tiêu đề, chụm vẫn là cầm/kéo như cũ.
 
+Xác nhận chọn có vùng trễ nhỏ để dao động lúc hai ngón đã chạm không xóa ngay
+tiến trình; vẫn cần nhiều mẫu chụm sát, không chọn từ một mẫu nhiễu. Khi đã giữ
+mục tiêu, ngón trỏ có thể co tự nhiên; dịch cả bàn tay quá xa hoặc mở ngón sẽ
+hủy. Việc kiểm tra lòng bàn tay này chỉ dùng cho chọn nút, không đổi điểm cầm
+vật thể hay cách kéo bảng.
+
 Giữ trỏ khoảng **1 giây** vẫn chọn như trước. Cách nhanh dùng khoảng cách
 XY chuẩn hóa giữa cái–trỏ, không suy tiếp xúc từ độ sâu đầu trỏ. Đây vẫn là
 heuristic từ webcam; chưa có dữ liệu gắn nhãn để khẳng định trên 90% chính xác.

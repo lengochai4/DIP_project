@@ -1,4 +1,4 @@
-"""Presentation-only panel docking and conservative observed air-push selection."""
+"""Presentation-only panel docking and observed menu confirmation."""
 from dataclasses import dataclass
 import math
 import numpy as np
@@ -92,6 +92,10 @@ class PointPinchState:
     release_since: float | None = None
     observations: int = 0
     progress: float = 0.
+    palm: np.ndarray | None = None
+    size: float = 0.
+    ratio: float | None = None
+    reason: str | None = None
 
 
 class PointPinch:
@@ -105,11 +109,12 @@ class PointPinch:
 
     def reset(self): self.states.clear()
 
-    def _cancel(self,state,t):
+    def _cancel(self,state,t,reason='interrupted'):
         if state.phase!='latched': state.phase='cancelled'
         state.locked=False; state.release_since=None
         if math.isfinite(t): state.last=t
         state.progress=0.
+        state.reason=reason
 
     def cancel(self,key,t):
         if key in self.states: self._cancel(self.states[key],t)
@@ -138,6 +143,10 @@ class PointPinch:
             if old.phase in ('press','latched','cancelled'): self._cancel(old,t)
             else: self.states.pop(key,None); old=None
         ratio=pinch_ratio(hand,aspect)
+        p=np.array([(v.x,v.y/aspect) for v in points])
+        palm=p[[0,5,9,13,17]].mean(axis=0)
+        size=max(np.linalg.norm(p[5]-p[17]),np.linalg.norm(p[0]-p[9]),1e-8)
+        if old: old.ratio=ratio
         opened=ratio>=cfg['chemistry_grip_release_ratio']
         if old and old.phase in ('latched','cancelled'):
             old.last=t
@@ -154,21 +163,31 @@ class PointPinch:
             return point,None
         old.last=t
         if old.phase=='press':
-            if (opened or t-old.captured_at>cfg['chemistry_click_timeout_s'] or
-                math.dist(point,old.origin)>cfg['chemistry_click_capture_radius']):
-                self._cancel(old,t); return point,None
+            # Closing fingers move the index even with a stationary hand. Once
+            # captured, bound observed palm translation instead of cancelling
+            # the intended button because the contact finger folded naturally.
+            reason=('opened' if opened else 'timeout' if t-old.captured_at>cfg['chemistry_click_timeout_s']
+                    else 'palm_motion' if np.linalg.norm(palm-old.palm)/old.size>cfg['chemistry_click_palm_motion_ratio']
+                    else None)
+            if reason:
+                self._cancel(old,t,reason); return point,None
             if ratio<=cfg['chemistry_grip_press_ratio']:
                 if old.pressed_at is None: old.pressed_at=t
                 old.observations+=1
+            elif ratio>cfg['chemistry_click_hold_ratio']:
+                old.pressed_at=None; old.observations=0; old.progress=0.
+            # A narrow hysteresis band tolerates contact jitter after tight
+            # observations. One tight spike or a partial pinch cannot select.
+            if old.pressed_at is not None:
                 old.progress=min(1.,(t-old.pressed_at)/cfg['chemistry_grip_press_s'])
                 if old.observations>=cfg['chemistry_click_observations'] and old.progress>=1.-1e-9:
                     old.phase='latched'; old.pressed_at=t; old.progress=1.
                     return old.anchor,old.target
-            else: old.pressed_at=None; old.observations=0; old.progress=0.
             return old.anchor,None
         if old.phase=='armed' and ratio<=cfg['chemistry_click_capture_ratio']:
             if math.dist(point,old.anchor)<=cfg['chemistry_click_capture_radius']:
                 old.phase='press'; old.locked=True; old.captured_at=t; old.origin=point
+                old.palm=palm; old.size=size
                 if ratio<=cfg['chemistry_grip_press_ratio']:
                     old.pressed_at=t; old.observations=1
                 return old.anchor,None
@@ -189,6 +208,7 @@ class PointPinch:
             old.captured_at=None
             old.anchor=point
             if t-old.since>=cfg['chemistry_click_aim_s']-1e-9: old.phase='armed'
+            if old.phase=='armed': old.origin=point
         return point,None
 
 

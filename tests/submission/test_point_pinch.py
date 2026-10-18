@@ -119,6 +119,9 @@ def test_collapsed_edge_arrow_accepts_explicit_menu_pinch():
 
 def test_point_pinch_captures_actual_smoothed_cursor_without_following_closed_tip():
     view=CameraChemistryView(SETTINGS,SimpleNamespace(help_visible=True)); s=view.input.tap
+    view.input.page='elements'
+    view.input.panel=SpatialPanel(space=view.space)
+    view.input.panel.targets=[((0,0,*view.input.panel.pixels),'element:H')]
     arm(s); s.update(0,sample(.4),TARGET,1.2,(.31,.31),4/3)
     view.cursor_points={(0,0):view.space.point(.29,.298,.6)}
     view._anchor_press_cursor()
@@ -154,3 +157,70 @@ def test_consumed_menu_close_cannot_become_grab_after_interruption(reason,monkey
     for t in np.arange(start,start+.2,.04):
         c.update([sample(.1,nx=p[0],ny=p[1])],float(t),space)
         assert not c.claims
+
+
+def test_recorded_tight_close_survives_small_contact_threshold_crossing():
+    # Scalar sequence from schema-12 session ui-20261018-074810-827878,
+    # 12.664..12.793s. Geometry is synthetic: this is not a labeled replay.
+    s=PointPinch(SETTINGS); arm(s)
+    chosen=[]
+    for t,ratio in ((1.2,.4013318),(1.232,.1286818),(1.265,.1903525),(1.329,.2801674)):
+        chosen.append(s.update(0,sample(ratio),TARGET,t,(.3,.3),4/3)[1])
+    assert chosen==[None,None,None,TARGET]
+
+
+@pytest.mark.parametrize('ratios',((.1,.33,.33,.33),(.33,.33,.33,.33),(.1,.38,.1,.38)))
+def test_partial_contact_or_one_tight_spike_never_accumulates_confirmation(ratios):
+    s=PointPinch(SETTINGS); arm(s)
+    s.update(0,sample(.4),TARGET,1.2,(.3,.3),4/3)
+    for n,ratio in enumerate(ratios):
+        assert s.update(0,sample(ratio),TARGET,1.23+n*.03,(.3,.3),4/3)[1] is None
+
+
+def test_armed_aim_can_follow_small_motion_inside_same_button_without_periodic_reset():
+    s=PointPinch(SETTINGS); arm(s)
+    for n in range(1,8):
+        point=(.3+n*.01,.3)
+        s.update(0,sample(1.,nx=point[0]),TARGET,1.12+n*.03,point,4/3)
+        assert s.states[0].phase=='armed'
+    # Entering another button still requires its own stable aim.
+    s.update(0,sample(1.,nx=.38),('elements','element:O'),1.39,(.38,.3),4/3)
+    assert s.states[0].phase=='aim'
+
+
+def test_folded_contact_finger_does_not_cancel_while_observed_palm_stays_still():
+    s=PointPinch(SETTINGS); arm(s)
+    s.update(0,sample(.4),TARGET,1.2,(.3,.3),4/3)
+    for t in (1.23,1.28):
+        h=sample(.1)
+        points=list(h.landmarks)
+        for i in (4,8): points[i]=replace(points[i],y=points[i].y+.09)
+        chosen=s.update(0,replace(h,landmarks=tuple(points)),None,t,(.3,.39),4/3)[1]
+    assert chosen==TARGET
+
+
+def test_rigid_hand_translation_during_capture_cancels_without_click():
+    s=PointPinch(SETTINGS); arm(s)
+    s.update(0,sample(.4),TARGET,1.2,(.3,.3),4/3)
+    assert s.update(0,sample(.1,nx=.44),TARGET,1.24,(.44,.3),4/3)[1] is None
+    assert s.states[0].phase=='cancelled' and s.states[0].reason=='palm_motion'
+
+
+def test_lagging_display_cursor_cannot_replace_capture_with_neighboring_button(monkeypatch):
+    view=CameraChemistryView(SETTINGS,SimpleNamespace(help_visible=True)); s=view.input.tap
+    arm(s); s.update(0,sample(.4),TARGET,1.2,(.31,.31),4/3)
+    view.cursor_points={(0,0):view.space.point(.29,.298,.6)}
+    monkeypatch.setattr(view.input,'hit',lambda *args:'element:O')
+    view._anchor_press_cursor()
+    assert s.states[0].anchor==(.3,.3)
+
+
+def test_captured_button_dispatch_ignores_neighbor_under_display_anchor(monkeypatch):
+    c,space,p=palette()
+    for t in (1.,1.06,1.12): c.update([sample(1.,nx=p[0],ny=p[1])],t,space)
+    c.update([sample(.4,nx=p[0],ny=p[1])],1.2,space)
+    c.tap.states[0].anchor=(p[0]+.01,p[1])
+    monkeypatch.setattr(c,'hit',lambda *args:'element:O')
+    for t in (1.24,1.29): c.update([sample(.1,nx=p[0],ny=p[1])],t,space)
+    assert [a.symbol for a in c.scene.atoms.values()]==['H']
+    assert not c.claims

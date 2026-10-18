@@ -67,7 +67,8 @@ class ChemistryInput:
                 for key,gate in self.gates.items()},
             'panel_layout':{'anchor':self.layout.anchor.tolist(),'scale':float(self.layout.scale),
                             'edge':self.layout.edge,'edge_position':self.layout.edge_position},
-            'tap':{str(key):{'phase':state.phase,'target':state.target,'generation':state.generation}
+            'tap':{str(key):{'phase':state.phase,'target':state.target,'generation':state.generation,
+                **({'ratio':state.ratio,'cancel_reason':state.reason} if isinstance(self.tap,PointPinch) else {})}
                    for key,state in self.tap.states.items()},
             'dwell':{str(key):{'target':state.target,'progress':state.progress,'latched':state.latched,'generation':state.generation} for key,state in self.dwell.states.items()}}
 
@@ -265,6 +266,11 @@ class ChemistryInput:
             if chosen is not None: tapped[key]=chosen
             self.pointers[key]=(nx,ny)
             self.hover[key]=action if captured or (nx,ny)==original else self.hit(space,nx,ny)
+            selected=self.tap.states.get(key)
+            if isinstance(self.tap,PointPinch) and selected and selected.locked and selected.target[0]==self.page:
+                # Dispatch the captured button, not a second hit-test at a
+                # lagging display cursor that may be near a neighboring tile.
+                self.hover[key]=selected.target[1]
             if not captured and self.hover[key] in ('panel:drag','panel:resize'):
                 self.handle_aim[key]=(hand.generation,self.page,self.hover[key],t,original)
         for key in sorted(set(self.gates)|set(available)):

@@ -173,7 +173,7 @@ class CaptureWorker:
                 revision=None
                 dirty=None
             (folder/'metadata.json').write_text(json.dumps({'kind':'submission_presentation_only',
-                'presentation_schema':'12',
+                'presentation_schema':'13',
                 'render_clock':{'name':'perf_counter','implementation':time.get_clock_info('perf_counter').implementation,
                     'resolution_s':time.get_clock_info('perf_counter').resolution},
                 'chemistry_grab_motion':'observed_contact_baseline_response_handle_aim',
