@@ -29,14 +29,30 @@ class PhysicsInput:
         self.dwell=DwellSelector(settings['chemistry_dwell_s'],settings['chemistry_dwell_max_gap_s'],
             settings['chemistry_dwell_rearm_distance'],settings['chemistry_dwell_motion_radius'])
         self.gates={}; self.claims={}; self.aims={}; self.pointers={}; self.hover={}; self.previous=None
+        self.scene_group=None; self.rearm={}
         self.grab_settings={**settings,'grip_press_ratio':settings['chemistry_grip_press_ratio'],
             'grip_release_ratio':settings['chemistry_grip_release_ratio'],
             'grip_press_s':settings['chemistry_grip_press_s'],'grip_release_s':settings['chemistry_grip_release_s'],
             'grip_loss_grace_s':settings['chemistry_grip_loss_grace_s']}
 
     def release(self):
+        for key in list(self.claims): self._drop(key)
         self.claims.clear(); self.gates.clear(); self.aims.clear(); self.pointers.clear(); self.hover.clear()
-        self.tap.reset(); self.dwell.reset(); self.previous=None
+        self.tap.reset(); self.dwell.reset(); self.previous=None; self.scene_group=None
+
+    def cancel(self):
+        self.rearm.update({key:c.generation for key,c in self.claims.items()})
+        for key in list(self.claims): self._drop(key)
+        self.gates.clear(); self.aims.clear(); self.scene_group=None
+
+    def _drop(self,key,deliberate=False):
+        claim=self.claims.pop(key,None)
+        if claim and claim.target=='drag:scene': self.scene_group=None
+        if claim and hasattr(self.host,'end_edit'):
+            self.host.end_edit(claim.target,deliberate,bool(self.claims))
+
+    def _interrupt(self):
+        if hasattr(self.host,'interrupt_edit'): self.host.interrupt_edit()
 
     def update(self,hands,t,aspect,gesture_hands=None,source_aspect=None):
         if not math.isfinite(t): self.release(); return
@@ -51,13 +67,18 @@ class PhysicsInput:
             hand=available.get(key); claim=self.claims.get(key)
             gate=self.gates.setdefault(key,PinchGate(self.grab_settings))
             if claim and hand and claim.generation!=hand.generation:
-                self.claims.pop(key); gate.reset(); claim=None
+                self._drop(key); gate.reset(); claim=None
             gate.update((observed.get(key,hand),) if hand else (),t,source_aspect or aspect)
+            if key in self.rearm and hand:
+                if self.rearm[key]!=hand.generation or gate.grips[key].ratio>=self.grab_settings['grip_release_ratio']:
+                    self.rearm.pop(key); gate.reset()
+                continue
             if hand is None:
                 if claim:
+                    self._interrupt()
                     claim.opening_since=None; claim.opening_samples=0
                     if gate.slots: claim.paused=True
-                    else: self.claims.pop(key)
+                    else: self._drop(key)
                 continue
             tip=hand.landmarks[8]; point=(1-tip.x if self.settings['mirror'] else tip.x,tip.y)
             action=self.host.hit(point)
@@ -66,7 +87,8 @@ class PhysicsInput:
                 if state.phase=='press': self.tap.cancel(key,t)
                 else: self.tap.states.pop(key)
             candidate=(self.host.page_key,action) if action and not action.startswith('drag:') else None
-            point,chosen=self.tap.update(key,observed.get(key,hand),candidate,t,point,source_aspect or aspect,blocked=bool(self.claims))
+            safety=action=='cancel_edit'
+            point,chosen=self.tap.update(key,observed.get(key,hand),candidate,t,point,source_aspect or aspect,blocked=bool(self.claims) and not safety)
             self.pointers[key]=point
             state=self.tap.states.get(key)
             if state and state.locked and state.target[0]==self.host.page_key: action=state.target[1]
@@ -74,12 +96,15 @@ class PhysicsInput:
             consumed=state and state.phase in ('press','latched','cancelled')
             grip=self._grip_point(hand)
             if claim:
-                if not gate.slots: self.claims.pop(key)
+                if not gate.slots:
+                    deliberate=(claim.opening_since is not None and claim.opening_samples>=self.settings['physics_drag_release_observations']
+                                and t-claim.opening_since>=self.settings['physics_drag_release_s'])
+                    self._drop(key,deliberate)
                 elif self._opening(claim,gate.grips[key].ratio,t):
                     claim.paused=True
                     if (t-claim.opening_since>=self.settings['physics_drag_release_s']-1e-9 and
                         claim.opening_samples>=self.settings['physics_drag_release_observations']):
-                        self.claims.pop(key); gate.reset(); self.aims.pop(key,None)
+                        self._drop(key,True); gate.reset(); self.aims.pop(key,None)
                 elif (gate.suspended or claim.finished or
                       (claim.paused and gate.grips[key].ratio>self.grab_settings['grip_press_ratio'])):
                     claim.paused=True
@@ -98,9 +123,11 @@ class PhysicsInput:
                 if np.linalg.norm((np.array(point)-aimed[4])/np.array((1.,aspect)))<=self.settings['chemistry_panel_aim_radius']:
                     action=aimed[2]
             if gate.slots and not gate.suspended and not consumed and action and action.startswith('drag:'):
-                view_targets={'drag:orbit','drag:zoom'}
+                view_targets={'drag:orbit','drag:zoom','drag:scene'}
                 owned={c.target for c in self.claims.values()}
-                if action not in owned and not (owned and (action in view_targets or owned & view_targets)):
+                scene_join=action=='drag:scene' and owned=={'drag:scene'} and len(self.claims)<2
+                if scene_join or (action not in owned and not (owned and (action in view_targets or owned & view_targets))):
+                    if hasattr(self.host,'begin_edit'): self.host.begin_edit(action)
                     self.claims[key]=PhysicsClaim(hand.generation,action,grip,self.host.capture(action),
                         position=np.array(grip),target_point=np.array(grip),cursor_origin=np.array(point))
                     self.host.pause_edit(); self.dwell.states.pop(key,None)
@@ -108,7 +135,7 @@ class PhysicsInput:
             if chosen is not None and chosen[0]==self.host.page_key:
                 self.dwell.latch(key,hand.generation,chosen,t,point)
                 self.host.command(chosen[1]); continue
-            if self.claims or (consumed and state.phase=='press'):
+            if (self.claims and not safety) or (consumed and state.phase=='press'):
                 self.dwell.states.pop(key,None); continue
             if consumed and state.phase!='cancelled':
                 dwell=self.dwell.states.get(key)
@@ -129,7 +156,7 @@ class PhysicsInput:
         # Once opening starts, the hysteresis band is still a release, not a
         # fresh hold. Only a tight contact cancels it, rebasing before motion.
         model_handle=(claim.target.startswith('drag:') and not claim.target.startswith('drag:param:')
-                      and claim.target not in ('drag:panel','drag:orbit','drag:zoom'))
+                      and claim.target not in ('drag:panel','drag:orbit','drag:zoom','drag:scene'))
         threshold=self.settings['physics_model_hold_ratio'] if model_handle else self.settings['physics_drag_freeze_ratio']
         if ratio<=self.grab_settings['grip_press_ratio']:
             claim.opening_since=None; claim.opening_samples=0
@@ -147,6 +174,39 @@ class PhysicsInput:
         """Follow the last real observation at render rate; never coast on release."""
         if not math.isfinite(dt) or dt<=0: return
         alpha=-math.expm1(-math.tau*self.settings['physics_drag_response_hz']*dt)
+        scene=[(key,c) for key,c in sorted(self.claims.items()) if c.target=='drag:scene']
+        if scene:
+            if any(c.paused or c.finished for _,c in scene):
+                self.scene_group=None
+                return
+            identity=tuple((key,id(c)) for key,c in scene)
+            if self.scene_group!=identity:
+                # Join/leave/loss changes the baseline, never the displayed pose.
+                for _,c in scene:
+                    c.cursor_origin=c.cursor_origin+c.position-np.array(c.origin)
+                    c.origin=tuple(c.position); c.target_point=c.position.copy()
+                    c.value=self.host.capture('drag:scene')
+                self.scene_group=identity
+            for key,c in scene:
+                c.position+=alpha*(c.target_point-c.position)
+                self.pointers[key]=tuple(c.cursor_origin+c.position-np.array(c.origin))
+            if len(scene)==2:
+                factor=np.array((self.host.space.aspect,1.))
+                span=np.linalg.norm((scene[1][1].position-scene[0][1].position)*factor)
+                base_span=np.linalg.norm((np.array(scene[1][1].origin)-scene[0][1].origin)*factor)
+                if span<self.settings['physics_scene_min_span']:
+                    self.scene_span_valid=False
+                    return
+                if not getattr(self,'scene_span_valid',True) or base_span<self.settings['physics_scene_min_span']:
+                    for _,c in scene:
+                        c.cursor_origin=c.cursor_origin+c.position-np.array(c.origin)
+                        c.origin=tuple(c.position); c.value=self.host.capture('drag:scene')
+                self.scene_span_valid=True
+                self.host.drag_scene_pair([c.origin for _,c in scene],[c.position for _,c in scene],scene[0][1].value)
+            else:
+                c=scene[0][1]; self.host.drag('drag:scene',c.origin,tuple(c.position),c.value)
+            return
+        self.scene_group=None
         for key,claim in list(self.claims.items()):
             if claim.paused or claim.finished: continue
             claim.position+=alpha*(claim.target_point-claim.position)

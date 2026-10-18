@@ -116,6 +116,13 @@ The term **3D** means interaction with a rendered 3D scene. MediaPipe/model-rela
 
 #### Applied mechanics laboratory — authorized 2026-10-18
 
+After the mechanics audit, the user authorized richer direct interaction across
+the same eight models: body-sized picking, distinct velocity/parameter handles,
+contextual feedback, bounded undo/cancel, deliberate release-to-run for spring,
+pendulum and projectile launch, and coordinated two-hand scene viewing. These
+are presentation inputs to the existing bounded models; no general physics,
+new tracking provider or measured-accuracy/performance target is introduced.
+
 After accepting the chemistry interaction milestone, the user authorized a
 separate Physics tab with eight bounded teaching experiments: forces/friction,
 inclined plane, free fall/projectile motion, one-dimensional collisions,

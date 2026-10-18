@@ -173,7 +173,8 @@ class CaptureWorker:
                 revision=None
                 dirty=None
             (folder/'metadata.json').write_text(json.dumps({'kind':'submission_presentation_only',
-                'presentation_schema':'17',
+                'presentation_schema':'18',
+                'physics_direct_interaction':'body_pick_typed_handles_observed_release_undo_two_hand_view',
                 'physics_drag_release':'opening_latch_until_tight_contact_or_confirmed_release',
                 'physics_grab_motion':'palm_translation_render_follow_freeze_on_open',
                 'physics_catalog_sha256':hashlib.sha256(Path(__file__).with_name('physics_labs.yaml').read_bytes()).hexdigest(),

@@ -20,7 +20,8 @@ PointPinch and DwellSelector may be reused without changing chemistry. Targets
 are typed: menu commands, explicit parameter handles, body/launch handles and
 panel handles. Capture ownership is exclusive; generation/loss/stale/source or
 viewport discontinuities cancel edits without throwing the object. Editing
-pauses the model, rebases after loss, and requires explicit run to start. A
+pauses the model and rebases after loss. Explicit Run starts it, with the
+bounded deliberate release-to-run exception specified below. A
 second hand may manipulate another free handle; never steal a menu gesture or
 an already-owned handle. Parameter ranges, time steps, capacities and gesture
 settings are external configuration. Model-relative z is not physical depth.
@@ -97,6 +98,26 @@ Design reference (affordances and separate movement/rotation/scale targets):
 [Microsoft direct manipulation](https://learn.microsoft.com/en-us/windows/mixed-reality/design/direct-manipulation).
 This guides presentation design; it transfers no HoloLens accuracy/performance
 claim to a monocular RGB webcam.
+
+### Direct mechanics interaction refinement — authorized 2026-10-18
+
+Body-sized geometric picking and explicit parameter handles retain panel and
+nearest-handle priority. Collision bodies are informational; separate velocity
+arrows edit v1/v2, so grabbing a vehicle does not silently mean repositioning it.
+Scene mode accepts one hand for orbit and two for translation/uniform scale/
+screen-plane twist; joining/leaving rebases at the displayed pose. Opening or
+missing observations freeze the pair until ownership changes. View state is
+bounded and independent of SI values; existing orbit/zoom tools remain usable.
+
+Model edits form one bounded undo transaction until all claims are released.
+Undo/cancel restores the pre-edit model state paused, with no simulated impulse.
+Only a confirmed observed opening after a meaningful changed edit may start a
+spring/pendulum body or projectile launch in optional release-to-run mode.
+Tracking loss, identity/time/viewport changes, cancellation, unfinished other
+claims and view/panel/slider release never start simulation. Changing tabs also
+pauses. Reacquisition suppresses automatic launch for that interrupted edit.
+UI schema 18 identifies this interaction policy; model revision 3, SI catalog,
+setup format, research pipeline and accepted chemistry behavior stay unchanged.
 
 Local state/export has its own version and bounded validation. Simulated SI
 measurements, constraints/assumptions, A/B inputs and initial conditions must be

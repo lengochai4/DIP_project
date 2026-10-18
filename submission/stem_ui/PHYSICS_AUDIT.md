@@ -72,6 +72,27 @@ App thật chạy thêm 30 frame replay, không báo lỗi và worker dừng s�
 Bằng chứng cục bộ nằm trong `runs/physics-boundary-qa`, `runs/physics-qa`
 và phiên `runs/ui/ui-20261018-124319-604798`; không đưa dữ liệu chạy vào Git.
 
+## Sau kiểm tra công thức — tương tác UI schema 18
+
+Đã nâng cấp cách cầm thân vật theo hình khối, tách điều khiển vận tốc hai xe,
+chỉnh khối lượng trên tải, chỉnh đích và xem quỹ đạo dự đoán. Hai tay xem cảnh
+có di chuyển/thu phóng/xoắn, một tay xoay; thêm/bớt hoặc mất tay đặt lại mốc
+trung tính. Hoàn tác/hủy giữ được trạng thái vật lý trước khi chỉnh và luôn
+dừng mô phỏng. Thả để chạy chỉ khởi động lò xo/con lắc hoặc hướng phóng sau
+lượt chỉnh đủ rõ và mở ngón được xác nhận; mất dấu không tự chạy.
+
+Phương trình/catalog/model revision 3 giữ nguyên. **972 test qua trên Python
+3.11.9 và 3.12.14**, tăng 38 ca so với lần rà biên. Native regression có chọn
+công cụ, thao tác hai tay, thả lò xo chạy và hoàn tác qua giao diện thật.
+QA thêm 676 frame, bốn kích thước, tám bài và F11: không báo lỗi OpenGL;
+đã xem ảnh nhỏ/lớn và sửa biểu tượng hoàn tác thiếu glyph thành nút chữ.
+App thật chạy 30 frame replay ở phiên `ui-20261018-130651-614880`, dừng sạch;
+xuất/mở bốn tệp thành công, catalog SI không đổi. Artifact cục bộ trong
+`runs/physics-direct-qa` và `runs/physics-qa/export-check`.
+
+Đây là xác minh logic và đồ họa bằng dữ liệu/động tác giả lập. Không suy ra
+tỷ lệ nhận đúng tay thật, không cam kết hết lag ở mọi webcam hay máy tính.
+
 ## Nguồn đối chiếu
 
 - [OpenStax — Ma sát](https://openstax.org/books/university-physics-volume-1/pages/6-2-friction).

@@ -48,15 +48,29 @@ khi camera tắt. Không cần cài thêm thư viện so với UI hiện có.
 - **Điều chỉnh:** kéo thanh thông số hoặc chọn −/+. Có phân trang để mọi
   thông số đều truy cập được trên màn hình nhỏ. Hai tay có thể giữ hai tay
   nắm khác nhau; một tay nắm chỉ thuộc một tay.
-- **Điểm vàng trên cảnh:** kéo vật/đầu phóng, lực, góc dốc, chiều dài dây,
-  vị trí tải hoặc đầu dây kéo theo bài. Cầm sẽ tạm dừng; buông rồi chọn
-  **Chạy** để bắt đầu. Mất tay không tạo cú ném/thả ngoài ý muốn.
+- **Cầm vật và tay nắm trên cảnh:** có thể nhắm lên thân vật để cầm,
+  không cần trúng đúng chấm giữa. Các tay nắm vàng chỉnh lực, góc dốc, dây,
+  vector phóng hoặc mục tiêu theo bài; tới gần đổi màu và có hướng dẫn trên cảnh.
+  Bài va chạm dùng hai mũi tên **v₁/v₂** riêng để chỉnh vận tốc; không kéo
+  thân xe để đổi vận tốc nữa. Va chạm/đòn bẩy/ròng rọc có tay nắm **m**:
+  kéo lên/xuống để tăng/giảm khối lượng. Hai tải đòn bẩy kéo dọc thanh.
+  Cầm sẽ tạm dừng. **Thả để chạy** mặc định bật cho quả nặng lò xo/con lắc
+  và mũi tên phóng ném xiên, sau một lượt chỉnh có thay đổi đủ rõ rồi mở ngón
+  được xác nhận. Ném xiên có đường dự đoán khi đặt hướng phóng. Có thể tắt
+  Thả để chạy trong Đo/Lưu; nút **Chạy** vẫn dùng được ở mọi bài động.
+  Mất tay, đổi tab/khung, kéo bảng/thanh thông số hoặc chỉnh đích không tự chạy.
   Khi đã cầm, di cả bàn tay để kéo; cử động riêng cái–trỏ không đẩy vật.
   Vòng vàng đi cùng điểm điều khiển; vòng xám báo đang giữ nguyên khi mở ngón.
   Khi đã bắt đầu mở, dao động nhẹ trong khoảng giữa không nối lại lượt kéo;
   chỉ chụm sát lại mới hủy động tác buông, và điểm kéo được đặt lại trung tính.
   Mất tay dừng kéo và ẩn con trỏ.
   Khung cảnh giữ nguyên khi chỉnh/buông; Chạy, Đặt lại hoặc R mới căn lại.
+- **Hoàn tác trên tiêu đề bảng** trả cả trạng thái vật lý và số đo
+  về trước khi cầm nhưng luôn dừng mô phỏng. Trong lúc đang chỉnh,
+  nút đổi thành **Hủy** để hủy lượt đang cầm; có thể dùng tay còn lại để chọn.
+  Lịch sử tối đa 12 lượt; hai tay cùng chỉnh được gộp một lượt. Đổi bài,
+  Đặt lại hoặc mở thiết lập xóa lịch sử này. Đây là hoàn tác trong phiên,
+  không phải tải lại chuyển động từ tệp.
 - **Chọn nút:** mở cái–trỏ, trỏ vào nút đến vòng vàng rồi chụm; hoặc giữ
   trỏ ổn định 1 giây. Mỗi lần chọn một lượt, mở rồi nhắm lại để chọn tiếp.
 - **Đo/Lưu:** bật/tắt vector, quỹ đạo, đồ thị, năng lượng, thước A–B; tiến
@@ -83,6 +97,11 @@ khi camera tắt. Không cần cài thêm thư viện so với UI hiện có.
   đây là đổi góc quan sát, không xoay hướng trọng lực hay đổi số đo SI.
   Buông tay trước khi đổi thao tác. Chạy, Đặt lại, R hoặc đổi bài đều trở về
   Chỉnh vật. Các điều khiển trong bảng vẫn dùng được khi đang xoay/đổi cỡ.
+  **Đo/Lưu → Xem cảnh · 2 tay:** một tay chụm kéo ngang/dọc để xoay;
+  hai tay chụm rồi cùng dời để di chuyển cảnh, dang/khép để đổi cỡ, xoắn
+  hai điểm giữ để nghiêng cảnh. Thêm/bớt tay đặt lại mốc tại vị trí đang thấy,
+  mở ngón hoặc mất dấu giữ nguyên cảnh; hai tay quá gần sẽ tạm ngừng đổi cỡ.
+  Chọn **Chỉnh vật** để trở lại thí nghiệm. **R** đặt lại cả vị trí/góc/cỡ.
 
 | Bài | Điều chỉnh / tình huống |
 |---|---|
@@ -105,6 +124,9 @@ Model revision 3 giữ các sửa vector/nhãn đo của revision 2, sửa dữ 
 khi đổi lực, điều kiện dừng thật và giới hạn vector phóng. Thiết lập revision
 1/2 đã biết vẫn mở được thành điều kiện ban đầu; không phục
 hồi chuyển động cũ. Chi tiết rà soát: [PHYSICS_AUDIT.md](PHYSICS_AUDIT.md).
+UI schema 18 ghi nhận chính sách tương tác mới; công thức/catalog SI, Core
+và hành vi các tab khác giữ nguyên. Các ngưỡng tương tác là cấu hình kỹ thuật,
+không phải kết quả kiểm định độ chính xác của webcam.
 
 Các số đo là **SI trong mô phỏng**; kích thước hình trên camera không đo
 chiều dài/lực thật. Lực kéo có thể chỉnh giữa lượt; đổi các thông số vật lý

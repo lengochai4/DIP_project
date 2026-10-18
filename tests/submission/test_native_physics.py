@@ -37,9 +37,9 @@ def test_native_physics_scenarios_hand_palette_and_fullscreen(tmp_path):
                 h=with_ratio(aim(cover.left+nx*cover.width,cover.top+ny*cover.height),ratio)
                 draw([h])
             assert v.input.tap.states[0].phase=='latched'
-        def at(nx,ny,ratio):
+        def at(nx,ny,ratio,slot=0):
             cover=CameraCover(4/3,v.space.aspect)
-            return with_ratio(aim(cover.left+nx*cover.width,cover.top+ny*cover.height),ratio)
+            return with_ratio(aim(cover.left+nx*cover.width,cover.top+ny*cover.height,slot=slot),ratio)
         def handle(action):
             rect=next(rect for rect,a in v.targets if a==action)
             nx,ny=rect.centerx/v.content[2],rect.centery/v.content[3]
@@ -107,6 +107,27 @@ def test_native_physics_scenarios_hand_palette_and_fullscreen(tmp_path):
             for ratio in [.5,.38,.38,.38]:draw([at(nx,ny,.5 if ratio==.5 else ratio)])
             assert not v.input.claims
             choose('tool:edit');assert v.tool=='edit'
+            choose('tool:scene');original=v.model.configuration()
+            for ratio in [1.]*8+[.1]*4:draw([at(.65,.6,ratio),at(.85,.6,ratio,1)])
+            assert len(v.input.claims)==2 and {c.target for c in v.input.claims.values()}=={'drag:scene'}
+            zoom=v.zoom
+            for _ in range(8):draw([at(.6,.6,.1),at(.9,.6,.1,1)])
+            assert v.zoom>zoom and v.model.configuration()==original
+            frozen=(v.yaw,v.pitch,v.zoom,v.roll,*v.scene_pan)
+            for _ in range(5):draw([at(.55,.6,.5),at(.95,.6,.5,1)])
+            assert not v.input.claims and np.allclose((v.yaw,v.pitch,v.zoom,v.roll,*v.scene_pan),frozen)
+            choose('tool:edit');v.command('frame');draw()
+            v.command('lab:collision');draw()
+            assert {'drag:velocity1','drag:velocity2','drag:mass','drag:mass2'}<={a for _,a in v.handles}
+            assert 'drag:body' not in {a for _,a in v.handles}
+            v.command('lab:spring');v.command('page:adjust');draw();original=v.model.configuration()
+            body=next(p for p,a in v.handles if a=='drag:body');nx,ny=v.space.project(body)
+            for ratio in [1.]*8+[.1]*4:draw([at(nx,ny,ratio)])
+            assert v.input.claims[0].target=='drag:body'
+            for _ in range(8):draw([at(nx-.04,ny,.1)])
+            for _ in range(4):draw([at(nx-.08,ny,.38)])
+            assert not v.input.claims and v.model.running and v.undo
+            choose('undo_edit');assert not v.model.running and v.model.configuration()==original
             v.command('frame');draw()
             original=v.model.configuration();size=r.size
             r.toggle_fullscreen();draw();r.toggle_fullscreen();draw()

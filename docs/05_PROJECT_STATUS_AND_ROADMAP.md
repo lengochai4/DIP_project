@@ -1,6 +1,41 @@
 # 05 — Project Status and Roadmap
 
-## Current task — second mechanics boundary audit, 2026-10-18
+## Current task — richer direct mechanics interaction, 2026-10-18
+
+Change: body-sized picking, explicit velocity/parameter targets, contextual
+feedback, undo/cancel, optional deliberate release-to-run and coordinated
+two-hand scene manipulation on the existing eight models.
+Reason: user accepts the audited model but finds the limited handle-only
+interaction too shallow and requests smooth, practical manipulation.
+Canonical file/section changed: 01 approved presentation scope, 02 interaction
+contract, 03 presentation policy, this task record.
+Code/modules affected: Physics input/view, UI settings/metadata and regressions.
+Algorithmic impact: presentation only; SI equations, fixed-step integration,
+research filters, tracking provider and other tabs remain unchanged.
+Experimental impact: none on retained Core/report/research results.
+Compatibility impact: UI schema 18; model revision 3/setup schema/catalog hash
+unchanged. Tests added/updated: lifecycle/ownership/two-hand transitions,
+geometry picking, undo, deliberate release/loss cancellation and native GL.
+Existing results invalidated: no research/model results; old UI interaction
+recordings retain their original policy identity. Git: feat/physics-lab, preserve
+main and personal untracked files. Status: complete and verified. Full suites
+passed on Python 3.11.9 and 3.12.14: 972 tests each, with 38 new direct-interaction
+cases and an extended native regression. Cases cover observed release/noise-size
+gating, loss/identity/time/viewport cancellation, exact paused undo, two-hand
+ownership/join/leave/near-span freeze, rotated box picking, continuous signed
+velocity controls, analytic preview and bounded label rasterization cadence.
+Native GL QA rendered 676 frames over four window sizes, all eight models,
+tool/lesson pages and F11 with no GL errors. Inspected compact projectile and
+large collision images, including font-safe undo/cancel labels. Actual Python
+3.11 app replay ui-20261018-130651-614880 processed 30 frames with error=null,
+worker_stopped=true and UI schema 18. Native export/load passed all four files;
+verified model revision 3/catalog hash unchanged and view pose/release mode in
+view.json. Local artifacts: runs/physics-direct-qa and runs/physics-qa/export-check
+(ignored). Protected Core/config/research/chemistry/shared gesture/renderer/model
+paths have no diff against 8d893b0. No physical gesture accuracy or measured
+performance improvement is claimed from these synthetic/software checks.
+
+## Earlier task — second mechanics boundary audit, 2026-10-18
 
 Change: correct same-time live-force samples and exported endpoints; require
 enough forward displacement and reject a transient turn/low-speed motion as a

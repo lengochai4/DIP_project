@@ -1766,3 +1766,15 @@ domain launch settings and stale endpoint exports are superseded, not rewritten.
 Live-force edits at an already sampled timestamp replace that sample with the
 post-edit value; this defines right-continuous force/acceleration at input
 events without inserting repeated same-time rows. Frozen references stay intact.
+
+### Direct mechanics interaction — presentation policy, 2026-10-18
+
+Deliberate release may run spring/pendulum from the edited zero-speed initial
+condition or run a projectile from its configured launch vector. It does not
+derive metric velocity or an impulse from webcam motion. The existing Run
+command remains available; release-to-run can be disabled. Meaningful edit
+travel, pair separation, scene bounds and undo capacity are external UI settings.
+Undo restores a bounded in-memory checkpoint of the model state, paused; no new
+saved-setup/runtime-restoration file contract is introduced. No equation, research
+baseline, experiment or catalog/hash changes. Earlier interaction recordings
+remain evidence only for their original UI schema/policy.

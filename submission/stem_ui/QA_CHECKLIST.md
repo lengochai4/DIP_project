@@ -2,6 +2,14 @@
 
 ## Nhánh phát triển Vật lý sau vấn đáp — 18/10/2026
 
+Lượt nâng cấp tương tác sau rà công thức: **972 test qua trên Python 3.11.9
+và 3.12.14**. UI schema 18, model revision 3. Đã kiểm tra cầm thân vật,
+tay nắm vận tốc/khối lượng/đích, thả để chạy có điều kiện, hoàn tác/hủy,
+hai tay xem cảnh và các trường hợp mất dấu/chuyển số tay/đổi ngữ cảnh.
+Native QA 676 frame, bốn kích thước, tám bài, F11 không báo lỗi GL; xuất/mở
+bốn tệp và app replay 30 frame đều hoàn tất. Chi tiết và giới hạn bằng chứng:
+[PHYSICS_AUDIT.md](PHYSICS_AUDIT.md). Các số dưới đây là lượt triển khai đầu.
+
 Nhánh `feat/physics-lab` kế thừa Hóa học `825ac93`; không thay bản main/tag nộp
 16/10. Tám bài cơ học có mô hình SI độc lập, tham số/giả thiết/nguồn trong
 `physics_labs.yaml`; mô hình là các trường hợp lý tưởng có giới hạn.

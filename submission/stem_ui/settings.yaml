@@ -143,6 +143,16 @@ physics_zoom_drag_gain: 3.0
 physics_panel_dock_edge: 0.025
 physics_panel_dock_s: 0.15
 physics_panel_throw_edge: 0.04
+physics_release_to_run: true
+physics_release_min_travel: 0.015
+physics_undo_capacity: 12
+physics_body_pick_padding_px: 8
+physics_scene_min_span: 0.08
+physics_scene_pan_limit: 0.25
+physics_scene_roll_limit_deg: 45.0
+physics_mass_drag_gain: 12.0
+physics_parameter_handle_offset: 0.32
+physics_preview_steps: 40
 crystal_panel_opacity: 218
 # Conservative neutral covalent editing rules; not general chemistry valences.
 chemistry_covalent_limits: {H: 1, C: 4, N: 3, O: 2, F: 1, P: 3, S: 2, Cl: 1, Br: 1, I: 1}
