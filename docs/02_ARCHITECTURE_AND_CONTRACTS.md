@@ -119,6 +119,28 @@ pauses. Reacquisition suppresses automatic launch for that interrupted edit.
 UI schema 18 identifies this interaction policy; model revision 3, SI catalog,
 setup format, research pipeline and accepted chemistry behavior stay unchanged.
 
+### Physics shortcuts — authorized 2026-10-18
+
+A stable fully open palm in a free left/right edge region may summon a fixed,
+modal four-command palette (Run/Pause or static Check, Undo, panel Show/Hide,
+Frame). Only existing commands execute. Keep a visible close affordance and
+the original controls. A summon itself never executes a command; present hands
+must deliberately re-aim while open before pinch/dwell selection. Palette
+appearance/dismissal consumes selectors and blocks click/grab through. Feedback
+progress is geometry, not text/texture uploaded at every source frame.
+
+When paused in Edit, two hands observed open in free space may freshly pinch
+to enter temporary Scene mode. Existing targets, aims, selectors, claims, mouse
+input and palette have priority. A held edit cannot be stolen. The established
+scene follow/release policy is reused. Opening both hands returns to Edit;
+identity/loss/stale/viewport/source discontinuity cancels temporary mode without
+moving a pending target. Explicit Scene mode keeps its existing behavior.
+Pose features use source-space XY normalized by apparent palm size and source
+aspect; display edge/target tests use the same cover/mirror mapping as the UI.
+No depth/contact/confidence inference is introduced. Timing, stability, gesture
+and layout defaults live in UI settings. UI schema 19 records shortcut progress,
+palette/temporary-mode state and policy; SI catalog/setup/model remain unchanged.
+
 Local state/export has its own version and bounded validation. Simulated SI
 measurements, constraints/assumptions, A/B inputs and initial conditions must be
 preserved. They are not experiment evidence for RQ1/RQ2 or measured camera-world

@@ -173,7 +173,8 @@ class CaptureWorker:
                 revision=None
                 dirty=None
             (folder/'metadata.json').write_text(json.dumps({'kind':'submission_presentation_only',
-                'presentation_schema':'18',
+                'presentation_schema':'19',
+                'physics_shortcuts':'edge_open_palm_modal_reaim_fresh_two_hand_empty_pinch',
                 'physics_direct_interaction':'body_pick_typed_handles_observed_release_undo_two_hand_view',
                 'physics_drag_release':'opening_latch_until_tight_contact_or_confirmed_release',
                 'physics_grab_motion':'palm_translation_render_follow_freeze_on_open',

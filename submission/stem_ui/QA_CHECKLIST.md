@@ -2,6 +2,14 @@
 
 ## Nhánh phát triển Vật lý sau vấn đáp — 18/10/2026
 
+Lượt đường tắt UI schema 19: **1029 test qua trên Python 3.11.9 và 3.12.14**,
+gồm 57 ca thêm cho gọi lệnh bằng xòe tay, bảng nhanh có nhắm lại, hai tay
+chụm vùng trống, chặn cầm xuyên và hủy khi mất dấu/đổi nhận dạng. Native
+GL thực hiện cả hai đường tắt; QA 780 frame ở bốn kích thước, tám bài và
+F11 khi bảng nhanh mở đều không báo lỗi GL. App replay 30 frame và xuất/mở
+bốn tệp đều qua. Catalog/model 3/Core/Hóa học giữ nguyên; không suy tỷ lệ
+nhận đúng hoặc tốc độ tay thật từ test giả lập.
+
 Lượt nâng cấp tương tác sau rà công thức: **972 test qua trên Python 3.11.9
 và 3.12.14**. UI schema 18, model revision 3. Đã kiểm tra cầm thân vật,
 tay nắm vận tốc/khối lượng/đích, thả để chạy có điều kiện, hoàn tác/hủy,

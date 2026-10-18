@@ -1,6 +1,40 @@
 # 05 — Project Status and Roadmap
 
-## Current task — richer direct mechanics interaction, 2026-10-18
+## Current task — Physics quick commands and temporary scene shortcut, 2026-10-18
+
+Change: stable open palm at a free side edge summons four existing commands;
+fresh two-hand pinch in empty space enters temporary scene viewing while paused.
+Reason: user approved fewer button-navigation steps, preserving original UI.
+Canonical file/section changed: 01 shortcut scope, 02 shortcut contract,
+03 presentation policy, this record.
+Code/modules affected: Physics-only recognizer/input/view, UI settings/metadata,
+documentation and shortcut/native regressions.
+Algorithmic impact: gesture/presentation only; eight SI models unchanged.
+Experimental impact: none on Core/RQ/report. Compatibility impact: UI schema 19;
+model revision 3, SI catalog hash and setup schema unchanged.
+Tests added/updated: pose/hold/rearm, stale/loss/identity, target/claim priority,
+modal selection, temporary-mode release, compact layout and native GL.
+Existing results invalidated: no Core/model results; old interaction recordings
+remain identified by their previous UI policy. Git: continue feat/physics-lab,
+preserve main/chemistry and personal untracked files. Status: complete. Full
+suites passed on Python 3.11.9 and 3.12.14: 1029 tests each, 57 added cases
+including a native shortcut regression. Coverage includes scale/aspect-safe
+source pose gates, short/unstable/invalid input, one-shot rearming, fresh pair
+activation, modal pointer re-aim, no grab-through, cancel on loss/identity/stale,
+paused-only entry, original target priority and static Check. A lost temporary
+grip stays consumed until observed opening, including slot generation changes.
+Busy normal grabs skip new geometry/pose shortcut work.
+Native GL QA rendered 780 frames over four window sizes, eight models and
+quick palettes, including F11 while a palette stayed open, with no GL errors.
+Inspected native progress/palette screenshots in runs/physics-shortcuts-qa.
+Actual app replay ui-20261018-133657-059518 processed 30 MediaPipe frames,
+reported UI schema 19, error=null and worker_stopped=true. Native export/load
+still produced JSON/CSV/view JSON/PNG with independent A/B. Catalog/model/Core,
+research config, chemistry/shared gestures and renderer paths have no diff
+against fd1319f. Artifacts stay ignored. These software/synthetic checks do not
+establish real-hand recognition accuracy or a performance improvement claim.
+
+## Earlier task — richer direct mechanics interaction, 2026-10-18
 
 Change: body-sized picking, explicit velocity/parameter targets, contextual
 feedback, undo/cancel, optional deliberate release-to-run and coordinated

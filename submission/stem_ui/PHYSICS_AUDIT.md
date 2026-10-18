@@ -93,6 +93,25 @@ xuất/mở bốn tệp thành công, catalog SI không đổi. Artifact cục b
 Đây là xác minh logic và đồ họa bằng dữ liệu/động tác giả lập. Không suy ra
 tỷ lệ nhận đúng tay thật, không cam kết hết lag ở mọi webcam hay máy tính.
 
+## Đường tắt — UI schema 19
+
+Thêm xòe tay ở mép trống để gọi bốn lệnh sẵn có và hai tay chụm trong
+vùng trống để xem cảnh nhanh khi đang dừng. Ưu tiên thao tác đang cầm;
+bảng nhanh yêu cầu nhắm lại trước khi chọn, không nhận cú chọn xuyên xuống
+vật sau khi đóng. Mất tay ở chế độ xem nhanh hủy chế độ và giữ nguyên cảnh;
+cú chụm cũ chỉ được dùng lại sau khi mở ngón. Nhận tư thế trên XY nguồn,
+không dùng z như độ sâu hoặc suy ra độ tin cậy. Ngưỡng giữ tay là mặc định
+kỹ thuật, không phải số đo nhận diện thực tế.
+
+**1029 test qua trên Python 3.11.9 và 3.12.14**, tăng 57 ca, có native GL
+thực hiện gọi bảng/chọn lệnh/xem nhanh. QA 780 frame ở bốn kích thước,
+tám bài và F11 khi bảng nhanh mở: không báo lỗi GL. Đã xem ảnh vòng tiến
+trình/bảng nhanh; app replay 30 frame dừng sạch ở phiên
+`ui-20261018-133657-059518`. Xuất/mở bốn tệp vẫn qua. Dữ liệu cục bộ trong
+`runs/physics-shortcuts-qa` và `runs/physics-qa/export-check`; model/catalog SI
+và kết quả nghiên cứu giữ nguyên. Chưa suy ra tỷ lệ nhận đúng hoặc hết lag
+trên mọi máy từ các ca giả lập này.
+
 ## Nguồn đối chiếu
 
 - [OpenStax — Ma sát](https://openstax.org/books/university-physics-volume-1/pages/6-2-friction).

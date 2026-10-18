@@ -1778,3 +1778,12 @@ Undo restores a bounded in-memory checkpoint of the model state, paused; no new
 saved-setup/runtime-restoration file contract is introduced. No equation, research
 baseline, experiment or catalog/hash changes. Earlier interaction recordings
 remain evidence only for their original UI schema/policy.
+
+### Physics shortcut policy — 2026-10-18
+
+Shortcuts are bounded presentation state machines over actual source observations:
+open-palm duration/stability/observation-count gates with one-shot rearming;
+fresh open-to-pinch evidence for the paused two-hand scene shortcut. Missing or
+invalid samples never advance timers. Feature thresholds are engineering defaults,
+not measured recognition accuracy. No new physical equation, provider, Core
+filter, replay baseline or research result. UI schema 19 distinguishes recordings.

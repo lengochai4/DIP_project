@@ -58,6 +58,7 @@ class PhysicsView:
         self.cfg=self.model.catalog['view']; self.input=PhysicsInput(settings,self)
         self.space=CameraSpace(4/3); self.content=(0,0,960,640)
         self.page='adjust'; self.param_page=0; self.library=False; self.collapsed=False
+        self.quick_open=False; self.quick_edge='right'; self.quick_targets=[]
         self.tool='edit'
         self.scene_pan=np.zeros(2); self.roll=0.
         self.release_to_run=bool(settings['physics_release_to_run'])
@@ -74,7 +75,7 @@ class PhysicsView:
         self.layout(); self.setup_projection()
 
     @property
-    def page_key(self): return f'{self.model.lab}/{self.page}/{self.param_page}/{self.library}/{self.collapsed}/{getattr(self,"library_page",0)}/{getattr(self,"tools_page",0)}/{self.tool}'
+    def page_key(self): return f'{self.model.lab}/{self.page}/{self.param_page}/{self.library}/{self.collapsed}/{getattr(self,"library_page",0)}/{getattr(self,"tools_page",0)}/{self.tool}/{self.quick_open}'
 
     def open(self):
         self.textures={}; self.camera_key=None; self.last_ui=-math.inf; self.ui_dirty=True
@@ -150,7 +151,19 @@ class PhysicsView:
 
     def command(self,action):
         m=self.model; self.ui_dirty=True; self.panel_force=True
+        if action.startswith('quick_open:'):
+            if self.input.claims or self.mouse_claim or self.quick_open: return
+            self.quick_edge=action.split(':')[1]; self.quick_open=True
+            self.input.palette_transition(opening=True); self.layout(); return
+        if action.startswith('quick:'):
+            if not self.quick_open: return
+            available=self.input.last_available.copy(); self.quick_open=False
+            mapped={'run':'run','undo':'undo_edit','panel':'restore' if self.collapsed else 'compact','frame':'frame','close':None}.get(action.split(':')[1])
+            if mapped: self.command(mapped)
+            self.input.last_available=available; self.input.palette_transition()
+            return
         if action.startswith('lab:'):
+            self.quick_open=False
             self.input.cancel(); self.drop_mouse(); self.edit_session=None; self.undo.clear()
             self.tool='edit'
             m.choose(action.split(':',1)[1]); self.library=False; self.param_page=0; self.input.aims.clear(); self.measure_points=None; self.edit_bounds=None
@@ -246,6 +259,8 @@ class PhysicsView:
 
     def layout(self):
         w,h=self.content[2:]; width=min(320,max(204,round(w*.36*self.panel_scale)))
+        qw=min(self.settings['physics_quick_width_px'],w-16); qh=min(self.settings['physics_quick_height_px'],h-16)
+        self.quick_rect=pygame.Rect(8 if self.quick_edge=='left' else w-qw-8,(h-qh)//2,qw,qh)
         width=min(width,w-180); height=h-24
         origin=np.array((12.,12.))+self.panel_offset*np.array((w,h))
         origin=np.clip(origin,(4,4),(max(4,w-width-4),max(4,h-height-4)))
@@ -396,6 +411,8 @@ class PhysicsView:
 
     def hit(self,point):
         px,py=point[0]*self.content[2],point[1]*self.content[3]
+        if self.quick_open:
+            return next((action for rect,action in reversed(self.quick_targets) if rect.collidepoint(px,py)),None)
         for rect,action in reversed(self.targets):
             if rect.collidepoint(px,py): return action
         if not self.collapsed and self.panel_rect.collidepoint(px,py): return None
@@ -416,6 +433,49 @@ class PhysicsView:
             distance=target.intersect(ray_origin,ray)
             if distance is not None: bodies.append((distance,target.action))
         return min(bodies)[1] if bodies else None
+
+    def shortcut_free(self,hand):
+        tip=hand.landmarks[8]; center=np.mean([(hand.landmarks[i].x,hand.landmarks[i].y) for i in (0,5,9,13,17)],axis=0)
+        points=[np.array((tip.x,tip.y)),center]
+        for point in points:
+            if self.settings['mirror']: point[0]=1-point[0]
+            if not all(0<=v<=1 for v in point): return False
+            px,py=point*np.array(self.content[2:])
+            if self.panel_rect.collidepoint(px,py) or any(rect.collidepoint(px,py) for rect,_ in self.targets): return False
+            for position,_ in self.handles:
+                p=self.space.project(position)
+                if p and np.linalg.norm((point-p)*np.array(self.content[2:]))<=self.cfg['handle_radius_px']: return False
+            ray=self.space.ray(*point)
+            if any(target.intersect(*ray) is not None for target in self.body_targets): return False
+        return True
+
+    def _paint_quick(self):
+        r=self.quick_rect; w,h=r.size; surface=glass((w,h),248,14,True,1).copy()
+        self.quick_targets=[]; self._text(surface,'THAO TÁC NHANH',(12,8),13,ACCENT)
+        labels=[('Kiểm tra' if self.model.static else 'Tạm dừng' if self.model.running else 'Chạy','run'),
+                ('Hoàn tác','undo'),('Hiện bảng' if self.collapsed else 'Ẩn bảng','panel'),('Căn lại cảnh','frame')]
+        bh=min(38,(h-72)//4)
+        items=[('×','close',pygame.Rect(w-33,4,27,25))]
+        items += [(label,action,pygame.Rect(10,34+i*(bh+4),w-20,bh)) for i,(label,action) in enumerate(labels)]
+        for label,action,rect in items:
+            surface.blit(glass(rect.size,245,8,False,1),rect)
+            pygame.draw.rect(surface,(91,134,154),rect,1,border_radius=8)
+            glyph=self._font(14).render(label,True,INK); surface.blit(glyph,glyph.get_rect(center=rect.center))
+            self.quick_targets.append((rect.move(r.topleft),'quick:'+action))
+        text='Di tay mở để nhắm lại' if self.input.menu_anchors else 'Trỏ rồi chụm / giữ 1 giây'
+        self._text(surface,text,(10,h-22),11,MUTED,w-20)
+        return surface
+
+    def _draw_quick(self):
+        if not self.quick_open: return
+        w,h=self.content[2:]; gl.glColor4f(.02,.05,.08,.38); gl.glBegin(gl.GL_QUADS)
+        for p in ((0,0),(w,0),(w,h),(0,h)): gl.glVertex2f(*p)
+        gl.glEnd()
+        key=(tuple(self.quick_rect),self.quick_edge,self.model.lab,self.model.running,self.collapsed,bool(self.input.menu_anchors))
+        if 'quick' not in self.textures or self.textures['quick']['key']!=key:
+            self._texture('quick',self._paint_quick(),key=key)
+        else: gl.glBindTexture(gl.GL_TEXTURE_2D,self.textures['quick']['id'])
+        self._quad(self.quick_rect)
 
     def capture(self,action):
         if action=='drag:panel':
@@ -526,11 +586,13 @@ class PhysicsView:
                 if self.input.claims: return
                 self.input.release(); self.begin_edit(action); self.pause_edit(); self.mouse_claim=(action,point,self.capture(action))
             elif action:
-                self.input.release(); self.command(action)
+                if not action.startswith('quick:'): self.input.release()
+                self.command(action)
         elif kind=='up': self.drop_mouse(True)
         elif self.mouse_claim: self.drag(self.mouse_claim[0],self.mouse_claim[1],point,self.mouse_claim[2])
 
     def wheel(self,amount,pos):
+        if self.quick_open: return
         x,y,w,h=self.content; px,py=pos[0]-x,pos[1]-y
         if not (0<=px<w and 0<=py<h): return
         if self.panel_rect.collidepoint(px,py): self.panel_scale=float(np.clip(self.panel_scale*math.exp(amount*self.cfg['wheel_gain']),self.cfg['min_panel_scale'],self.cfg['max_panel_scale']))
@@ -685,12 +747,14 @@ class PhysicsView:
         self._draw_object_labels()
         self._sync_panel()
         self._quad(self.panel_rect)
-        semantic=(self.model.lab,self.model.running,self.model.challenge,self.model.achieved,self.model.prediction,tuple(self.flags.items()),self.graph,self.stage.size,self.renderer.help_visible,id(self.model.reference),self.release_to_run,self.active_target(),self.tool)
+        shortcut=self.input.shortcuts.progress
+        semantic=(self.model.lab,self.model.running,self.model.challenge,self.model.achieved,self.model.prediction,tuple(self.flags.items()),self.graph,self.stage.size,self.renderer.help_visible,id(self.model.reference),self.release_to_run,self.active_target(),None if shortcut is None else shortcut[0],self.tool)
         if semantic!=getattr(self,'hud_semantic',None) or now-self.last_ui>=1/self.cfg['ui_refresh_hz'] or 'hud' not in self.textures:
             hud=self._paint_hud(fresh); self._texture('hud',hud,key=now); self.last_ui=now
             self.hud_semantic=semantic
         else: gl.glBindTexture(gl.GL_TEXTURE_2D,self.textures['hud']['id'])
         self._quad((self.stage.x,self.stage.y,self.stage.w,self.stage.h))
+        self._draw_quick()
         self._draw_cursors(dt)
         gl.glDisable(gl.GL_BLEND); gl.glDisable(gl.GL_SCISSOR_TEST)
 
@@ -990,8 +1054,12 @@ class PhysicsView:
                   'scene':'XEM CẢNH • 1 tay: xoay; 2 tay: di chuyển, đổi cỡ, xoắn'}[self.tool]
             y=self._text(surface,text,(8,y+4),12,GOLD,w-16)
             y=self._text(surface,'Mở ngón rồi chụm trong vùng camera để kéo. Chọn Chỉnh vật để quay lại.',(8,y+3),12,INK,w-16)
+            if self.input.auto_scene: y=self._text(surface,'Xem nhanh • Buông cả hai tay để về Chỉnh vật',(8,y+3),12,GOLD,w-16)
         if self.tool=='edit' and self.renderer.help_visible and w>=250:
-            instruction='Chụm để cầm • Mở ngón để buông • Có Hoàn tác'
+            instruction=('Chụm để cầm • Mở ngón để buông • Có Hoàn tác' if self.active_target() else
+                         'Xòe tay ở mép: lệnh nhanh • Hai tay chụm vùng trống: xem cảnh')
+            if self.input.shortcuts.progress:
+                instruction='Giữ bàn tay xòe để gọi lệnh nhanh' if self.input.shortcuts.progress[0]=='quick' else 'Giữ chụm hai tay để xem cảnh nhanh'
             y=self._text(surface,instruction,(8,y+4),12,MUTED,w-16)
             y=self._text(surface,self.interaction_hint(),(8,y+3),12,GOLD,w-16)
         if self.flags['measure']:
@@ -1055,6 +1123,12 @@ class PhysicsView:
         self._text(surface,f'{tmax:.2g} s',(plot.right-32,rect.bottom-16),10,MUTED)
 
     def _draw_cursors(self,dt):
+        progress=self.input.shortcuts.progress
+        if progress:
+            _,point,value=progress; p=np.array(point)*np.array(self.content[2:]); radius=self.cfg['handle_radius_px']
+            gl.glColor3f(*(c/255 for c in GOLD)); gl.glLineWidth(3); gl.glBegin(gl.GL_LINE_STRIP)
+            for a in np.linspace(-math.pi/2,-math.pi/2+math.tau*value,33): gl.glVertex2f(p[0]+radius*math.cos(a),p[1]+radius*math.sin(a))
+            gl.glEnd()
         active={}
         for key,point in self.input.pointers.items():
             p=np.array(point)*self.content[2:]; previous=self.cursor_points.get(key,p)

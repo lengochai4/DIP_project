@@ -5,6 +5,7 @@ import numpy as np
 from .chemistry_controls import PointPinch
 from .dwell import DwellSelector
 from .manipulation import PinchGate
+from .physics_shortcuts import PhysicsShortcuts
 
 
 @dataclass
@@ -30,6 +31,8 @@ class PhysicsInput:
             settings['chemistry_dwell_rearm_distance'],settings['chemistry_dwell_motion_radius'])
         self.gates={}; self.claims={}; self.aims={}; self.pointers={}; self.hover={}; self.previous=None
         self.scene_group=None; self.rearm={}
+        self.shortcuts=PhysicsShortcuts(settings); self.auto_scene=False
+        self.menu_anchors={}; self.last_available={}; self.palette_needs_guard=False
         self.grab_settings={**settings,'grip_press_ratio':settings['chemistry_grip_press_ratio'],
             'grip_release_ratio':settings['chemistry_grip_release_ratio'],
             'grip_press_s':settings['chemistry_grip_press_s'],'grip_release_s':settings['chemistry_grip_release_s'],
@@ -39,6 +42,8 @@ class PhysicsInput:
         for key in list(self.claims): self._drop(key)
         self.claims.clear(); self.gates.clear(); self.aims.clear(); self.pointers.clear(); self.hover.clear()
         self.tap.reset(); self.dwell.reset(); self.previous=None; self.scene_group=None
+        self.shortcuts.reset(); self.menu_anchors.clear(); self.last_available={}
+        self.palette_needs_guard=getattr(self.host,'quick_open',False)
 
     def cancel(self):
         self.rearm.update({key:c.generation for key,c in self.claims.items()})
@@ -48,8 +53,54 @@ class PhysicsInput:
     def _drop(self,key,deliberate=False):
         claim=self.claims.pop(key,None)
         if claim and claim.target=='drag:scene': self.scene_group=None
+        if claim and self.auto_scene and claim.target=='drag:scene':
+            if not deliberate:
+                self._finish_auto_scene()
+                self.rearm[key]=claim.generation
+                self.rearm.update({k:c.generation for k,c in self.claims.items()})
+                for other in list(self.claims): self._drop(other)
+            elif not self.claims: self._finish_auto_scene()
         if claim and hasattr(self.host,'end_edit'):
             self.host.end_edit(claim.target,deliberate,bool(self.claims))
+
+    def _finish_auto_scene(self):
+        self.auto_scene=False; self.shortcuts.opens.clear(); self.shortcuts.ready.clear(); self.shortcuts.pair=None
+        if getattr(self.host,'tool',None)=='scene': self.host.tool='edit'
+        self.host.ui_dirty=True; self.host.panel_force=True
+
+    def palette_transition(self,opening=False):
+        for key,hand in self.last_available.items():
+            p=hand.landmarks[8]; point=(1-p.x if self.settings['mirror'] else p.x,p.y)
+            self.menu_anchors[key]=(hand.generation,np.array(point))
+        self.gates.clear(); self.aims.clear(); self.dwell.reset()
+        self.shortcuts.progress=None
+        if opening: self.tap.reset()
+        self.palette_needs_guard=False
+
+    def _update_shortcuts(self,available,observed,t,aspect,source_aspect):
+        if not hasattr(self.host,'shortcut_free'): return
+        busy=bool(self.claims) or self.host.mouse_claim is not None
+        free={key:(not busy and not self.host.quick_open and key not in self.menu_anchors and key not in self.aims
+                   and not (self.tap.states.get(key) and self.tap.states[key].phase in ('press','latched','cancelled'))
+                   and self.host.shortcut_free(h))
+              for key,h in available.items()}
+        result=self.shortcuts.update(available,observed,t,aspect,source_aspect,free,
+            can_quick=not busy and not self.host.quick_open,
+            can_scene=not busy and not self.host.quick_open and self.host.tool=='edit' and not self.host.model.running)
+        if result is None: return
+        if result[0]=='quick': self.host.command('quick_open:'+result[1])
+        else:
+            keys=result[1]
+            if not all(self.gates[k].slots and not self.gates[k].suspended for k in keys): return
+            self.auto_scene=True; self.host.tool='scene'; self.host.pause_edit()
+            self.host.ui_dirty=True; self.host.panel_force=True
+            self.host.model.message='Xem cảnh nhanh • Buông cả hai tay để về Chỉnh vật'
+            for key in keys:
+                hand=available[key]; grip=self._grip_point(hand); tip=hand.landmarks[8]
+                point=(1-tip.x if self.settings['mirror'] else tip.x,tip.y)
+                self.claims[key]=PhysicsClaim(hand.generation,'drag:scene',grip,self.host.capture('drag:scene'),
+                    position=np.array(grip),target_point=np.array(grip),cursor_origin=np.array(point))
+                self.tap.states.pop(key,None); self.dwell.states.pop(key,None)
 
     def _interrupt(self):
         if hasattr(self.host,'interrupt_edit'): self.host.interrupt_edit()
@@ -60,6 +111,12 @@ class PhysicsInput:
         self.previous=t
         available={h.slot:h for h in hands if len(h.landmarks)==21 and tuple(p.index for p in h.landmarks)==tuple(range(21)) and all(math.isfinite(v) for p in h.landmarks for v in (p.x,p.y,p.z))}
         observed=available if gesture_hands is None else {h.slot:h for h in gesture_hands}
+        previous=self.last_available; self.last_available=available
+        if self.palette_needs_guard: self.palette_transition(opening=True)
+        if getattr(self.host,'quick_open',False):
+            for key,h in available.items():
+                if key not in previous or previous[key].generation!=h.generation:
+                    p=h.landmarks[8]; self.menu_anchors[key]=(h.generation,np.array((1-p.x if self.settings['mirror'] else p.x,p.y)))
         self.tap.retain(available); self.dwell.retain(available)
         self.pointers={}; self.hover={}
         self.aims={k:a for k,a in self.aims.items() if k in available and a[0]==available[k].generation and a[1]==self.host.page_key and t-a[3]<=self.settings['chemistry_panel_aim_grace_s']}
@@ -69,12 +126,26 @@ class PhysicsInput:
             if claim and hand and claim.generation!=hand.generation:
                 self._drop(key); gate.reset(); claim=None
             gate.update((observed.get(key,hand),) if hand else (),t,source_aspect or aspect)
+            if key in self.menu_anchors and hand:
+                tip=hand.landmarks[8]; point=np.array((1-tip.x if self.settings['mirror'] else tip.x,tip.y))
+                generation,anchor=self.menu_anchors[key]; self.pointers[key]=tuple(point)
+                if generation!=hand.generation:
+                    self.menu_anchors[key]=(hand.generation,point.copy())
+                elif (gate.grips[key].ratio>=self.grab_settings['grip_release_ratio']
+                      and (not getattr(self.host,'quick_open',False) or
+                           np.linalg.norm((point-anchor)*np.array((aspect,1.)))>=self.settings['physics_quick_reaim_radius'])):
+                    self.menu_anchors.pop(key); gate.reset()
+                continue
             if key in self.rearm and hand:
-                if self.rearm[key]!=hand.generation or gate.grips[key].ratio>=self.grab_settings['grip_release_ratio']:
+                if self.rearm[key]!=hand.generation:
+                    self.rearm[key]=hand.generation
+                if gate.grips[key].ratio>=self.grab_settings['grip_release_ratio']:
                     self.rearm.pop(key); gate.reset()
                 continue
             if hand is None:
                 if claim:
+                    if self.auto_scene:
+                        self._drop(key); continue
                     self._interrupt()
                     claim.opening_since=None; claim.opening_samples=0
                     if gate.slots: claim.paused=True
@@ -144,6 +215,7 @@ class PhysicsInput:
             chosen=self.dwell.update(key,hand.generation,candidate,t,point,outside=action is None or bool(action and action.startswith('drag:')))
             if chosen:
                 self.tap.latch(key,hand.generation,chosen,t,point); self.host.command(chosen[1])
+        self._update_shortcuts(available,observed,t,aspect,source_aspect or aspect)
 
     def _grip_point(self,hand):
         # Palm translation excludes the two folding contact fingers. Acquisition
@@ -216,6 +288,8 @@ class PhysicsInput:
 
     def diagnostics(self):
         return {'tool':getattr(self.host,'tool','edit'),
+                'temporary_scene':self.auto_scene,'quick_open':getattr(self.host,'quick_open',False),
+                'shortcut_progress':self.shortcuts.progress,
                 'claims':{str(k):{'target':v.target,'generation':v.generation,'paused':v.paused,'finished':v.finished,
                                 'opening':v.opening_since is not None} for k,v in self.claims.items()},
                 'selection':{str(k):{'target':v.target,'phase':v.phase,'ratio':v.ratio,'cancel_reason':v.reason} for k,v in self.tap.states.items()}}

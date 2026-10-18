@@ -73,6 +73,23 @@ khi camera tắt. Không cần cài thêm thư viện so với UI hiện có.
   không phải tải lại chuyển động từ tệp.
 - **Chọn nút:** mở cái–trỏ, trỏ vào nút đến vòng vàng rồi chụm; hoặc giữ
   trỏ ổn định 1 giây. Mỗi lần chọn một lượt, mở rồi nhắm lại để chọn tiếp.
+- **Gọi lệnh nhanh:** khi đã buông vật, xòe đủ năm ngón ở vùng trống sát
+  mép trái/phải khung camera, giữ yên khoảng **0,45 giây** đến hết vòng vàng.
+  Bảng cố định ở mép có bốn mục: **Chạy/Tạm dừng** (bài tĩnh: **Kiểm tra**),
+  **Hoàn tác**, **Ẩn/Hiện bảng**, **Căn lại cảnh**. Di chuyển tay đang mở
+  để nhắm lại, rồi trỏ–chụm hoặc giữ 1 giây để chọn. Chọn xong bảng tự đóng;
+  có nút × để đóng riêng. Tay đang nằm dưới nút khi bảng xuất hiện không tự
+  chọn; sau khi đóng, cùng cú chụm không cầm xuyên xuống vật phía dưới.
+  Nếu mép trái đang bị bảng lớn che, dùng mép phải hoặc thu bảng trước.
+  Giữ nguyên thế xòe không gọi liên tục; hạ/đổi thế tay rồi gọi lại.
+- **Xem cảnh nhanh, không qua nút:** khi mô phỏng đang dừng ở **Chỉnh vật**,
+  đưa hai tay mở vào vùng trống, tránh bảng, vật và các tay nắm, rồi chụm
+  cả hai tay. Vòng vàng xác nhận trước khi vào Xem cảnh. Di hai tay để dời,
+  dang/khép để đổi cỡ, xoắn để nghiêng; còn một tay giữ thì kéo để xoay.
+  Buông cả hai tự về Chỉnh vật. Mất tay/đổi nhận dạng/ngắt nguồn sẽ hủy
+  chế độ nhanh và giữ nguyên cảnh. Đang cầm/chỉnh thông số thì thao tác cũ
+  được ưu tiên; hai tay chụm không tự chuyển chế độ lúc mô phỏng đang chạy.
+  Công cụ **Xem cảnh · 2 tay** trong Đo/Lưu vẫn giữ cách dùng cũ.
 - **Đo/Lưu:** bật/tắt vector, quỹ đạo, đồ thị, năng lượng, thước A–B; tiến
   một bước, giữ lượt A, ghi dự đoán, lưu/mở thiết lập, xuất dữ liệu. Có các
   trang công cụ; nút đổi đại lượng đồ thị cũng ở đây. A vàng, B xanh.
@@ -124,7 +141,7 @@ Model revision 3 giữ các sửa vector/nhãn đo của revision 2, sửa dữ 
 khi đổi lực, điều kiện dừng thật và giới hạn vector phóng. Thiết lập revision
 1/2 đã biết vẫn mở được thành điều kiện ban đầu; không phục
 hồi chuyển động cũ. Chi tiết rà soát: [PHYSICS_AUDIT.md](PHYSICS_AUDIT.md).
-UI schema 18 ghi nhận chính sách tương tác mới; công thức/catalog SI, Core
+UI schema 19 ghi nhận chính sách tương tác và đường tắt; công thức/catalog SI, Core
 và hành vi các tab khác giữ nguyên. Các ngưỡng tương tác là cấu hình kỹ thuật,
 không phải kết quả kiểm định độ chính xác của webcam.
 

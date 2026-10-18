@@ -116,6 +116,11 @@ The term **3D** means interaction with a rendered 3D scene. MediaPipe/model-rela
 
 #### Applied mechanics laboratory — authorized 2026-10-18
 
+The user additionally authorized two optional Physics shortcuts: a stable open
+palm in a free side-edge region summons four existing commands, and a fresh
+two-hand pinch in empty space temporarily enters scene viewing while paused.
+Existing buttons, model equations, other tabs and Core remain unchanged.
+
 After the mechanics audit, the user authorized richer direct interaction across
 the same eight models: body-sized picking, distinct velocity/parameter handles,
 contextual feedback, bounded undo/cancel, deliberate release-to-run for spring,

@@ -153,6 +153,26 @@ physics_scene_roll_limit_deg: 45.0
 physics_mass_drag_gain: 12.0
 physics_parameter_handle_offset: 0.32
 physics_preview_steps: 40
+physics_quick_edge_fraction: 0.20
+physics_quick_hold_s: 0.45
+physics_quick_min_observations: 5
+physics_quick_motion_radius: 0.045
+physics_quick_rearm_s: 0.18
+physics_quick_rearm_observations: 2
+physics_quick_finger_angle_deg: 155.0
+physics_quick_finger_reach: 1.1
+physics_quick_thumb_angle_deg: 150.0
+physics_quick_thumb_spread: 0.6
+physics_quick_min_palm_area: 0.18
+physics_shortcut_min_palm: 0.025
+physics_quick_reaim_radius: 0.05
+physics_quick_width_px: 238
+physics_quick_height_px: 238
+physics_auto_view_open_s: 0.08
+physics_auto_view_open_memory_s: 1.0
+physics_auto_view_hold_s: 0.10
+physics_auto_view_min_observations: 3
+physics_auto_view_motion_radius: 0.08
 crystal_panel_opacity: 218
 # Conservative neutral covalent editing rules; not general chemistry valences.
 chemistry_covalent_limits: {H: 1, C: 4, N: 3, O: 2, F: 1, P: 3, S: 2, Cl: 1, Br: 1, I: 1}

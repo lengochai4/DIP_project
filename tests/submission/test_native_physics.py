@@ -139,3 +139,75 @@ def test_native_physics_scenarios_hand_palette_and_fullscreen(tmp_path):
         env=dict(os.environ,MPLCONFIGDIR=str(tmp_path/'mpl')),capture_output=True,text=True,encoding='utf-8',timeout=30)
     assert result.returncode==0,result.stdout+'\n'+result.stderr
     assert 'native-physics-PASS' in result.stdout
+
+
+@pytest.mark.skipif(sys.platform!='win32',reason='Windows desktop/OpenGL regression')
+def test_native_physics_quick_palette_and_empty_space_pair_shortcut(tmp_path):
+    root=Path(__file__).resolve().parents[2]
+    code=textwrap.dedent('''
+        import sys,time
+        from dataclasses import replace
+        from pathlib import Path
+        import numpy as np,yaml
+        from OpenGL import GL as gl
+        sys.path.insert(0,str(Path('tests/submission').resolve()))
+        from test_physics_shortcuts import open_hand,two_hands,with_ratio
+        from test_point_pinch import sample
+        from submission.stem_ui.renderer import SubmissionRenderer
+        from submission.stem_ui.runtime import Snapshot
+        from submission.stem_ui.camera_space import CameraCover
+        settings=yaml.safe_load(Path('submission/stem_ui/settings.yaml').read_text(encoding='utf8'))
+        settings['window']=[800,600]
+        r=SubmissionRenderer(settings);r.enter_physics();r.open();v=r.physics
+        image=np.zeros((480,640,3),dtype=np.uint8);counter=0
+        def draw(hands=()):
+            global counter
+            counter+=1;r.events()
+            cover=CameraCover(4/3,v.space.aspect)
+            hands=[replace(h,landmarks=tuple(replace(p,x=cover.left+p.x*cover.width,y=cover.top+p.y*cover.height) for p in h.landmarks)) for h in hands]
+            r.draw(Snapshot(counter,1+counter/30,time.monotonic(),image,tuple(hands),None,None),'Shortcut QA',active=True,run_id='native-shortcuts')
+            assert gl.glGetError()==gl.GL_NO_ERROR
+        def choose(action):
+            rect=next(rect for rect,a in v.quick_targets if a=='quick:'+action)
+            nx,ny=rect.centerx/v.content[2],rect.centery/v.content[3]
+            for _ in range(5):draw([sample(1,nx=.5,ny=.7)])
+            for ratio in [1.]*8+[.4,.1,.1,.1]:draw([sample(ratio,nx=nx,ny=ny)])
+            assert not v.quick_open
+            for _ in range(5):draw([sample(.1,nx=nx,ny=ny)])
+            assert not v.input.claims
+        try:
+            draw();original=v.model.configuration()
+            for _ in range(10):draw([open_hand(ny=.28)])
+            assert v.input.shortcuts.progress and not v.quick_open
+            r.screenshot(Path(sys.argv[1])/'progress.png');draw([open_hand(ny=.28)])
+            for _ in range(14):draw([open_hand(ny=.28)])
+            assert v.quick_open and not v.model.running
+            for _ in range(35):draw([open_hand(ny=.28)])
+            assert v.quick_open and not v.model.running
+            for rect,action in v.quick_targets:assert v.quick_rect.contains(rect)
+            r.screenshot(Path(sys.argv[1])/'quick.png');draw([open_hand(ny=.28)])
+            choose('panel');assert v.collapsed
+            for _ in range(26):draw([open_hand(ny=.28)])
+            assert v.quick_open
+            choose('panel');assert not v.collapsed
+            v.command('frame');draw()
+            for _ in range(7):draw(two_hands())
+            for _ in range(6):draw(two_hands(True))
+            assert v.input.auto_scene and len(v.input.claims)==2
+            before=v.zoom
+            for _ in range(8):draw([with_ratio(open_hand(nx=.5),.1),with_ratio(open_hand(nx=.9,slot=1),.1)])
+            assert v.zoom>before and v.model.configuration()==original
+            frozen=(v.yaw,v.pitch,v.zoom,v.roll,*v.scene_pan)
+            for _ in range(5):draw(two_hands())
+            assert not v.input.auto_scene and v.tool=='edit' and not v.input.claims
+            assert np.allclose((v.yaw,v.pitch,v.zoom,v.roll,*v.scene_pan),frozen)
+            size=r.size;r.toggle_fullscreen();draw();r.toggle_fullscreen();draw()
+            assert r.size==size and not v.input.auto_scene and v.model.configuration()==original
+            assert (Path(sys.argv[1])/'quick.png').stat().st_size>0
+            print('native-shortcuts-PASS',flush=True)
+        finally:r.close()
+    ''')
+    result=subprocess.run([sys.executable,'-u','-X','utf8','-c',code,str(tmp_path)],cwd=root,
+        env=dict(os.environ,MPLCONFIGDIR=str(tmp_path/'mpl')),capture_output=True,text=True,encoding='utf-8',timeout=30)
+    assert result.returncode==0,result.stdout+'\n'+result.stderr
+    assert 'native-shortcuts-PASS' in result.stdout
