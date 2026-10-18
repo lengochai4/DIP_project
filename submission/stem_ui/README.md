@@ -32,6 +32,70 @@ tracking, filter, gesture và logic 3D/chemistry giữ nguyên.
 
 ## Cách thao tác
 
+### Vật lý ứng dụng — tám bài cơ học
+
+Chọn **Vật lý**, phím **V**, hoặc chạy trực tiếp:
+
+```powershell
+.\.venv-research\Scripts\python.exe -X utf8 -m submission.stem_ui.app --mode physics
+```
+
+Môi trường cài thông thường dùng `.venv-ui` thay cho `.venv-research`.
+Camera chỉ mở khi chọn **Bật camera**; vẫn có thể làm thí nghiệm bằng chuột
+khi camera tắt. Không cần cài thêm thư viện so với UI hiện có.
+
+- Nút tên bài mở thư viện 8 bài; dùng mũi tên phân trang khi khung nhỏ.
+- **Điều chỉnh:** kéo thanh thông số hoặc chọn −/+. Có phân trang để mọi
+  thông số đều truy cập được trên màn hình nhỏ. Hai tay có thể giữ hai tay
+  nắm khác nhau; một tay nắm chỉ thuộc một tay.
+- **Điểm vàng trên cảnh:** kéo vật/đầu phóng, lực, góc dốc, chiều dài dây,
+  vị trí tải hoặc đầu dây kéo theo bài. Cầm sẽ tạm dừng; buông rồi chọn
+  **Chạy** để bắt đầu. Mất tay không tạo cú ném/thả ngoài ý muốn.
+- **Chọn nút:** mở cái–trỏ, trỏ vào nút đến vòng vàng rồi chụm; hoặc giữ
+  trỏ ổn định 1 giây. Mỗi lần chọn một lượt, mở rồi nhắm lại để chọn tiếp.
+- **Đo/Lưu:** bật/tắt vector, quỹ đạo, đồ thị, năng lượng, thước A–B; tiến
+  một bước, giữ lượt A, ghi dự đoán, lưu/mở thiết lập, xuất dữ liệu. Có các
+  trang công cụ; nút đổi đại lượng đồ thị cũng ở đây. A vàng, B xanh.
+- **Bài học:** ứng dụng, giả thiết, công thức, chú giải và nhiệm vụ đều có
+  phân trang. Bật thử thách rồi thiết lập, ghi dự đoán và chạy/kiểm tra.
+  Đạt điều kiện cơ học không thay thế phần tự giải thích kết quả.
+- **Chạy/Dừng**, **Đặt lại**, **1×/¼×** ở cuối bảng. Space chạy/dừng mô phỏng;
+  Enter vẫn bật/tắt camera, **S** tiến một bước. Với đòn bẩy/ròng rọc,
+  **Kiểm tra** đánh giá bài tĩnh.
+- Kéo tiêu đề bảng để dời; **−** thu thành mũi tên trên viền, chọn mũi tên
+  để mở lại. Đo/Lưu có thu/phóng bảng và cảnh hoàn toàn bằng tay. Cuộn chuột
+  trên bảng đổi cỡ bảng, ngoài bảng đổi cỡ hiển thị cảnh. Nút góc nhìn đổi
+  giữa phối cảnh nghiêng và nhìn thẳng; **R** đặt lại góc/cỡ hiển thị.
+
+| Bài | Điều chỉnh / tình huống |
+|---|---|
+| Lực và ma sát | Khối lượng, lực có dấu, vị trí đầu, ma sát nghỉ/trượt, g; đẩy và dừng kiện hàng |
+| Mặt phẳng nghiêng | Góc dốc, tải, lực song song dốc, ma sát; đưa hàng lên cao |
+| Rơi và ném xiên | Độ cao, tốc độ/góc phóng, mục tiêu, g; ném bóng vào vùng đích |
+| Va chạm | Hai khối lượng/vận tốc và độ đàn hồi; động lượng, động năng trước/sau trên ray |
+| Lò xo và giảm chấn | Khối lượng, k, c, độ lệch đầu; giảm rung của mô hình dao động ngang |
+| Con lắc | Chiều dài, góc thả, khối lượng, cản quay, g; đo chu kỳ, so với xấp xỉ góc nhỏ |
+| Đòn bẩy | Hai tải, hai cánh tay đòn; cân bằng mômen của thanh lý tưởng |
+| Ròng rọc | Tải, 1–4 nhánh đỡ, dây đã kéo; lực cần, độ nâng và công của hệ lý tưởng |
+
+**Thử A/B:** chạy một cấu hình, chọn Giữ lượt A, đổi một thông số, Đặt lại
+rồi chạy B. Nếu hai lượt khác thời điểm hoặc lịch sử lực, UI ghi rõ. Lưu
+thiết lập vào `runs/ui-physics/setup.json`; mở lại bắt đầu từ thiết lập ấy,
+không phục hồi chuyển động đang chạy. Xuất tạo thư mục riêng có
+`experiment.json`, `measurements.csv` (UTF-8 BOM), `view.json` và `view.png`.
+JSON có cấu hình đầu, lịch sử lực, giả thiết, nguồn và định danh catalog.
+
+Các số đo là **SI trong mô phỏng**; kích thước hình trên camera không đo
+chiều dài/lực thật. Lực kéo có thể chỉnh giữa lượt; đổi các thông số vật lý
+khác bắt đầu một lượt mới. Va chạm là một chiều, đòn bẩy là bài tĩnh,
+ròng rọc nâng chậm lý tưởng; đây không phải bộ mô phỏng cơ khí tổng quát.
+Mô hình/phạm vi và nguồn OpenStax nằm trong `physics_labs.yaml` và mục 26
+của `docs/03_ALGORITHM_AND_EXPERIMENTS.md`. Core và số liệu báo cáo giữ nguyên.
+
+Luồng mã: `physics_labs.yaml` → `physics.py` (SI, không phụ thuộc đồ họa) →
+`physics_input.py` (chọn/giữ có chủ sở hữu) → `physics_view.py` (camera/GL/
+bảng công cụ); `renderer.py`/`app.py` chỉ tích hợp tab và ghi log cục bộ.
+
 Thư viện **Mẫu phân tử 3D** có 32 mẫu, chia 4 trang; dùng **Trang trước/Trang sau**
 để chọn. Nhận tên dựa trên đồ thị liên kết, phân biệt etanol và đimetyl ete cùng
 công thức C₂H₆O. Vị trí là hình học minh họa; không tính phản ứng/năng lượng.

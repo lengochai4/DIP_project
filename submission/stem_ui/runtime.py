@@ -173,7 +173,8 @@ class CaptureWorker:
                 revision=None
                 dirty=None
             (folder/'metadata.json').write_text(json.dumps({'kind':'submission_presentation_only',
-                'presentation_schema':'13',
+                'presentation_schema':'14',
+                'physics_catalog_sha256':hashlib.sha256(Path(__file__).with_name('physics_labs.yaml').read_bytes()).hexdigest(),
                 'render_clock':{'name':'perf_counter','implementation':time.get_clock_info('perf_counter').implementation,
                     'resolution_s':time.get_clock_info('perf_counter').resolution},
                 'chemistry_grab_motion':'observed_contact_baseline_response_handle_aim',

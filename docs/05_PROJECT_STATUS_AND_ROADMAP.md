@@ -11,13 +11,51 @@ Canonical file/section changed: 01 presentation scope; 02 Physics contract; this
 record. Code/modules affected: new submission physics model/catalog/view/input,
 minimal renderer/app integration and targeted tests/documentation.
 Algorithmic impact: presentation teaching models only. Experimental impact: none.
-Compatibility impact: separate versioned Physics state and presentation metadata.
+Compatibility impact: Physics state schema 1, UI schema 14 with catalog hash and
+compact model/control diagnostics; no full trajectory copy in every frame log.
 Existing results invalidated: no; Core, fixed/adaptive/raw baselines, replay,
 research report/evidence and accepted chemistry remain frozen.
 Git: `feat/physics-lab` branches from chemistry milestone `825ac93`; retain main
 and chemistry branch, stage task files only, test coherent commits and push the
 development branch. Personal `submission/PHAN_CONG_BAO_VE.md` stays untracked.
-Status: implementation in progress; no completed physics or readiness claim yet.
+Status: the approved eight-scenario v1 functional scope is implemented. Model
+milestone `91ce10d` contains the independent SI models/catalog/49 math/config
+regressions; the following integration commit adds hand/mouse controls, native
+GL scenes, paged compact panels, two-point SI ruler, vectors/traces/energy/plots,
+independent A/B initial/input histories, predictions, configured challenges and
+JSON/CSV/view/image export. Static scenarios require explicit Check; dynamic
+goals pause at the achieved state. Help/formula/assumption pages and panel/scene
+zoom are accessible without a mouse. Hidden tabs pause without time debt.
+
+Executed validation on the complete working tree: 867 full tests passed on
+Python 3.12.14 and Python 3.11.9, including 78 new Physics regressions. They cover
+analytic trajectories, friction stop/reversal, momentum/energy accounting,
+nonlinear pendulum period, ideal machine relationships, extreme configured
+parameters, deterministic render-time partitioning, invalid/unbounded dt config,
+file validation, exclusive two-hand claims, short-loss rebasing, dwell/pinch
+one-shot semantics, SI projection/zoom and paged compact tool/help reachability.
+The native Windows Physics test exercises all eight scenes, hand-selected
+library/collapse/restore, immediate target geometry, semantic HUD refresh and
+F11 context restoration. A chemistry-native expectation was updated to pass its
+actual mode to scene_rect; extra solid controls wrap below the four-tab bar.
+
+Additional native QA rendered 652 scene/tool frames at 640x600, 800x600,
+960x660 and 1360x860, plus 1130 synthetic-gesture frames at 640x600, 768x520
+and 1360x860. All eight labs were hand-selectable; slider/header editing,
+loss/rebase, arrow restoration, camera preview and F11 passed. All contexts
+reported zero GL error. Inspected representative screenshots and fixed stale
+HUD titles, first-frame collapse target sizing, cumulative drag projection and
+inverted pulley-load drag. Local artifacts: `runs/physics-qa/`; these use
+recorded imagery/synthetic hands and do not measure physical-hand success rate.
+
+Actual app replay smokes on both interpreters processed 30 frames through
+MediaPipe in Physics mode, rendered a screenshot and stopped the worker cleanly
+without error. Python 3.11 check_setup/pip check passed, including the new catalog.
+`git diff --check` passed. Core/config/research/report and chemistry model/input/
+view/control/manipulation diffs against `825ac93` are empty. No research metric,
+real-hand accuracy, latency target, universal-device or commercial-readiness
+claim is added. Electricity/optics and general-purpose rigid-body simulation
+remain outside this increment; accepted main and chemistry branch stay intact.
 
 ## Earlier task — chemistry pinch-selection stability correction, 2026-10-18
 

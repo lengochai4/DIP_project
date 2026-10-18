@@ -14,6 +14,7 @@ from .geometry import (Tip, FingerSelection, live_mesh, solid_mesh,
 from .geometry import bone_transforms
 from .manipulation import GrabController
 from .chemistry_view import CameraChemistryView
+from .physics_view import PhysicsView
 from .theme import BG, PANEL, INK, MUTED, ACCENT, GOLD, AUTHORS, card, glass, outline, atom_mark, header_height, scene_rect, fit_desktop_window
 
 COLORS = ((.20,.72,.90),(.28,.46,.82),(.48,.87,.94),(.47,.60,.79))
@@ -63,6 +64,7 @@ class SubmissionRenderer:
         self.droidcam_host=str(settings.get('droidcam_wifi_host',''))
         self.droidcam_port=str(settings.get('droidcam_wifi_port',4747))
         self.chemistry=CameraChemistryView(settings,self)
+        self.physics=PhysicsView(settings,self)
 
     def open(self):
         os.environ.setdefault('SDL_WINDOWS_DPI_AWARENESS',self.settings['windows_dpi_awareness'])
@@ -82,6 +84,7 @@ class SubmissionRenderer:
         gl.glNewList(self.unit_bone,gl.GL_COMPILE)
         glu.gluCylinder(self.quadric,1,1,1,10,1); gl.glEndList()
         self.chemistry.open()
+        self.physics.open()
         self.solid_lists={}
         for kind in KINDS:
             display_list=gl.glGenLists(1)
@@ -92,6 +95,7 @@ class SubmissionRenderer:
 
     def _set_display(self):
         self.chemistry.close()
+        self.physics.close()
         for display_list in getattr(self,'solid_lists',{}).values():
             gl.glDeleteLists(display_list,1)
         if hasattr(self,'texture'):
@@ -140,6 +144,7 @@ class SubmissionRenderer:
         self.last_draw_at=None
         if hasattr(self,'solid_lists'):
             self.chemistry.open()
+            self.physics.open()
             self.unit_sphere=gl.glGenLists(1)
             gl.glNewList(self.unit_sphere,gl.GL_COMPILE)
             glu.gluSphere(self.quadric,1,32,24); gl.glEndList()
@@ -155,6 +160,7 @@ class SubmissionRenderer:
 
     def close(self):
         self.chemistry.close()
+        self.physics.close()
         for display_list in getattr(self,'solid_lists',{}).values():
             gl.glDeleteLists(display_list,1)
         if hasattr(self,'texture'):
@@ -171,6 +177,7 @@ class SubmissionRenderer:
         self._window=None
 
     def reset(self):
+        if self.mode=='physics': self.physics.command('frame'); return
         if self.mode=='chemistry':
             self.chemistry.input.command('frame'); self.chemistry.input.command('compact'); return
         self.yaw=32.; self.pitch=20.; self.zoom=1.
@@ -216,7 +223,8 @@ class SubmissionRenderer:
                     else:
                         actions.append('quit')
                 elif key in (pygame.K_RETURN,pygame.K_SPACE):
-                    actions.append('toggle')
+                    if self.mode=='physics' and key==pygame.K_SPACE: self.physics.command('run')
+                    else: actions.append('toggle')
                 elif key in (pygame.K_F11,pygame.K_f):
                     self.toggle_fullscreen()
                 elif key == pygame.K_h:
@@ -227,9 +235,12 @@ class SubmissionRenderer:
                     self.reset()
                 elif key == pygame.K_s:
                     if self.mode=='chemistry': self.chemistry.input.command('order')
+                    elif self.mode=='physics': self.physics.command('step')
                     else: self.cycle_scale_mode()
                 elif key == pygame.K_p:
                     self.enter_chemistry()
+                elif key == pygame.K_v:
+                    self.enter_physics()
                 elif self.mode=='chemistry' and key==pygame.K_b:
                     self.chemistry.input.command('toggle_panel')
                 elif self.mode=='chemistry' and key in (pygame.K_e,pygame.K_o,pygame.K_t,pygame.K_z,pygame.K_y,pygame.K_BACKSPACE,pygame.K_l,pygame.K_j):
@@ -238,12 +249,15 @@ class SubmissionRenderer:
                 elif key == pygame.K_TAB:
                     if self.mode=='solid': self.mode='tips'
                     elif self.mode=='tips': self.enter_chemistry()
-                    else: self.mode='solid'; self.chemistry.input.release()
+                    elif self.mode=='chemistry': self.enter_physics()
+                    else: self.mode='solid'; self.chemistry.input.release(); self.physics.suspend()
                 elif pygame.K_1 <= key <= pygame.K_4:
                     self.kind=KINDS[key-pygame.K_1]; self.mode='solid'
+                    self.physics.suspend()
             elif event.type == pygame.MOUSEWHEEL:
                 if self.mode=='chemistry' and not self.droidcam_dialog: self.chemistry.wheel(event.y,pygame.mouse.get_pos())
-                if self.mode!='chemistry' and not self.droidcam_dialog: self.zoom=float(np.clip(self.zoom*math.exp(event.y*.08),.55,1.8))
+                elif self.mode=='physics' and not self.droidcam_dialog: self.physics.wheel(event.y,pygame.mouse.get_pos())
+                elif not self.droidcam_dialog: self.zoom=float(np.clip(self.zoom*math.exp(event.y*.08),.55,1.8))
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button==1:
                 action=next((a for rect,a in reversed(self.buttons) if rect.collidepoint(event.pos)),None)
                 if self.droidcam_dialog:
@@ -256,14 +270,17 @@ class SubmissionRenderer:
                     if action.startswith('kind:'):
                         self.kind=action.split(':')[1]; self.mode='solid'; self.menu=False
                     elif action in ('solid','tips'):
-                        self.mode=action; self.chemistry.input.release()
+                        self.mode=action; self.chemistry.input.release(); self.physics.suspend()
                     elif action=='chemistry':
                         self.enter_chemistry()
+                    elif action=='physics':
+                        self.enter_physics()
                     elif action=='camera':
                         self.camera_visible=not self.camera_visible
                     elif action=='droidcam':
                         self.droidcam_dialog=True; self.droidcam_field='host'
                         self.dragging=False; self.grab.release(); self.chemistry.input.release()
+                        self.physics.suspend()
                     elif action=='help':
                         self.help_visible=not self.help_visible
                     elif action=='fullscreen':
@@ -280,12 +297,16 @@ class SubmissionRenderer:
                         actions.append(action)
                 else:
                     if self.mode=='chemistry': self.chemistry.mouse('down',event.pos)
+                    elif self.mode=='physics': self.physics.mouse('down',event.pos)
                     else: self.dragging=True
             elif event.type == pygame.MOUSEBUTTONUP:
                 self.dragging=False
                 if self.mode=='chemistry' and event.button==1 and not self.droidcam_dialog: self.chemistry.mouse('up',event.pos)
+                if self.mode=='physics' and event.button==1 and not self.droidcam_dialog: self.physics.mouse('up',event.pos)
             elif event.type == pygame.MOUSEMOTION and self.mode=='chemistry' and not self.droidcam_dialog:
                 self.chemistry.mouse('move',event.pos)
+            elif event.type == pygame.MOUSEMOTION and self.mode=='physics' and not self.droidcam_dialog:
+                self.physics.mouse('move',event.pos)
             elif event.type == pygame.MOUSEMOTION and self.dragging:
                 self.yaw+=event.rel[0]*.3; self.pitch=float(np.clip(self.pitch+event.rel[1]*.3,-65,65))
         return actions
@@ -305,7 +326,12 @@ class SubmissionRenderer:
 
     def enter_chemistry(self):
         self.mode='chemistry'; self.camera_visible=False; self.menu=False
+        self.physics.suspend()
         self.grab.release(); self.chemistry.input.release()
+
+    def enter_physics(self):
+        self.mode='physics'; self.camera_visible=False; self.menu=False
+        self.grab.release(); self.chemistry.input.release(); self.physics.suspend()
 
     def cycle_scale_mode(self):
         modes=('uniform','stretch','distance','depth')
@@ -352,6 +378,8 @@ class SubmissionRenderer:
         self.last_draw_at=draw_started
         if self.mode=='chemistry':
             return self._draw_chemistry(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,draw_dt,draw_started)
+        if self.mode=='physics':
+            return self._draw_physics(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,draw_dt,draw_started)
         px=math.radians(self.pitch); yx=math.radians(self.yaw)
         rx=np.array(((1,0,0),(0,math.cos(px),-math.sin(px)),(0,math.sin(px),math.cos(px))))
         ry=np.array(((math.cos(yx),0,math.sin(yx)),(0,1,0),(-math.sin(yx),0,math.cos(yx))))
@@ -539,6 +567,26 @@ class SubmissionRenderer:
             return 'Hai điểm giữ quá gần • Tách hai tay rõ hơn để tiếp tục'
         return None
 
+    def _draw_physics(self,snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,dt,started):
+        w,h=self.size
+        gl.glViewport(0,0,w,h); gl.glClearColor(*(c/255 for c in BG),1)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
+        fresh=snapshot is not None and active and not self.droidcam_dialog and now-snapshot.delivered_at<=self.settings['stale_after_s']
+        self.physics.draw(snapshot,view,fresh,dt,run_id)
+        hands=snapshot.hands if fresh else ()
+        key=('physics',self.size,self.fullscreen,self.camera_visible,self.help_visible,active,error,status,
+            self.physics.model.message,self.physics.page_key,source_kind,self.droidcam_dialog,self.droidcam_host,self.droidcam_port,self.droidcam_field,
+            snapshot.frame_id if snapshot and self.camera_visible else None)
+        if key!=self.last_overlay_key:
+            overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,[],fresh,[])
+            self.last_overlay_key=key
+        else: overlay=None
+        self._overlay(overlay)
+        if self.capture_path: self._capture_back(self.capture_path); self.capture_path=None
+        self.last_draw_cpu_ms=(time.perf_counter()-started)*1000
+        pygame.display.flip(); self.clock.tick(self.settings['render_fps'])
+        return len(hands),0
+
     def _author_badge_labels(self,badge,fs):
         """Keep the author heading and every name inside the badge at small sizes."""
         lines=AUTHORS.split(' | ')
@@ -587,21 +635,22 @@ class SubmissionRenderer:
         for label,bw,action,on in top_controls:
             self._button(overlay,label,(x,cy,bw,38),action,on); x+=bw+6
         sy=hh+15
-        self._card(overlay,(20,sy-5,388,46),230)
-        for label,x,bw,action in (('Khối 3D',26,112,'solid'),('Đầu ngón',144,114,'tips'),('Hóa học AR',264,138,'chemistry')):
+        self._card(overlay,(20,sy-5,482,46),230)
+        for label,x,bw,action in (('Khối 3D',26,100,'solid'),('Đầu ngón',132,104,'tips'),('Hóa học AR',242,120,'chemistry'),('Vật lý',368,128,'physics')):
             self._button(overlay,label,(x,sy, bw,36),action,self.mode==action)
         if self.mode=='solid':
-            mx,my=(26,sy+46) if compact else (424,sy)
+            mx,my=(26,sy+46) if w<1200 else (518,sy)
             self._button(overlay,NAMES[KINDS.index(self.kind)],(mx,my,130,36),'menu')
             pygame.draw.polygon(overlay,MUTED,((mx+115,my+15),(mx+123,my+15),(mx+119,my+20)))
             label={'uniform':'Hai tay: đổi cỡ','stretch':'Hai tay: kéo dãn','distance':'Một tay: đổi cỡ','depth':'Một tay: tiến/lùi'}[self.grab.scale_mode]
-            self._button(overlay,label,(168,my,152,36) if compact else (566,sy,152,36),'scale_mode',self.grab.scale_mode!='uniform')
-        self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại góc nhìn',(w-168,sy,148,36),'reset')
+            self._button(overlay,label,(168,my,152,36) if w<1200 else (660,sy,152,36),'scale_mode',self.grab.scale_mode!='uniform')
+        if w>=800 or self.mode=='solid':
+            self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại góc nhìn',(w-168,sy+46 if w<800 else sy,148,36),'reset')
         # Scene frame is only an outline, leaving the camera unobstructed.
         pygame.draw.rect(overlay,(53,105,124,190),view,1,border_radius=18)
         pygame.draw.line(overlay,ACCENT,(vx+20,vy),(vx+92,vy),2)
         pygame.draw.line(overlay,GOLD,(vx+vw-92,vy+vh-1),(vx+vw-20,vy+vh-1),2)
-        if self.mode!='chemistry':
+        if self.mode not in ('chemistry','physics'):
             feedback=self.grab.feedback if self.mode=='solid' and self.grab.slots else ('Đưa tay vào camera để bắt đầu' if not hands else 'Duỗi ngón để tạo hình' if self.mode=='tips' else 'Chụm cái–trỏ để cầm khối')
             self._text(overlay,feedback,(vx+18,vy+16),15,ACCENT if hands else MUTED)
         for label,pos in world_labels: self._text(overlay,label,pos,13,INK)
@@ -635,7 +684,7 @@ class SubmissionRenderer:
             else:
                 self._wrap(overlay,'Bật camera để thao tác trực tiếp bằng tay.',(px+18,py+68),pw-36,17)
                 self._button(overlay,'Đổi camera',(px+18,py+min(176,max(0,vh-52)),pw-36,36),'next_camera')
-            if self.help_visible and self.mode!='chemistry' and vw<820 and vh>=240:
+            if self.help_visible and self.mode not in ('chemistry','physics') and vw<820 and vh>=240:
                 y=py+chmax+108
                 self._text(overlay,'THAO TÁC',(px+18,y),13,ACCENT); y+=26
                 lines=('Chụm để cầm; mở ngón để buông.','Một tay: dời và xoay.','Hai tay: tách / khép để đổi cỡ.') if self.mode=='solid' else ('Duỗi ngón: tạo đỉnh sống.','Gập ngón: bỏ đỉnh.','Hai tay: tạo hình cùng lúc.')
@@ -645,7 +694,7 @@ class SubmissionRenderer:
             elif vh>=240:
                 self._wrap(overlay,'Đưa một hoặc hai tay vào khung. Tránh che đầu ngón và chồng hai lòng bàn tay.',(px+18,py+chmax+108),pw-36,15)
             overlay.set_clip(previous_clip)
-        if self.help_visible and self.mode!='chemistry' and not (self.camera_visible and vw<820):
+        if self.help_visible and self.mode not in ('chemistry','physics') and not (self.camera_visible and vw<820):
             hw=min(342,vw-36); hx=vx+18; hy=vy+54
             self._card(overlay,(hx,hy,hw,184),231,True)
             self._text(overlay,'THAO TÁC BẰNG TAY',(hx+16,hy+15),13,ACCENT)
@@ -655,10 +704,10 @@ class SubmissionRenderer:
             for line in instructions.split('\n'): y=self._wrap(overlay,line,(hx+16,y),hw-32,15,INK)
             self._text(overlay,'H: ẩn hướng dẫn  •  F11: phóng to',(hx+16,hy+157),12,MUTED)
         if self.menu and self.mode=='solid':
-            for i,name in enumerate(NAMES): self._button(overlay,name,(26 if compact else 424,sy+(90 if compact else 44)+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
+            for i,name in enumerate(NAMES): self._button(overlay,name,(26 if w<1200 else 518,sy+(90 if w<1200 else 44)+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
         footer=pygame.Rect(20,h-55,w-40,45)
         self._card(overlay,footer,248)
-        if self.mode!='chemistry':
+        if self.mode not in ('chemistry','physics'):
             pygame.draw.circle(overlay,ACCENT if active else MUTED,(39,h-33),4)
             readiness=(('Camera đã mở' if fresh else 'Đang nhận hình…') if active and snapshot is not None else status)+('  •  '+str(len(hands))+' tay' if hands else '')
             self._text(overlay,readiness,(52,h-43),13,INK)
@@ -675,10 +724,11 @@ class SubmissionRenderer:
             elif len(claims)>1: label='Đang giữ bằng hai tay • Tách / khép để đổi cỡ • Mở ngón để buông'
             elif claims: label='Đang cầm • Chụm tay còn lại trong vùng trống để xoay / đổi cỡ'
             elif scene.electrons: label+=(' • Chọn Cầm cả khối để dùng hai tay đổi cỡ' if scene.edit else ' • Cầm nguyên tử, chụm tay còn lại để đổi cỡ cả lớp e')
+        elif self.mode=='physics': label=self.physics.model.message
         else: label='Kéo chuột để xem góc khác  •  Cuộn để gần / xa  •  R để đặt lại'
         if error: label=error
         if replay: label='Phát lại  •  '+label
-        if self.mode=='chemistry':
+        if self.mode in ('chemistry','physics'):
             max_label_width=max(1,footer.width-28)
             label_font=next((size for size in (20,17,15,13,12)
                 if self.fonts[size].size(label)[0]<=max_label_width),12)

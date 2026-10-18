@@ -5,6 +5,11 @@
 Giao diện đã chốt: `submission/stem_ui/`. Xem
 **[Hướng dẫn cài và chạy bằng tiếng Việt](HUONG_DAN_CHAY.md)**.
 
+Nhánh phát triển sau vấn đáp `feat/physics-lab` bổ sung tám bài cơ học ứng
+dụng, thao tác tay, đo/đồ thị, so sánh A/B và xuất dữ liệu. Xem
+[hướng dẫn tab Vật lý](submission/stem_ui/README.md#vật-lý-ứng-dụng--tám-bài-cơ-học).
+Nhánh này kế thừa mốc Hóa học `825ac93`; bản nộp/tag bên dưới vẫn được giữ riêng.
+
 Bản nộp ngày **16/10/2026**: nhánh `main`, tag `submission-2026-10-16-r2`.
 Giữ tag `submission-2026-10-16` làm bản trước khi sửa bộ cài Python.
 Chi tiết cài đặt, model SHA-256 và test tại

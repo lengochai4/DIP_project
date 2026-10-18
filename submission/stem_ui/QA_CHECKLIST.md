@@ -1,5 +1,35 @@
 # Checklist rà soát UI nộp đồ án
 
+## Nhánh phát triển Vật lý sau vấn đáp — 18/10/2026
+
+Nhánh `feat/physics-lab` kế thừa Hóa học `825ac93`; không thay bản main/tag nộp
+16/10. Tám bài cơ học có mô hình SI độc lập, tham số/giả thiết/nguồn trong
+`physics_labs.yaml`; mô hình là các trường hợp lý tưởng có giới hạn.
+
+- **867 test đạt trên Python 3.11.9 và 3.12.14**, gồm 78 kiểm tra Vật lý mới.
+  Có nghiệm ném/rơi, dừng/đổi chiều ma sát, bảo toàn động lượng/năng lượng,
+  con lắc góc lớn, lò xo có cản, mômen, quan hệ lực–đường đi–công ròng rọc,
+  biên tham số, bước thời gian và dữ liệu nhập sai.
+- Kiểm tra chọn một lần, mở/nhắm lại, hai tay sở hữu riêng tay nắm, mất tay
+  không sinh cú ném, rebase, đo SI không đổi khi zoom, phân trang thông số/
+  công cụ/hướng dẫn. Kiểm tra native Windows render 8 bài, bảng chọn bằng
+  tay giả lập, thu/mở, HUD đổi bài ngay và F11 khôi phục.
+- QA bổ sung 652 frame cảnh/công cụ ở bốn kích thước, 1130 frame thao tác
+  giả lập ở ba kích thước; GL không báo lỗi. Có thử khung 768×520, bật
+  preview camera, kéo bảng/thông số và mất tay. Đã xem ảnh đại diện.
+- App chạy phát lại thật qua MediaPipe, 30 frame mỗi interpreter; có ảnh,
+  worker dừng sạch, không báo lỗi. Không thu phiên tay mới hay suy tỷ lệ
+  nhận diện từ dữ liệu giả lập. Artifact giữ cục bộ tại `runs/physics-qa/`.
+- Bộ kiểm tra cài Python 3.11 đạt, pip không báo hỏng phụ thuộc; kiểm đủ
+  catalog 8 bài. Không thêm dependency mới.
+- Xuất JSON/CSV có cấu hình/giả thiết/nguồn và dữ liệu SI mô phỏng; giữ
+  lượt A độc lập, ghi khác thời điểm/lịch sử lực. Dữ liệu này không phải
+  số liệu thực nghiệm DIP Core. Không sửa Core, filter, replay, dữ liệu
+  báo cáo hoặc logic Hóa học đã chốt.
+- Chỉ stage source/docs/test thuộc task; `runs/`, môi trường và tài liệu
+  cá nhân không vào commit. Chưa xác nhận độ ổn định tay thật trên nhiều
+  máy hoặc mức sẵn sàng thương mại.
+
 ## Bổ sung tương thích Python ngày 16/10/2026
 
 - Đối chiếu `pyproject.toml`: source khai báo `requires-python = ">=3.11"`.

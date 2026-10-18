@@ -56,7 +56,8 @@ def main() -> int:
             importlib.import_module(name)
         except Exception as exc:
             errors.append(f"Không import được {name}: {exc}")
-    for relative in ("config/default.yaml", "config/experiments/f2.yaml", "submission/stem_ui/settings.yaml"):
+    for relative in ("config/default.yaml", "config/experiments/f2.yaml", "submission/stem_ui/settings.yaml",
+                     "submission/stem_ui/physics_labs.yaml"):
         if not (ROOT / relative).is_file():
             errors.append(f"Thiếu {relative}.")
     try:
@@ -65,6 +66,11 @@ def main() -> int:
             errors.append("Dữ liệu nguyên tố không đủ 118 hàng.")
     except (OSError, ValueError, KeyError, TypeError) as exc:
         errors.append(f"Lỗi dữ liệu nguyên tố: {exc}")
+    try:
+        from .stem_ui.physics import load_catalog
+        if len(load_catalog()['labs'])!=8: errors.append('Dữ liệu thí nghiệm vật lý không đủ 8 bài.')
+    except (OSError,ValueError,KeyError,TypeError) as exc:
+        errors.append(f'Lỗi dữ liệu vật lý: {exc}')
     model = ROOT / "models/hand_landmarker.task"
     if not model.is_file() or sha256(model) != MODEL_SHA256:
         errors.append("Thiếu model hoặc SHA-256 khác bản nộp; chạy cài đặt lại.")
