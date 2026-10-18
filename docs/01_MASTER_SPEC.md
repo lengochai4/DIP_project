@@ -155,6 +155,10 @@ Commercial potential is a direction, not a validated readiness claim.
 
 #### Post-defense chemistry refinement — authorized 2026-10-17
 
+On 2026-10-18, the user reported objects following the hand after opening
+and authorized an object-only contact-break/release correction. Panel dragging,
+menu confirmation, chemical graph rules, other tabs and Core remain unchanged.
+
 On 2026-10-18, the user requested another responsive/sharpness audit and a
 more practical alternative to the unsuccessful air-push selector, retaining
 1-second dwell. The presentation may use open-hand aim plus normalized XY

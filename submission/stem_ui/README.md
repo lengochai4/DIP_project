@@ -50,8 +50,13 @@ tracking, filter, gesture và logic 3D/chemistry giữ nguyên.
   góc nhìn như trước; chuyển tab vẫn giữ nội dung.
 
 Các khoảng giữ/ngưỡng là mặc định kỹ thuật trong `settings.yaml`, không phải
-tỷ lệ nhận diện đã đo. UI schema 20 ghi chính sách và `solid_controls` riêng
+tỷ lệ nhận diện đã đo. Từ UI schema 20 ghi chính sách và `solid_controls` riêng
 trong nhật ký; Core/Hóa học/các mô hình Vật lý giữ nguyên.
+
+UI schema 21 sửa riêng buông vật thể Hóa học: tách trỏ–cái khỏi vùng tiếp xúc
+sẽ đóng băng vật ngay trong lúc xác nhận buông. Chụm lại ngay thì gắn mốc mới,
+không kéo nhảy theo phần chuyển động còn chờ. Nếu cầm bằng hai tay, mở một
+tay sẽ đặt lại mốc cho tay còn lại. Kéo bảng và cách chọn nút giữ nguyên.
 
 ### Vật lý ứng dụng — tám bài cơ học
 

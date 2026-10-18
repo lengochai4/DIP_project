@@ -1,6 +1,32 @@
 # 05 — Project Status and Roadmap
 
-## Current task — solid palette and fingertip presentation, 2026-10-18
+## Current task — chemistry post-release drift fix, 2026-10-18
+
+Change: atom/component-only early contact-break freeze and observed release.
+Reason: user reported objects continuing to follow after opening; reproduced
+the missing freeze in both whole-component and atom edit regression cases.
+Canonical file/section changed: 01 authorized fix, 02 chemistry grab policy,
+03 presentation policy, this record.
+Code/modules affected: chemistry_input, UI settings/metadata, release regressions;
+two earlier object tests updated to the new narrower object contact band.
+Algorithmic impact: object presentation release only; panel/menu gates, shared
+GrabController, Core, physics and chemical graph rules unchanged.
+Experimental impact: none on research/model data. Compatibility impact: UI schema
+21 adds actual per-claim opening state and identifies the object release policy.
+Tests added/updated: raw-vs-filtered release, follow-tail freeze, no recapture,
+reclose rebase, two-hand release, missing input not confirming/linking.
+Existing results invalidated: no Core/model results; older UI logs retain their
+policy identity. Status: complete. Full suites passed 1091 tests on each of
+Python 3.11.9 and 3.12.14, including seven new release cases. The two raw partial-
+opening cases were observed failing before the correction. Native GL ran 37
+frames through whole-component and atom-edit capture, movement, partial raw
+opening with still-closed filtered fingers and post-release updates. Displayed
+positions/scales stayed frozen and no GL error was reported. Local script:
+runs/chemistry_release_qa.py. No physical-hand accuracy/latency claim follows.
+Preserve main and personal files. User requested no further tests after these
+completed checks; only documentation/Git handoff remains.
+
+## Earlier task — solid palette and fingertip presentation, 2026-10-18
 
 Change: touchless four-shape palette, observed geometry feedback, render-rate
 tip labels and semantic-only basic-tab UI uploads.

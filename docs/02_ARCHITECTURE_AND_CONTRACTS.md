@@ -552,6 +552,20 @@ capture ownership retain the preceding chemistry-grab-review policy.
 
 #### Chemistry grab review — authorized 2026-10-17
 
+Object-release correction, authorized 2026-10-18: only atom/component claims
+now freeze on the first raw XY contact-break observation at the configured
+object-hold limit, before the wider panel-held threshold. Pending opening stays
+latched through the hysteresis band until tight contact resumes or a configured
+duration and observation count confirm release. Freeze the displayed pose and
+discard the unrendered follow target. Either hand opening freezes the whole
+component; remaining/reclosing hands rebase without changing the displayed pose.
+Missing observations reset release confirmation and must not create bonds.
+Confirmed object release resets that gate so a partial-open hand cannot reacquire
+immediately. Panel gates/dragging, menu confirmation and shared GrabController
+remain unchanged. UI schema 21 records this object-only policy and opening state.
+This supersedes the wide held-band behavior below for objects only. Thresholds
+are engineering defaults, not measured recognition accuracy.
+
 This review supersedes the captured-palm anchor and higher response rates
 below. Restore observed filtered pinch-midpoint translation for components
 and panel handles, and index-tip translation for atomic editing, matching

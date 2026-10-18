@@ -17,6 +17,8 @@ class Claim:
     offset: np.ndarray | None = None
     depth: float = 0.
     paused: bool = False
+    opening_since: float | None = None
+    opening_samples: int = 0
 
 
 class ChemistryInput:
@@ -58,7 +60,8 @@ class ChemistryInput:
     def diagnostics(self):
         """Actual UI state for local logs, never tracking confidence."""
         return {'page':self.page,
-            'claims':{str(key):{'generation':c.generation,'kind':c.kind,'target':c.target,'paused':c.paused} for key,c in self.claims.items()},
+            'claims':{str(key):{'generation':c.generation,'kind':c.kind,'target':c.target,'paused':c.paused,
+                'opening':c.opening_since is not None} for key,c in self.claims.items()},
             'groups':{str(key):{'held_slots':list(v['controller'].slots),'suspended':v['controller'].suspended} for key,v in self.groups.items()},
             'hover':self.hover.copy(),
             'grips':{str(key):{'held':bool(gate.slots),'suspended':gate.suspended,
@@ -308,8 +311,18 @@ class ChemistryInput:
                 # Loss is cancellation; only confirmed visible opening may link.
                 self.end(key,deliberate=hand is not None)
             claim=self.claims.get(key)
+            opening=False
+            if claim and claim.kind in ('atom','group'):
+                if hand is None:
+                    # Missing time is never evidence of a deliberate drop.
+                    claim.opening_since=None; claim.opening_samples=0
+                else:
+                    opening=self._object_opening(claim,gate.grips[key].ratio,t)
+                    if (opening and claim.opening_samples>=self.settings['chemistry_object_release_observations']
+                        and t-claim.opening_since>=self.settings['chemistry_object_release_s']-1e-9):
+                        self.end(key,deliberate=True); gate.reset(); claim=None; held=False
             if claim and claim.kind in ('atom','group','panel_move','panel_resize'):
-                if hand is None or gate.suspended:
+                if hand is None or gate.suspended or opening:
                     claim.paused=True
                     if claim.kind.startswith('panel_'):
                         self.panel_base=None; self.panel_target=None; self.dock_pending=None
@@ -325,7 +338,7 @@ class ChemistryInput:
                     if claim.kind.startswith('panel_'):
                         self.grip_points[key]=self._pinch_point(hand)
             if claim and claim.kind=='atom' and claim.target in self.scene.atoms:
-                if hand is None or gate.suspended:
+                if hand is None or gate.suspended or opening:
                     self.scene.freeze((claim.target,))
                     claim.paused=True
                 else:
@@ -363,9 +376,24 @@ class ChemistryInput:
             selected=[available[k] for k,c in self.claims.items()
                       if c.kind=='group' and c.target==group and k in available]
             controller=value['controller']
-            controller.update(selected,t,space.aspect)
+            if any(c.kind=='group' and c.target==group and c.opening_since is not None for c in self.claims.values()):
+                # Freeze the displayed pose, not the latest unrendered target.
+                # With two hands, either opening pauses the whole component.
+                controller.suspended=True; controller.base=None; controller.target=controller.pose.copy()
+            else:
+                controller.update(selected,t,space.aspect)
             if controller.suspended:
                 self.scene.freeze(value['ids'])
+
+    def _object_opening(self,claim,ratio,t):
+        if ratio<=self.grab_settings['grip_press_ratio']:
+            claim.opening_since=None; claim.opening_samples=0
+        elif ratio>=self.settings['chemistry_object_hold_ratio'] and claim.opening_since is None:
+            claim.opening_since=t
+        if claim.opening_since is not None:
+            claim.opening_samples+=1
+            return True
+        return False
 
     def advance(self,dt):
         if self.panel_target is not None:

@@ -1,5 +1,19 @@
 # Checklist rà soát UI nộp đồ án
 
+## Sửa vật thể Hóa học chạy theo sau buông — 18/10/2026
+
+- Tái hiện lỗi trước khi sửa ở cả cầm phân tử và kéo nguyên tử: ngón đã mở
+  một phần nhưng bộ giữ rộng vẫn nhận cầm, khiến vật tiếp tục dịch chuyển.
+- Vật thể đóng băng sớm theo tín hiệu tiếp xúc gốc; xác nhận buông qua thời
+  gian/số quan sát, chụm lại thì gắn mốc mới. Hai tay cùng giữ được đóng băng
+  khi một tay mở; tay còn lại tiếp tục từ tư thế hiện tại, không nhảy.
+- **1091 test qua trên Python 3.11.9 và 3.12.14**, gồm bảy ca thêm. Native
+  GL 37 frame ở hai chế độ xác nhận vị trí/cỡ giữ nguyên sau buông trong các
+  ca đã chạy, không lỗi GL. Đây là kiểm tra giả lập, không phải tỷ lệ nhận
+  đúng hay độ trễ tay thật. Không chạy thêm test sau yêu cầu tiết kiệm quota.
+- UI schema 21 ghi chính sách và trạng thái đang xác nhận mở. Bảng nguyên
+  tố/chọn nút, bộ cầm dùng chung, Core, dữ liệu hóa học và các tab khác giữ nguyên.
+
 ## Hai tab đầu và hồi quy bốn tab — 18/10/2026
 
 - UI schema 20: **1084 test qua trên Python 3.11.9 và 3.12.14**, thêm 55 ca.

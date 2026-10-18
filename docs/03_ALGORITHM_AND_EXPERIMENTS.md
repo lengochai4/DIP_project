@@ -1796,3 +1796,11 @@ presentation state. No missing observation advances gesture progress. Existing
 solid motion smoothing and live-mesh equations remain unchanged. Analytic
 screen projection replaces per-tip driver queries without changing geometry.
 UI schema 20 distinguishes this policy; no Core experimental result is invalidated.
+
+### Chemistry object release correction — 2026-10-18
+
+Object-only contact-break freeze and observed release confirmation prevent
+partial opening from moving an atom/component through the wider panel-held
+band. Missing samples never complete a drop. Shared manipulation equations,
+panel/menu behavior, Core baselines and chemical graph rules are unchanged.
+UI schema 21 identifies the policy; no Core experimental result is invalidated.

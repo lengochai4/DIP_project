@@ -103,6 +103,10 @@ def test_observed_contact_can_move_object_without_moving_palm(edit):
 def test_small_recorded_threshold_crossings_do_not_interrupt_confirmed_hold(kind):
     # Values observed in schema-9 user logs; they are NOT ground-truth gestures.
     ratios=(.4559,.5139,.4785,.4731,.4671,.4970,.4616,.5228,.5997,.5679)
+    if kind!='panel':
+        # Objects now freeze on contact break; only the panel retains the old
+        # wide band. Small contact jitter below the object limit stays held.
+        ratios=(.29,.31,.32,.30,.33,.31,.29,.32,.33,.30)
     if kind=='panel':
         c,space,(nx,ny)=panel_input()
     else:
