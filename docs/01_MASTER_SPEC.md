@@ -114,6 +114,22 @@ The term **3D** means interaction with a rendered 3D scene. MediaPipe/model-rela
 
 ### Submission presentation scope — authorized 2026-10-14
 
+#### Applied mechanics laboratory — authorized 2026-10-18
+
+After accepting the chemistry interaction milestone, the user authorized a
+separate Physics tab with eight bounded teaching experiments: forces/friction,
+inclined plane, free fall/projectile motion, one-dimensional collisions,
+spring/damping, pendulum, lever equilibrium and ideal pulley systems. Include
+hand and mouse manipulation, SI parameters, measurements, plots, energy and
+force visualization, A/B comparison, educational challenges and local save/export.
+This is a set of explicit educational models, not the full general-purpose
+physics engine excluded in section 6. Model assumptions and constraints must be
+visible. Webcam gestures set simulation values; they do not measure physical
+forces, lengths or metric hand velocities. Original Core/research results and
+chemistry interaction behavior remain frozen. Novelty is the integrated learning
+workflow, not a claim of inventing the physical laws or unique market position.
+Commercial potential is a direction, not a validated readiness claim.
+
 #### Post-defense chemistry refinement — authorized 2026-10-17
 
 On 2026-10-18, the user requested another responsive/sharpness audit and a

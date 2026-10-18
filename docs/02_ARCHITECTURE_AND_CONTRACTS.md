@@ -5,6 +5,32 @@
 
 ## 1. Architectural goals
 
+### Physics presentation contract — authorized 2026-10-18
+
+The applied mechanics tab owns a pure, renderer-independent SI model and bounded
+fixed-step accumulator. It imports no Core algorithm internals and consumes the
+same immutable submission snapshots. Eight scenario-specific state equations and
+constraints replace arbitrary rigid-body simulation. Source timestamps continue
+to govern hand selection; simulation time advances independently from render
+elapsed time with configured catch-up bounds. Pausing/hidden tabs never accrue
+wall-clock debt. Visual zoom is independent of physical parameters. Native GL
+resources must survive context recreation through explicit close/open lifecycle.
+
+PointPinch and DwellSelector may be reused without changing chemistry. Targets
+are typed: menu commands, explicit parameter handles, body/launch handles and
+panel handles. Capture ownership is exclusive; generation/loss/stale/source or
+viewport discontinuities cancel edits without throwing the object. Editing
+pauses the model, rebases after loss, and requires explicit run to start. A
+second hand may manipulate another free handle; never steal a menu gesture or
+an already-owned handle. Parameter ranges, time steps, capacities and gesture
+settings are external configuration. Model-relative z is not physical depth.
+
+Local state/export has its own version and bounded validation. Simulated SI
+measurements, constraints/assumptions, A/B inputs and initial conditions must be
+preserved. They are not experiment evidence for RQ1/RQ2 or measured camera-world
+values. Unit/analytic/invariant checks and actual native renderer checks are
+required; commercial/accuracy/latency claims require separate real evidence.
+
 The system MUST be:
 
 - small enough for a final-term project;

@@ -1655,3 +1655,49 @@ Recommended final report:
 After the course prototype is validated, a research-paper branch MAY strengthen evidence through larger controlled datasets, more sessions/participants where relevant, stronger ablation, fixed/preregistered analysis, and broader failure analysis.
 
 Adding more prose without stronger evidence is not a research upgrade.
+
+## 26. Authorized educational mechanics models — 2026-10-18
+
+This presentation-only appendix implements the eight-scenario scope in 01.
+It changes no RQ, research algorithm, baseline, replay or retained evidence.
+`submission/stem_ui/physics_labs.yaml` owns parameter ranges, integration step,
+capacities, time limits, goals and primary reference URLs. Standard laws and
+classical RK4 are existing methods, not project algorithmic inventions.
+
+| Model | State/evolution and explicit limits |
+|---|---|
+| Force / incline | One translational coordinate, positive up the incline. N=mg cosθ; driving force F−mg sinθ. At zero speed static friction balances within μsN; otherwise kinetic friction opposes motion, μk≤μs. Constant-acceleration segments split at the exact stop time; re-evaluate sticking/reversal. Accumulate external work FΔx and nonnegative frictional dissipation. |
+| Projectile | Analytic constant-g planar position/velocity over each step. Solve first ground-contact time inside the step, end at contact, report pre-impact velocity. A configured time limit is not a landing or target hit. No air drag or ground bounce. |
+| Collision | Two translating centers on a frictionless 1D rail. Solve contact time from center separation; conserve momentum and apply relative restitution e∈[0,1]. Account for lost kinetic energy. One collision, no spin/deformation/contact-force waveform. |
+| Spring | Horizontal x′=v, v′=(−kx−cv)/m. RK4 also integrates dissipated energy D′=cv². No gravity term in this horizontal model. |
+| Pendulum | θ′=ω, ω′=−(g/L)sinθ−bω/(mL²), D′=bω². Solve the nonlinear equation for large angles. Measured period uses successive same-direction zero crossings with interpolation. 2π√(L/g) is separately labeled as the small-angle reference, not the measured period. |
+| Lever | Static massless horizontal beam with loads on opposite sides. Net torque m1gr1−m2gr2; no invented tilt dynamics/inertia. |
+| Pulley | Quasistatic ideal predefined supporting-branch arrangements, n=1..4. Required effort mg/n, lift s/n, input work Fs=mgh. No elastic rope, motor or free-fall dynamics. The rendered mechanism is a schematic. |
+
+Simulation advances only in configured fixed steps, independent of rendering.
+Frame catch-up is bounded and discarded wall time is logged, not silently
+reinterpreted as source timestamps. Pause/hidden tabs accrue no debt. Single
+step is explicit. Speed changes wall-time presentation, not simulated SI units.
+
+Editing pauses motion. Only force edits on forces/incline preserve ongoing
+state/work; their simulation-time input changes are retained. Other physical
+parameter edits reset initial conditions. Repeated paused edits at the same
+simulation time coalesce into one effective input event. Display zoom never
+changes physical state. Mouse/hand edit origins capture their projection and
+rebase after short observation loss; cancellation never adds an impulse.
+
+World-render geometry is illustrative. Planar meters and SI forces are defined
+by the model, not measured from webcam coordinates or model-relative z. The
+two-point ruler measures model-plane distance. Vector lengths are capped for
+legibility; numeric quantities retain their SI values. Energy may be negative
+relative to a chosen potential reference and must not be presented as an
+unsigned proportion. A/B keeps independent initial conditions, input histories,
+measurements and configuration; flag different times/multiple changes rather
+than claiming causal equivalence. JSON export records equations/assumptions,
+resolved catalog identity and references; CSV contains simulated measurements.
+
+Challenge conditions are configured mechanical criteria, not a score proving
+conceptual understanding. Static problems are checked explicitly; dynamic goals
+pause at the achieved state. Optional predictions and A/B encourage explanation.
+Numerical/analytic/invariant tests validate software against these idealizations;
+they do not establish real-device gesture accuracy or commercial readiness.

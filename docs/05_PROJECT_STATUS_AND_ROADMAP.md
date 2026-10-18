@@ -1,6 +1,25 @@
 # 05 — Project Status and Roadmap
 
-## Current task — chemistry pinch-selection stability correction, 2026-10-18
+## Current task — eight-scenario applied mechanics tab, 2026-10-18
+
+Change: promote the user-approved Physics presentation scope into active work.
+Eight bounded SI experiments, common gesture controls, measurement/plot tools,
+A/B comparison, learning challenges and local save/export are required.
+Reason: user approved the complete pre-code checklist and requested implementation
+with a coherent Git workflow and useful innovation within that scope.
+Canonical file/section changed: 01 presentation scope; 02 Physics contract; this
+record. Code/modules affected: new submission physics model/catalog/view/input,
+minimal renderer/app integration and targeted tests/documentation.
+Algorithmic impact: presentation teaching models only. Experimental impact: none.
+Compatibility impact: separate versioned Physics state and presentation metadata.
+Existing results invalidated: no; Core, fixed/adaptive/raw baselines, replay,
+research report/evidence and accepted chemistry remain frozen.
+Git: `feat/physics-lab` branches from chemistry milestone `825ac93`; retain main
+and chemistry branch, stage task files only, test coherent commits and push the
+development branch. Personal `submission/PHAN_CONG_BAO_VE.md` stays untracked.
+Status: implementation in progress; no completed physics or readiness claim yet.
+
+## Earlier task — chemistry pinch-selection stability correction, 2026-10-18
 
 Change: preserve armed aim through small movements inside the same button;
 after bounded fingertip capture, check observed palm translation relative to
