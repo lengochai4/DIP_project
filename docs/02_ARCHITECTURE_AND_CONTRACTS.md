@@ -167,6 +167,197 @@ Consumes `InteractionState` only. It MAY manage renderer/scene/application behav
 
 ## 5. Dependency direction
 
+### Additive submission presentation boundary — 2026-10-14
+
+#### Visual refresh and chemistry confirmation — authorized 2026-10-14
+
+The user requested a visual-only refresh using the supplied design/assets,
+an exact author badge, responsive controls, sharper 3D materials and a
+translucent crystal-styled panel. Processing/filter/performance telemetry
+stays in local logs; sample FPS values in mockups are omitted from the UI.
+Fullscreen button and F11 share one reversible SDL desktop-fullscreen
+transition without changing monitor resolution. They remember the current
+monitor, restore window dimensions and position, and rebuild context-owned
+resources. Stale resize events from a previous fullscreen transition must not
+resize the restored window.
+
+Chemistry panel actions now use configurable 1-second continuous fingertip
+hover with visible progress and a one-shot latch. Leaving the target, missing
+observations, identity change, timestamp discontinuity or stale input cancel
+progress. A just-activated target must not rearm through a page change until
+the pointer deliberately leaves the panel or moves to a different region.
+Pinch is reserved for object manipulation. Chemistry grab uses separate
+tight normalized thumb-index press/release thresholds; it is an image-space
+heuristic, not sensing physical contact. Existing chemical graph rules,
+history/save/load, Core gesture/filter/replay semantics remain unchanged.
+
+Following the user's chemistry continuity/zoom feedback, a confirmed closed
+grip may acquire an object upon entering its target. Opening hysteresis and
+short loss grace are configured separately for chemistry; missing input
+freezes motion and reacquisition rebases without extrapolation. In whole-
+component mode the second hand may join the held component from free space,
+but not through panel buttons. Selected electron view uses a selection volume
+around the illustrated shells. Nucleus, electron radii and selection volume
+share the stored object scale; framing includes the shell extents. UI schema
+5 adds actual dwell/claim/group state to local interaction diagnostics.
+
+The submission UI may select either the local OpenCV webcam or a presentation-
+only DroidCam Wi-Fi source using the phone's explicit IP/port. The Wi-Fi source
+reads the documented HTTP `/video` feed and emits the same raw BGR
+`FramePacket` contract. Source switching is serialized: the current live
+worker/capture must finish closing before the requested source is opened.
+The acquired BGR frames continue through the same Core preprocessing,
+landmark, filtering and gesture path; replay behavior and research baselines
+are unchanged. Network quality/latency is an input-device property and is not
+treated as a new algorithmic result.
+
+Opening the camera-settings dialog suspends scene input and cancels existing
+claims/dwell without clearing the scene. Cancel/quit during a pending source
+switch must not start a new capture. Live packets whose timestamps round to
+the same MediaPipe millisecond are skipped before Core processing, retaining
+original timestamps and logging the skipped count. Replay retains its strict
+timestamp validation; no research timing or filtering semantics change.
+
+#### Camera chemistry mode — 2026-10-14
+
+The renderer may composite the immutable mirrored BGR camera snapshot as
+the scene background. A camera-aligned perspective scene, textured spatial
+panel and atom/bond geometry use WORLD_RENDER. Hand targets map through the
+same letterboxed content rectangle and perspective ray; arbitrary stretch
+or a second mirror must not misalign targets and the camera image.
+The panel is display-anchored, not localized to a physical room. No physical
+hand/object occlusion or depth sensing is implied. Panel selection uses the
+continuous observed hover contract above, with a mouse fallback. Each hand
+may claim one object; generation/loss/stale input release claims safely.
+A latched panel selection cannot trigger repeatedly.
+
+A renderer-independent chemistry scene owns sourced element data, atoms,
+bond topology, history and explicit action modes. Whole-component grab may
+reuse the submission GrabController for one/two-hand movement/rotation/scale.
+Atomic edit moves one atom and separates bonds only in the explicit edit
+mode; nearby permitted atoms may link on deliberate release. Display atom
+radii/positions are scene units, not physical atomic distances. Formula
+counts and verified small graph labels must not claim a reaction or stability.
+Electron shells are an illustrative neutral-atom model, not electron paths
+or computed quantum orbitals. No chemistry logic is added to DIP Core.
+
+The user authorized an expanded 32-preset neutral covalent library. Presets
+must be connected, have finite display positions, valid bond orders and the
+configured complete neutral valences. Identification is exact element/bond-
+order graph matching, with candidate pruning and a bounded topology cache;
+motion/display scale must not change the molecular name. Stereochemistry,
+ions and resonance remain outside this library. The spatial palette paginates
+eight entries per page so every preset remains reachable without overlapping
+existing controls. Preset coordinates are authored illustrative scene units.
+
+Chemistry's discrete pinch gate reuses the exact raw ratio, hysteresis,
+confirmation/loss durations and generation behavior without computing an
+unused object pose. Held components continue to use GrabController. The panel
+texture depends only on visible panel content and button highlights; hovering
+atoms, moving objects or changing bond topology must not repaint an unchanged
+panel. Selection/page/control changes update immediately. Scientific graph
+labels remain owned by the scene/overlay, independently of the panel texture.
+
+#### Spatial presentation and freshness refinement — 2026-10-14
+
+The user authorized further responsiveness and spatial manipulation work.
+Only the submission live camera may use an acquisition thread with one
+replaceable pending packet. Unprocessed camera packets may be dropped;
+accepted packets retain increasing original frame IDs and timestamps.
+The filter derives dt from those timestamps. Replay never uses this pump
+and preserves every source packet in order. Capture and close belong to
+the acquisition thread; stop/retry must not overlap camera owners.
+UI schema 3 records dropped packets and acquisition-to-processing wait,
+not physical sensor-to-photon latency. Missing hands remain explicit.
+
+Presentation-only render response may increase within configured bounds
+as pose error grows; it must not predict absent hands. Within-hand model z
+may be smoothed for illustrative orientation/geometry separately from Core
+outputs, which retain their original z semantics. Two-hand rotation may
+combine screen-plane baseline twist with the average valid palm tilt.
+An explicit one-hand push/pull mode maps apparent palm-size ratios to
+bounded display z translation, never metric camera depth.
+
+Live geometry uses a convex 3D hull when the observed relative-z geometry
+is sufficiently nonplanar; near-planar points form a triangulated surface
+using observed fingertip vertices only. No automatic prism/extrusion is added
+(user-reported extra vertices, 2026-10-14). All selected fingertips remain nodes,
+including interior points. Within-hand skeletons may be shown as lit joint
+spheres/bones. Framing stays fixed within a continuous hand-identity session
+so hand translation and apparent size changes are not normalized away.
+Geometry and display filtering are submission-only, not research outputs.
+Quick refinement requested by user: fingertip scene scale is fixed by UI
+configuration, not divided by the span of currently selected tips. Initial
+centering uses the whole observed hand geometry, so folding fingers or a
+short reacquisition cannot trigger excessive automatic enlargement.
+
+#### Interaction continuity refinement — 2026-10-14
+
+The user requested fixing intermittent grab, scaling and stretching.
+Presentation slots may retain association and public filter state for a
+bounded short observation gap, while the snapshot still exposes no missing
+hand geometry. An identity generation increments on a new/reset/ambiguous
+assignment; no grab may transfer between generations. A UI-only pinch
+recognizer may apply palm-normalized hysteresis and timed press/release
+confirmation to validated filtered landmarks. It does not replace the
+canonical GestureEngine or its recorded InteractionState semantics.
+
+Short loss freezes the current object pose during a bounded grip grace
+period; it never extrapolates absent hands. Recovery rebases from the held
+pose. Expiry, identity replacement, stop and stale input terminate the hold.
+Input updates set target pose; each renderer frame independently advances
+the display pose with timestamp-derived smoothing and quaternion rotation.
+Explicit release freezes immediately, preventing post-release drift.
+
+Presentation scaling includes uniform two-hand span scaling, bounded
+one-hand apparent-palm-size scaling, and an explicit two-hand stretch mode.
+Stretch acts along the dominant object-local axis selected at attach time;
+this is display deformation, not a measured physical distance. Screen-plane
+translation and twist map through the inverse view rotation. Model-relative
+z is used only for within-hand illustrative orientation and visualization.
+UI-owned temporal-filter parameter overrides may be resolved and captured
+under condition UI_INTERACTION. They reuse the unchanged public bounded
+adaptive filter implementation, are not the F2 research parameter profile,
+and may not be mixed into G7/ROUND2 results. Their values are engineering
+defaults, not measured optima. Baseline configuration files remain unchanged.
+
+The new submission composition root may reuse public Core components
+in a separate application runtime with a provider configured for up to
+two hands of one operator. Existing RealtimeRuntime, ReplayRuntime,
+InteractionState and one-hand provider semantics are unchanged.
+
+The composition root converts provider results to validated project-owned
+LandmarkObservation objects, maintains separate filters/gesture engines per
+associated hand, and produces an immutable presentation snapshot containing:
+frame identity/time, a non-shared BGR preview copy, valid raw and filtered
+landmark tuples per hand, InteractionState per hand, and explicit illumination/ROI
+diagnostics. The renderer consumes this snapshot and application geometry,
+never provider objects or mutable algorithm state. Unavailable hands produce
+no geometry; identity discontinuity/loss clears that presentation slot.
+
+Submission raw observations identify discrete pinch/extension transitions;
+filtered landmarks still drive motion geometry. Visible opening freezes motion
+on its first observation while release confirmation completes; reacquisition
+uses the displayed pose. This avoids using motion smoothing to delay release.
+Finger selection also requires fingertip reach beyond the bent joints. Joint
+spheres of unselected fingers are omitted from the default fingertip scene.
+UI schema 6 records the raw pinch-state input basis. Renderer-only antialiasing,
+cached supersampled cards and panel mipmaps may improve display quality with
+an explicit supported-context fallback; no performance/depth claim follows.
+
+The application runtime may process accepted packets sequentially on one worker while
+the UI consumes the latest complete snapshot. Dropped presentation snapshots
+do not skip accepted packets inside that worker's filter. The live acquisition
+pump above may replace pending packets before processing. Stop/retry must not
+create overlapping camera workers. Only this presentation runtime uses
+latest-packet/snapshot delivery; research replay remains synchronous/deterministic.
+
+Preview mirroring is display-only: x becomes 1-x consistently for landmarks
+and image. FRAME_NORMALIZED to WORLD_RENDER is explicit. Any extrusion is a
+display thickness, and model-relative z is never camera depth. Separate UI
+metadata/logs identify the two-hand configuration and cannot be presented
+as the one-hand experiment schema.
+
 Allowed conceptual direction:
 
 ```text

@@ -1,0 +1,327 @@
+"""Sourced atom data and explicit, limited molecular editor behavior."""
+from dataclasses import replace
+import copy
+from pathlib import Path
+import numpy as np
+import pytest
+from test_stem_ui import SETTINGS,hand
+from submission.stem_ui.chemistry import ChemistryScene,load_elements
+from submission.stem_ui.chemistry_input import ChemistryInput
+from submission.stem_ui.camera_space import CameraSpace,SpatialPanel,letterbox
+from submission.stem_ui.geometry import bone_transforms
+
+
+def aim(nx,ny,slot=0,pinch=True,generation=0):
+    return replace(hand(slot,x=1.12-nx,y=ny+.225,pinch=pinch),generation=generation)
+
+
+def test_primary_data_contains_all_118_symbols_and_electrons_without_invented_neutrons():
+    elements=load_elements()
+    assert {e.number for e in elements.values()}==set(range(1,119))
+    assert all(sum(e.shells)==e.number for e in elements.values())
+    assert elements['C'].shells==(2,4) and elements['Fe'].shells==(2,8,14,2)
+    assert elements['Og'].number==118 and len(elements)==118
+
+
+@pytest.mark.parametrize('aspect',(4/3,16/9,9/16))
+def test_camera_projection_round_trip_matches_mirrored_display_coordinates(aspect):
+    space=CameraSpace(aspect)
+    for nx,ny,z in ((.2,.3,0.),(.8,.6,.8),(.5,.5,-.3)):
+        assert space.project(space.point(nx,ny,z))==pytest.approx((nx,ny))
+    x,y,w,h=letterbox((20,100,1000,600),aspect)
+    assert w/h==pytest.approx(aspect,rel=.005) and x>=20 and y>=100
+
+
+@pytest.mark.parametrize('aspect',(4/3,16/9,9/16))
+@pytest.mark.parametrize('full',(False,True))
+def test_spatial_panel_hits_the_visible_projected_button_and_fits_camera(aspect,full):
+    space=CameraSpace(aspect); panel=SpatialPanel(full,space)
+    panel.targets=[((200,200,100,100),'element:H')]
+    nx,ny=space.project(panel.world(250,250))
+    assert panel.intersect(*space.ray(nx,ny))[1]=='element:H'
+    assert panel.intersect(*space.ray(1.5,1.5)) is None
+    for x,y in ((0,0),(panel.pixels[0],0),(panel.pixels[0],panel.pixels[1]),(0,panel.pixels[1])):
+        nx,ny=space.project(panel.world(x,y))
+        assert 0<=nx<=1 and 0<=ny<=1
+
+
+def test_supported_bonds_enforce_explicit_neutral_valence_and_do_not_guess_metals():
+    scene=ChemistryScene(SETTINGS)
+    h=scene.add('H',(0,0,0)); o=scene.add('O',(.5,0,0)); h2=scene.add('H',(1,0,0))
+    assert scene.bond(h,o) and scene.bond(o,h2)
+    assert not scene.bond(h,h2) and not scene.bond(h,h)
+    na=scene.add('Na',(0,1,0)); cl=scene.add('Cl',(.5,1,0))
+    assert not scene.bond(na,cl)
+    assert len(scene.bonds)==2
+
+
+def test_formula_does_not_label_carbon_dioxide_without_matching_double_bonds():
+    s=ChemistryScene(SETTINGS)
+    c=s.add('C',(0,0,0)); a=s.add('O',(-.5,0,0)); b=s.add('O',(.5,0,0))
+    s.bond(c,a); s.bond(c,b)
+    assert 'đang xây dựng' in s.describe(s.component(c))
+    s.bond(c,a,2); s.bond(c,b,2)
+    assert s.describe(s.component(c)).startswith('CO₂')
+
+
+def test_join_and_break_messages_report_the_current_graph_without_guessing_reactions():
+    s=ChemistryScene(SETTINGS)
+    o=s.add('O',(0,0,0)); h1=s.add('H',(-.4,0,0)); h2=s.add('H',(.4,0,0))
+    assert s.bond(o,h1) and 'HO' in s.message
+    assert s.bond(o,h2) and s.message.startswith('Đã ghép → H₂O')
+    s.move_atom(h2,(2.,0,0))
+    assert s.message.startswith('Đã tách → ')
+    assert 'H' in s.message and 'HO' in s.message
+
+
+@pytest.mark.parametrize('key',tuple(SETTINGS['chemistry_templates']))
+def test_templates_have_supported_topology_and_match_label(key):
+    s=ChemistryScene(SETTINGS); s.add_template(key)
+    component=s.component(s.selected)
+    assert len(component)==len(SETTINGS['chemistry_templates'][key]['symbols'])
+    assert s.describe(component)==SETTINGS['chemistry_templates'][key]['label']
+    for i in component: assert s.valence(i)<=SETTINGS['chemistry_covalent_limits'][s.atoms[i].symbol]
+    s.restore(s.state())
+
+
+def test_edit_breaks_links_only_when_deliberately_moved_and_undo_restores_whole_edit():
+    s=ChemistryScene(SETTINGS); s.add_template('H2O'); original=s.state()
+    h=next(i for i,a in s.atoms.items() if a.symbol=='H')
+    s.begin_edit(); s.move_atom(h,(2.3,0,0)); s.advance(.2); s.finish_edit()
+    assert len(s.bonds)==1
+    s.undo(); assert s.state()==original
+    s.undo(redo=True); assert len(s.bonds)==1
+
+
+def test_invalid_import_is_atomic_and_preserves_existing_workspace(tmp_path):
+    s=ChemistryScene(SETTINGS); s.add_template('CH4'); before=s.state()
+    with pytest.raises(ValueError): s.restore([])
+    assert s.state()==before
+    invalid=copy.deepcopy(before); invalid['atoms'][0]['position'][0]=float('nan')
+    with pytest.raises(ValueError): s.restore(invalid)
+    assert s.state()==before
+    invalid=copy.deepcopy(before); invalid['bonds'].append(invalid['bonds'][0])
+    with pytest.raises(ValueError,match='trùng'): s.restore(invalid)
+    assert s.state()==before
+    invalid=copy.deepcopy(before); invalid['bonds'][0]['order']=1.0
+    with pytest.raises(ValueError): s.restore(invalid)
+    assert s.state()==before
+    p=tmp_path/'workspace.json'; s.save(p); s.delete_selected(); assert not s.atoms
+    s.load(p); assert s.state()==before
+
+
+def test_join_skips_an_existing_closest_bond_and_finds_new_nearby_atom():
+    s=ChemistryScene(SETTINGS)
+    o=s.add('O',(0,0,0)); h1=s.add('H',(.1,0,0)); h2=s.add('H',(-.4,0,0))
+    assert s.bond(o,h1)
+    assert s.link_nearby(o)
+    assert s.describe(s.component(o)).startswith('H₂O')
+
+
+def test_save_failure_is_reported_without_stopping_chemistry(monkeypatch):
+    s=ChemistryScene(SETTINGS); s.add_template('H2O'); before=s.state()
+    c=ChemistryInput(s,SETTINGS)
+    def denied(path): raise OSError('denied')
+    monkeypatch.setattr(s,'save',denied)
+    c.command('save')
+    assert 'Chưa lưu được' in s.message and s.state()==before
+
+
+def test_observed_hover_spawns_once_and_requires_deliberate_rearm():
+    s=ChemistryScene(SETTINGS); c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    panel=SpatialPanel(False,space); panel.targets=[((0,0,720,1000),'element:H')]; c.panel=panel
+    nx,ny=space.project(panel.world(360,400))
+    for t in np.arange(1.,6.01,.05): c.update((aim(nx,ny,pinch=False),),float(t),space)
+    assert len(s.atoms)==1 and not c.claims
+    c.update((aim(nx+.06,ny,pinch=False),),6.05,space)
+    for t in np.arange(6.1,9.21,.05): c.update((aim(nx+.06,ny,pinch=False),),float(t),space)
+    assert len(s.atoms)==2
+
+
+def test_current_palette_dwell_selects_at_one_second_and_not_before():
+    s=ChemistryScene(SETTINGS); c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    panel=SpatialPanel(False,space); panel.targets=[((0,0,720,1000),'element:H')]; c.panel=panel
+    nx,ny=space.project(panel.world(360,400))
+    for t in np.arange(1.,1.96,.05): c.update((aim(nx,ny,pinch=False),),float(t),space)
+    assert not s.atoms
+    c.update((aim(nx,ny,pinch=False),),2.,space)
+    assert len(s.atoms)==1
+
+
+def test_short_hover_and_pinch_do_not_create_atom():
+    s=ChemistryScene(SETTINGS); c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    panel=SpatialPanel(False,space); panel.targets=[((0,0,720,1000),'element:O')]; c.panel=panel
+    nx,ny=space.project(panel.world(360,400))
+    for t in (1,1.05,1.1): c.update((aim(nx,ny),),t,space)
+    assert not s.atoms
+
+
+def test_confirmed_mode_button_is_latched_instead_of_repeatedly_toggling():
+    s=ChemistryScene(SETTINGS); c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    panel=SpatialPanel(False,space); panel.targets=[((0,0,720,1000),'edit')]; c.panel=panel
+    nx,ny=space.project(panel.world(360,400))
+    for t in np.arange(1.,7.01,.05): c.update((aim(nx,ny,pinch=False),),float(t),space)
+    assert s.edit is True
+
+
+def test_tracking_loss_cancels_atom_claim_without_accidental_join():
+    s=ChemistryScene(SETTINGS); s.edit=True
+    h=s.add('H',(.5,0,0)); o=s.add('O',(.95,0,0))
+    c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    nx,ny=space.project(s.atoms[h].position)
+    c.update((aim(nx,ny),),1,space); c.update((aim(nx,ny),),1.05,space)
+    assert c.claims[0].target==h
+    c.update((),1.1,space); c.advance(.05)
+    c.update((),1.4,space)
+    assert not c.claims and not s.bonds
+
+
+def test_short_atom_tracking_loss_rebases_without_recovery_jump():
+    s=ChemistryScene(SETTINGS); s.edit=True; i=s.add('C',(.6,0,0))
+    c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    nx,ny=space.project(s.atoms[i].position)
+    c.update((aim(nx,ny),),1.,space); c.update((aim(nx,ny),),1.05,space)
+    c.update((),1.1,space); before=s.atoms[i].position.copy()
+    c.update((aim(nx+.15,ny),),1.15,space); c.advance(.05)
+    np.testing.assert_allclose(s.atoms[i].position,before)
+    assert c.claims[0].kind=='atom'
+
+
+def test_visible_confirmed_atom_release_joins_but_pending_open_does_not():
+    s=ChemistryScene(SETTINGS); s.edit=True
+    h=s.add('H',(.5,0,0)); s.add('O',(1.,0,0))
+    c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    nx,ny=space.project(s.atoms[h].position)
+    c.update((aim(nx,ny),),1.,space); c.update((aim(nx,ny),),1.05,space)
+    c.update((aim(nx,ny,pinch=False),),1.1,space)
+    assert not s.bonds
+    c.update((aim(nx,ny,pinch=False),),1.23,space)
+    assert len(s.bonds)==1
+
+
+def test_return_to_camera_workspace_preserves_graph_and_can_be_undone():
+    s=ChemistryScene(SETTINGS); s.add_template('NH3')
+    for atom in s.atoms.values(): atom.position+=np.array((5.,2.,0.)); atom.target=atom.position.copy()
+    before=s.state(); c=ChemistryInput(s,SETTINGS)
+    c.command('frame'); s.advance(.5)
+    assert max(a.position[0] for a in s.atoms.values())<2
+    assert len(s.bonds)==3
+    s.undo(); assert s.state()==before
+
+
+def test_two_hands_can_grab_distinct_atoms_without_claim_transfer():
+    s=ChemistryScene(SETTINGS); s.edit=True
+    a=s.add('H',(-.5,0,0)); b=s.add('O',(.7,0,0))
+    c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    pa,pb=space.project(s.atoms[a].position),space.project(s.atoms[b].position)
+    hs=(aim(*pa,0),aim(*pb,1))
+    c.update(hs,1,space); c.update(hs,1.05,space)
+    assert {claim.target for claim in c.claims.values()}=={a,b}
+    replacement=(aim(*pa,0,generation=1),aim(*pb,1))
+    c.update(replacement,1.1,space)
+    assert 0 not in c.claims and c.claims[1].target==b
+
+
+def test_whole_molecule_moves_with_one_hand_and_scales_with_second_without_first_frame_jump():
+    s=ChemistryScene(SETTINGS); s.add_template('H2O'); before={i:a.position.copy() for i,a in s.atoms.items()}
+    c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    ids=list(s.atoms); point=space.project(s.atoms[ids[0]].position)
+    c.update((aim(*point),),1,space); c.update((aim(*point),),1.05,space)
+    c.advance(.016)
+    for i,p in before.items(): np.testing.assert_allclose(s.atoms[i].position,p,atol=1e-10)
+    c.update((aim(point[0]+.1,point[1]),),1.1,space); c.advance(.1)
+    assert s.atoms[ids[0]].position[0]>before[ids[0]][0]
+    p0=space.project(s.atoms[ids[0]].position); p1=space.project(s.atoms[ids[1]].position)
+    c.update((aim(*p0,0),aim(*p1,1)),1.15,space)
+    c.update((aim(*p0,0),aim(*p1,1)),1.2,space)
+    span=np.linalg.norm(s.atoms[ids[0]].position-s.atoms[ids[1]].position)
+    c.update((aim(p0[0]+.1,p0[1],0),aim(p1[0]-.1,p1[1],1)),1.25,space); c.advance(.1)
+    assert np.linalg.norm(s.atoms[ids[0]].position-s.atoms[ids[1]].position)>span
+    assert all(a.scale>1 for a in s.atoms.values())
+    s.restore(s.state())
+
+
+def test_batch_bone_frames_preserve_endpoints_and_skip_collapsed_bones():
+    p=np.array(((0,0,0),(1,0,0),(0,1,0),(0,0,1),(0,0,0)),dtype=float)
+    edges=np.array(((0,1),(0,2),(0,3),(0,4)))
+    matrices,lengths=bone_transforms(p,edges)
+    assert len(matrices)==3
+    for matrix,length,end in zip(matrices,lengths,p[1:4]):
+        np.testing.assert_allclose(matrix[:3,3]+length*matrix[:3,2],end)
+        np.testing.assert_allclose(matrix[:3,:3].T@matrix[:3,:3],np.eye(3))
+
+
+def test_fast_fingertip_display_following_is_bounded_and_does_not_overshoot():
+    from submission.stem_ui.renderer import SubmissionRenderer
+    r=SubmissionRenderer(SETTINGS); start=np.zeros(3); target=np.array((1.,.5,.1))
+    followed=r._follow_point(start,target,1/60)
+    old=(1-np.exp(-2*np.pi*SETTINGS['live_response_hz']/60))*target
+    assert np.linalg.norm(followed)>np.linalg.norm(old)
+    assert np.linalg.norm(followed)<np.linalg.norm(target)
+    np.testing.assert_allclose(r._follow_point(start,start,1/60),start)
+
+
+def with_ratio(h,ratio):
+    points=list(h.landmarks)
+    points[4]=replace(points[4],x=points[8].x+.24*ratio,y=points[8].y)
+    return replace(h,landmarks=tuple(points))
+
+
+def test_chemistry_requires_close_pinch_but_small_opening_noise_does_not_release():
+    s=ChemistryScene(SETTINGS); i=s.add('C',(.6,0,0)); c=ChemistryInput(s,SETTINGS)
+    space=CameraSpace(4/3); nx,ny=space.project(s.atoms[i].position)
+    partial=with_ratio(aim(nx,ny),.4)
+    c.update((partial,),1,space); c.update((partial,),1.1,space)
+    assert not c.claims
+    closed=with_ratio(aim(nx,ny),.1)
+    c.update((closed,),1.15,space); c.update((closed,),1.2,space)
+    assert c.claims[0].kind=='group'
+    for t in (1.25,1.3,1.35): c.update((partial,),t,space)
+    assert 0 in c.claims
+    opened=aim(nx,ny,pinch=False)
+    c.update((opened,),1.4,space); c.update((opened,),1.44,space)
+    assert 0 in c.claims
+    c.update((opened,),1.55,space); assert not c.claims
+
+
+def test_closed_grip_can_acquire_atom_after_moving_into_its_visible_target():
+    s=ChemistryScene(SETTINGS); i=s.add('C',(.6,0,0)); c=ChemistryInput(s,SETTINGS)
+    space=CameraSpace(4/3)
+    c.update((aim(.9,.2),),1,space); c.update((aim(.9,.2),),1.05,space)
+    assert not c.claims
+    nx,ny=space.project(s.atoms[i].position)
+    c.update((aim(nx,ny),),1.1,space); assert c.claims[0].target==i
+
+
+def test_second_hand_in_free_space_scales_single_atom_with_electron_view_and_loss_rebases():
+    s=ChemistryScene(SETTINGS); i=s.add('Na',(.6,0,0)); s.electrons=True
+    c=ChemistryInput(s,SETTINGS); space=CameraSpace(4/3)
+    nx,ny=space.project(s.atoms[i].position)
+    c.update((aim(nx,ny),),1,space); c.update((aim(nx,ny),),1.05,space); c.advance(.02)
+    both=(aim(nx,ny),aim(.9,.6,1))
+    assert c.hit(space,.9,.6) is None
+    c.update(both,1.1,space); c.update(both,1.15,space); c.advance(.02)
+    assert len(c.claims)==2 and s.atoms[i].scale==pytest.approx(1.)
+    farther=(aim(nx-.08,ny),aim(.98,.6,1))
+    c.update(farther,1.2,space); c.advance(.15)
+    larger=s.atoms[i].scale; assert larger>1 and s.electrons
+    # Electron drawing and selected-atom picking use the same stored scale.
+    shell_radius=(.3+.095*(len(s.elements['Na'].shells)-1))*larger
+    assert c.hit(space,*space.project(s.atoms[i].position+np.array((shell_radius,0,0))))=='atom:'+str(i)
+    c.update((),1.25,space); c.advance(.1); frozen=s.atoms[i].position.copy()
+    c.update((aim(nx-.1,ny),aim(.94,.6,1)),1.3,space); c.advance(.1)
+    np.testing.assert_allclose(s.atoms[i].position,frozen)
+    assert s.atoms[i].scale==pytest.approx(larger)
+    c.update((aim(nx,ny),aim(.78,.6,1)),1.35,space); c.advance(.2)
+    assert s.atoms[i].scale<larger
+
+
+def test_frame_accounts_for_enlarged_electron_shells_and_undo_restores_scale():
+    s=ChemistryScene(SETTINGS); i=s.add('Na',(4.,2.,0.)); s.atoms[i].scale=4.; s.electrons=True
+    before=s.state(); c=ChemistryInput(s,SETTINGS)
+    c.command('frame'); c.advance(.5)
+    shell_radius=(.3+.095*2+.023)*s.atoms[i].scale
+    assert shell_radius*2<=1.8+1e-9
+    assert s.atoms[i].position[0]<2
+    assert s.electrons
+    s.undo(); assert s.state()==before

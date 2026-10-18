@@ -1,0 +1,304 @@
+window: [1360, 860]
+render_msaa_samples: 4
+windows_dpi_awareness: permonitorv2
+ui_card_supersample: 2
+panel_anisotropy: 4.0
+show_hand_skeleton: false
+render_fps: 60
+overlay_fps: 30
+camera_shutdown_timeout_s: 5.0
+droidcam_wifi_host: ''
+droidcam_wifi_port: 4747
+droidcam_open_timeout_ms: 3500
+droidcam_read_timeout_ms: 2500
+max_hands: 2
+association_max_distance: 0.25
+association_ambiguity_margin: 0.02
+stale_after_s: 0.75
+finger_enter_angle: 160
+finger_exit_angle: 145
+finger_enter_reach: 1.08
+finger_exit_reach: 1.03
+thumb_enter_angle: 135
+thumb_exit_angle: 120
+thumb_enter_spread: 0.45
+thumb_exit_spread: 0.35
+live_fit_scale: 1.5
+live_response_hz: 6.0
+live_response_gain: 8.0
+live_response_max_hz: 18.0
+live_depth_ratio: 0.06
+live_depth_exit_ratio: 0.04
+hand_joint_radius: 0.055
+hand_bone_radius: 0.032
+tip_radius: 0.09
+world_width: 5.0
+relative_z_gain: 4.0
+display_thickness: 0.0
+pose_response_hz: 5.0
+rotation_response_hz: 4.0
+scale_response_hz: 5.0
+orientation_z_response_hz: 8.0
+pose_response_gain: 4.0
+rotation_response_gain: 3.0
+scale_response_gain: 5.0
+display_response_max_hz: 16.0
+depth_translation_gain: 2.0
+depth_translation_limit: 2.0
+grip_press_ratio: 0.55
+grip_release_ratio: 0.85
+grip_press_s: 0.04
+grip_release_s: 0.10
+grip_loss_grace_s: 0.20
+association_retention_s: 0.25
+orientation_max_jump_deg: 80.0
+grab_min_scale: 0.20
+grab_max_scale: 4.0
+stretch_min: 0.25
+stretch_max: 4.0
+one_hand_scale_enabled: true
+grab_min_span: 0.10
+mirror: true
+camera_ar_fov_deg: 44.0
+chemistry_max_atoms: 32
+chemistry_scene_limit: 8.0
+chemistry_history_limit: 40
+chemistry_response_hz: 9.0
+chemistry_atom_radius: 0.16
+chemistry_join_distance: 0.68
+chemistry_break_distance: 1.12
+chemistry_panel_fps: 30
+chemistry_electron_speed: 0.35
+chemistry_cursor_response_hz: 18.0
+chemistry_dwell_s: 1.0
+chemistry_dwell_max_gap_s: 0.25
+chemistry_dwell_rearm_distance: 0.035
+chemistry_grip_press_ratio: 0.28
+chemistry_grip_release_ratio: 0.45
+chemistry_grip_press_s: 0.035
+chemistry_grip_release_s: 0.065
+chemistry_grip_loss_grace_s: 0.25
+crystal_panel_opacity: 218
+# Conservative neutral covalent editing rules; not general chemistry valences.
+chemistry_covalent_limits: {H: 1, C: 4, N: 3, O: 2, F: 1, P: 3, S: 2, Cl: 1, Br: 1, I: 1}
+chemistry_common_elements: [H, C, N, O, F, P, S, Cl]
+chemistry_templates:
+  H2O:
+    label: "H₂O • Nước"
+    symbols: ["O", "H", "H"]
+    positions: [[0, 0, 0], [-0.45, -0.35, 0], [0.45, -0.35, 0]]
+    bonds: [[0, 1, 1], [0, 2, 1]]
+  CO2:
+    label: "CO₂ • Carbon dioxide"
+    symbols: ["C", "O", "O"]
+    positions: [[0, 0, 0], [-0.65, 0, 0], [0.65, 0, 0]]
+    bonds: [[0, 1, 2], [0, 2, 2]]
+  CH4:
+    label: "CH₄ • Methane"
+    symbols: ["C", "H", "H", "H", "H"]
+    positions: [[0, 0, 0], [0.32, 0.32, 0.32], [-0.32, -0.32, 0.32], [-0.32, 0.32, -0.32], [0.32, -0.32, -0.32]]
+    bonds: [[0, 1, 1], [0, 2, 1], [0, 3, 1], [0, 4, 1]]
+  NH3:
+    label: "NH₃ • Ammonia"
+    symbols: ["N", "H", "H", "H"]
+    positions: [[0, 0.12, 0], [0.5, -0.22, 0], [-0.25, -0.22, 0.43], [-0.25, -0.22, -0.43]]
+    bonds: [[0, 1, 1], [0, 2, 1], [0, 3, 1]]
+  H2:
+    label: "H₂ • Hydrogen"
+    symbols: ["H", "H"]
+    positions: [[-0.28, 0, 0], [0.28, 0, 0]]
+    bonds: [[0, 1, 1]]
+  O2:
+    label: "O₂ • Oxygen"
+    symbols: ["O", "O"]
+    positions: [[-0.28, 0, 0], [0.28, 0, 0]]
+    bonds: [[0, 1, 2]]
+  N2:
+    label: "N₂ • Nitrogen"
+    symbols: ["N", "N"]
+    positions: [[-0.28, 0, 0], [0.28, 0, 0]]
+    bonds: [[0, 1, 3]]
+  HCl:
+    label: "HCl • Hydrogen chloride"
+    symbols: ["H", "Cl"]
+    positions: [[-0.28, 0, 0], [0.28, 0, 0]]
+    bonds: [[0, 1, 1]]
+  F2:
+    label: "F₂ • Flo"
+    symbols: ["F", "F"]
+    positions: [[-0.28, 0.0, 0.0], [0.28, 0.0, 0.0]]
+    bonds: [[0, 1, 1]]
+    formula: "F2"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Fluorine"
+  Cl2:
+    label: "Cl₂ • Clo"
+    symbols: ["Cl", "Cl"]
+    positions: [[-0.28, 0.0, 0.0], [0.28, 0.0, 0.0]]
+    bonds: [[0, 1, 1]]
+    formula: "Cl2"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Chlorine"
+  Br2:
+    label: "Br₂ • Brom"
+    symbols: ["Br", "Br"]
+    positions: [[-0.28, 0.0, 0.0], [0.28, 0.0, 0.0]]
+    bonds: [[0, 1, 1]]
+    formula: "Br2"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Bromine"
+  I2:
+    label: "I₂ • Iốt"
+    symbols: ["I", "I"]
+    positions: [[-0.28, 0.0, 0.0], [0.28, 0.0, 0.0]]
+    bonds: [[0, 1, 1]]
+    formula: "I2"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Iodine"
+  HF:
+    label: "HF • Hydrogen fluoride"
+    symbols: ["F", "H"]
+    positions: [[0.0, 0.0, 0.0], [0.27713, 0.27713, 0.27713]]
+    bonds: [[0, 1, 1]]
+    formula: "FH"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Hydrogen%20fluoride"
+  HBr:
+    label: "HBr • Hydrogen bromide"
+    symbols: ["Br", "H"]
+    positions: [[0.0, 0.0, 0.0], [0.27713, 0.27713, 0.27713]]
+    bonds: [[0, 1, 1]]
+    formula: "BrH"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Hydrogen%20bromide"
+  HI:
+    label: "HI • Hydrogen iodide"
+    symbols: ["I", "H"]
+    positions: [[0.0, 0.0, 0.0], [0.27713, 0.27713, 0.27713]]
+    bonds: [[0, 1, 1]]
+    formula: "HI"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Hydrogen%20iodide"
+  H2S:
+    label: "H₂S • Hydrogen sulfide"
+    symbols: ["S", "H", "H"]
+    positions: [[0.0, 0.0, 0.0], [0.27713, 0.27713, 0.27713], [0.27713, -0.27713, -0.27713]]
+    bonds: [[0, 1, 1], [0, 2, 1]]
+    formula: "H2S"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Hydrogen%20sulfide"
+  H2O2:
+    label: "H₂O₂ • Hydrogen peroxide"
+    symbols: ["O", "O", "H", "H"]
+    positions: [[-0.35, 0.0, 0.0], [0.35, 0.0, 0.0], [-0.51, -0.45255, 0.0], [0.51, 0.45255, 0.0]]
+    bonds: [[0, 1, 1], [0, 2, 1], [1, 3, 1]]
+    formula: "H2O2"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Hydrogen%20peroxide"
+  PH3:
+    label: "PH₃ • Phosphine"
+    symbols: ["P", "H", "H", "H"]
+    positions: [[0.0, 0.0, 0.0], [0.27713, 0.27713, 0.27713], [0.27713, -0.27713, -0.27713], [-0.27713, 0.27713, -0.27713]]
+    bonds: [[0, 1, 1], [0, 2, 1], [0, 3, 1]]
+    formula: "H3P"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Phosphine"
+  C2H6:
+    label: "C₂H₆ • Etan"
+    symbols: ["C", "C", "H", "H", "H", "H", "H", "H"]
+    positions: [[-0.35, 0.0, 0.0], [0.35, 0.0, 0.0], [-0.51, -0.45255, 0.0], [-0.51, 0.22627, -0.39192], [-0.51, 0.22627, 0.39192], [0.51, 0.45255, 0.0], [0.51, -0.22627, -0.39192], [0.51, -0.22627, 0.39192]]
+    bonds: [[0, 1, 1], [0, 2, 1], [0, 3, 1], [0, 4, 1], [1, 5, 1], [1, 6, 1], [1, 7, 1]]
+    formula: "C2H6"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Ethane"
+  C2H4:
+    label: "C₂H₄ • Eten"
+    symbols: ["C", "C", "H", "H", "H", "H"]
+    positions: [[-0.35, 0.0, 0.0], [0.35, 0.0, 0.0], [-0.59, 0.41569, 0.0], [-0.59, -0.41569, 0.0], [0.59, -0.41569, 0.0], [0.59, 0.41569, 0.0]]
+    bonds: [[0, 1, 2], [0, 2, 1], [0, 3, 1], [1, 4, 1], [1, 5, 1]]
+    formula: "C2H4"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Ethylene"
+  C2H2:
+    label: "C₂H₂ • Etin"
+    symbols: ["C", "C", "H", "H"]
+    positions: [[-0.35, 0.0, 0.0], [0.35, 0.0, 0.0], [-0.83, 0.0, 0.0], [0.83, 0.0, 0.0]]
+    bonds: [[0, 1, 3], [0, 2, 1], [1, 3, 1]]
+    formula: "C2H2"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Acetylene"
+  C3H8:
+    label: "C₃H₈ • Propan"
+    symbols: ["C", "C", "C", "H", "H", "H", "H", "H", "H", "H", "H"]
+    positions: [[-0.57, 0.4, 0.0], [0.0, 0.0, 0.0], [0.57, 0.4, 0.0], [-0.57099, 0.67713, 0.39192], [-0.96092, 0.12147, 0.0], [-0.57099, 0.67713, -0.39192], [0.00227, -0.46601, 0.115], [0.09839, -0.06704, -0.465], [0.83095, 0.30669, -0.39192], [0.44101, 0.86234, 0.0], [0.83095, 0.30669, 0.39192]]
+    bonds: [[0, 1, 1], [1, 2, 1], [0, 3, 1], [0, 4, 1], [0, 5, 1], [1, 6, 1], [1, 7, 1], [2, 8, 1], [2, 9, 1], [2, 10, 1]]
+    formula: "C3H8"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Propane"
+  CH3OH:
+    label: "CH₃OH • Metanol"
+    symbols: ["C", "O", "H", "H", "H", "H"]
+    positions: [[-0.35, 0.0, 0.0], [0.35, 0.0, 0.0], [-0.51, -0.45255, 0.0], [-0.51, 0.22627, -0.39192], [-0.51, 0.22627, 0.39192], [0.51, 0.45255, 0.0]]
+    bonds: [[0, 1, 1], [0, 2, 1], [0, 3, 1], [0, 4, 1], [1, 5, 1]]
+    formula: "CH4O"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Methanol"
+  C2H5OH:
+    label: "C₂H₅OH • Etanol"
+    symbols: ["C", "C", "O", "H", "H", "H", "H", "H", "H"]
+    positions: [[-0.7, 0.0, 0.0], [0.0, 0.0, 0.0], [0.23, 0.66, 0.0], [-0.86, -0.45255, 0.0], [-0.86, 0.22627, -0.39192], [-0.86, 0.22627, 0.39192], [0.24378, -0.37914, 0.165], [0.09839, -0.06704, -0.465], [-0.14469, 0.96001, 0.0]]
+    bonds: [[0, 1, 1], [1, 2, 1], [0, 3, 1], [0, 4, 1], [0, 5, 1], [1, 6, 1], [1, 7, 1], [2, 8, 1]]
+    formula: "C2H6O"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Ethanol"
+  CH3OCH3:
+    label: "CH₃OCH₃ • Đimetyl ete"
+    symbols: ["C", "O", "C", "H", "H", "H", "H", "H", "H"]
+    positions: [[-0.57, 0.4, 0.0], [0.0, 0.0, 0.0], [0.57, 0.4, 0.0], [-0.57099, 0.67713, 0.39192], [-0.96092, 0.12147, 0.0], [-0.57099, 0.67713, -0.39192], [0.83095, 0.30669, -0.39192], [0.44101, 0.86234, 0.0], [0.83095, 0.30669, 0.39192]]
+    bonds: [[0, 1, 1], [1, 2, 1], [0, 3, 1], [0, 4, 1], [0, 5, 1], [2, 6, 1], [2, 7, 1], [2, 8, 1]]
+    formula: "C2H6O"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Dimethyl%20ether"
+  CH2O:
+    label: "CH₂O • Formaldehyde"
+    symbols: ["C", "O", "H", "H"]
+    positions: [[-0.35, 0.0, 0.0], [0.35, 0.0, 0.0], [-0.59, 0.41569, 0.0], [-0.59, -0.41569, 0.0]]
+    bonds: [[0, 1, 2], [0, 2, 1], [0, 3, 1]]
+    formula: "CH2O"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Formaldehyde"
+  CH3CHO:
+    label: "CH₃CHO • Acetaldehyde"
+    symbols: ["C", "C", "O", "H", "H", "H", "H"]
+    positions: [[-0.606, -0.35, 0.0], [0.0, 0.0, 0.0], [0.0, 0.7, 0.0], [-0.51822, -0.8219, 0.0], [-0.85772, -0.23408, -0.39192], [-0.85772, -0.23408, 0.39192], [0.40322, -0.22845, -0.125]]
+    bonds: [[0, 1, 1], [1, 2, 2], [0, 3, 1], [0, 4, 1], [0, 5, 1], [1, 6, 1]]
+    formula: "C2H4O"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Acetaldehyde"
+  CH3COCH3:
+    label: "CH₃COCH₃ • Acetone"
+    symbols: ["C", "C", "C", "O", "H", "H", "H", "H", "H", "H"]
+    positions: [[-0.606, -0.35, 0.0], [0.0, 0.0, 0.0], [0.606, -0.35, 0.0], [0.0, 0.7, 0.0], [-0.51822, -0.8219, 0.0], [-0.85772, -0.23408, -0.39192], [-0.85772, -0.23408, 0.39192], [0.97089, -0.03814, 0.0], [0.63138, -0.62596, -0.39192], [0.63138, -0.62596, 0.39192]]
+    bonds: [[0, 1, 1], [1, 2, 1], [1, 3, 2], [0, 4, 1], [0, 5, 1], [0, 6, 1], [2, 7, 1], [2, 8, 1], [2, 9, 1]]
+    formula: "C3H6O"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Acetone"
+  HCOOH:
+    label: "HCOOH • Axit fomic"
+    symbols: ["C", "O", "O", "H", "H"]
+    positions: [[0.0, 0.0, 0.0], [0.0, 0.7, 0.0], [0.606, -0.35, 0.0], [-0.43354, -0.20546, 0.015], [0.97089, -0.03814, 0.0]]
+    bonds: [[0, 1, 2], [0, 2, 1], [0, 3, 1], [2, 4, 1]]
+    formula: "CH2O2"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Formic%20acid"
+  CH3COOH:
+    label: "CH₃COOH • Axit axetic"
+    symbols: ["C", "C", "O", "O", "H", "H", "H", "H"]
+    positions: [[-0.606, -0.35, 0.0], [0.0, 0.0, 0.0], [0.0, 0.7, 0.0], [0.606, -0.35, 0.0], [-0.51822, -0.8219, 0.0], [-0.85772, -0.23408, -0.39192], [-0.85772, -0.23408, 0.39192], [0.97089, -0.03814, 0.0]]
+    bonds: [[0, 1, 1], [1, 2, 2], [1, 3, 1], [0, 4, 1], [0, 5, 1], [0, 6, 1], [3, 7, 1]]
+    formula: "C2H4O2"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Acetic%20acid"
+  HCN:
+    label: "HCN • Hydrogen cyanide"
+    symbols: ["C", "N", "H"]
+    positions: [[0.0, 0.0, 0.0], [0.65, 0.0, 0.0], [-0.48, 0.0, 0.0]]
+    bonds: [[0, 1, 3], [0, 2, 1]]
+    formula: "CHN"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Hydrogen%20cyanide"
+  CS2:
+    label: "CS₂ • Carbon disulfide"
+    symbols: ["S", "C", "S"]
+    positions: [[-0.7, 0.0, 0.0], [0.0, 0.0, 0.0], [0.7, 0.0, 0.0]]
+    bonds: [[0, 1, 2], [1, 2, 2]]
+    formula: "CS2"
+    source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Carbon%20disulfide"
+# Presentation defaults for faster response; not the F2 research profile.
+filter_overrides:
+  adaptive:
+    base_cutoff_hz: 2.5
+    beta_min: 0.0
+    beta_base: 0.6
+    beta_max: 4.0
+    velocity_gain: 1.2
+    velocity_max: 10.0
+    final_cutoff_min_hz: 2.5
+    final_cutoff_max_hz: 15.0

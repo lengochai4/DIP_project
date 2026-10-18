@@ -1,4 +1,384 @@
-## 2. Current implementation evidence
+# 05 — Project Status and Roadmap
+
+## Python compatibility correction — 2026-10-16
+
+`pyproject.toml` remains the package authority with `requires-python = ">=3.11"`.
+The Windows bootstrap previously narrowed this to exactly Python 3.12; corrected
+to accept the declared floor on x64 and let pip resolve compatible wheels.
+The 3.12 dependency snapshot remains an explicit `--locked` reproduction mode,
+not a restriction on normal 3.11 installation. Setup records the actual resolved
+environment under `runs/ui-install/environment.json`.
+
+Executed a fresh Python 3.11.9 installation in an isolated source directory:
+model download/hash and initialization passed, pip check passed, 667 full tests
+passed, and all three app modes opened/closed for 30 native event iterations each
+with the camera off. All screenshots were inspected. Python 3.12.14 also passed
+667 tests. This does not assert compatibility of untested future Python versions.
+
+Core algorithms/configuration, presentation gestures/renderer and report evidence
+are unchanged. Existing experiment results remain tied to their original recorded
+environment; the new flexible installer does not regenerate or replace them.
+The corrected handoff uses tag `submission-2026-10-16-r2`; the prior tag is retained.
+The source ZIP should be submitted intact with the Word report separately.
+Raw experimental video is local and requires a separate dataset handoff only if
+the recipient needs to rerun the recorded experiments from source video.
+
+## Submission handoff — 2026-10-16
+
+The user accepted the current UI and authorized finalizing it on `main`.
+The submission is identified by tag `submission-2026-10-16`; older UI branches
+remain historical and are not required for installation or demonstration.
+The primary recipient instructions are `HUONG_DAN_CHAY.md` and the root README.
+
+Windows/Python 3.12 x64 setup now creates a separate `.venv-ui`, installs the
+recorded dependency snapshot, downloads version 1 of the official Hand Landmarker
+model and verifies its SHA-256. No environment or model binary is committed.
+The explicit setup checker verifies imports/assets, installed versions and
+model initialization without opening a camera. Source-clean installation was
+executed in a separate directory with a new virtual environment: setup passed,
+`pip check` reported no broken requirements and all 659 tests passed. The real
+app opened/closed in solid, tips and chemistry modes for 30 native event loops
+per mode with the camera off; all three screenshots were inspected.
+
+Core source, research configuration, UI renderer/settings and interaction logic
+remain the accepted `92d0831` behavior. Report conclusions and recorded research
+data are unchanged. This handoff does not claim a new physical webcam session
+or universal driver/latency/accuracy guarantees. The Word report is submitted
+separately; generated reports, raw video/logs and private study notes are not
+part of the source repository. Future feature work should start on a new branch.
+
+## Current task update — 2026-10-14
+
+Chemistry AR continuity refinement: inspected actual UI session diagnostics
+and removed unnecessary panel rebuilds triggered by atom hover or graph changes.
+Only visible content/button highlights invalidate that texture; semantic changes
+refresh immediately. A lightweight PinchGate shares raw pinch/hysteresis/loss
+semantics with GrabController but omits unused pose/orientation work; actual held
+component movement still uses GrabController. No gesture thresholds, Core
+equations or report results changed. Tests cover gate equivalence during opening,
+brief loss/generation/discontinuity and panel reuse/content refresh. Executed:
+200 submission tests, 654 full tests passed; actual GL check ran 180 synthetic
+frames with one/two-hand group hold and visible opening, finite bounded poses,
+and one static compact-panel texture upload. This is engineering regression
+evidence, not a measured physical hand latency/smoothness improvement.
+
+Expanded chemistry library: user-authorized 32 neutral covalent presets in four
+pages of eight entries. Graphs/finite illustrative coordinates are validated at
+startup. Formula and exact element/bond-order matching distinguish ethanol from
+dimethyl ether and remain independent of atom IDs or position. Candidate pruning
+and a bounded topology cache replace factorial permutation enumeration. Semantic
+changes refresh names/labels immediately. Finger presentation clears invalid or
+misindexed observations instead of retaining vertices. Core/research parameters,
+atomic data and report results are unchanged. Executed: 196 submission tests,
+650 full-project tests passed; all 32 presets rendered with native event polling
+and forced GC; four pages/targets checked and representative screenshots inspected.
+Sources/limits are recorded in submission/stem_ui/data/README.md. No physical
+reaction, energy, depth or new real-camera accuracy result is claimed.
+
+Startup crash correction: the borrowed Pygame SDL Window wrapper is now owned
+by the renderer until display replacement/close. Pygame 2.6.1 registers its
+raw pointer as SDL window data; allowing the wrapper to die before event polling
+caused a native access violation. Reproduced in the normal idle app, fixed with
+a persistent reference, and verified with a real event loop under forced GC
+and repeated F11 transitions. A subprocess regression now checks exit status,
+event polling and restore after native fullscreen. Full suite: 580 passed.
+Normal app launch was checked; Windows reports the window responding.
+
+Submission source convenience: the small DroidCam control now opens direct
+Wi-Fi settings (phone IP + port, default 4747) and uses DroidCam's HTTP
+`/video` feed. The last valid endpoint is stored locally for reuse. Switching
+between local webcam and DroidCam is serialized so the current capture worker
+must finish closing before the requested source starts. Only the presentation
+live FrameSource changes; Core preprocessing/tracking/filter/gesture,
+ReplayRuntime and frozen report results are unchanged. Verification: direct
+endpoint/FramePacket/error-path tests pass; an app-level webcam -> DroidCam ->
+webcam test fails on any overlapping live worker and currently passes. Final
+Latest audit also covers delayed camera closure, cancel/quit during switching,
+corrupt saved preferences/workspaces, save failure, existing-bond selection,
+modal input suspension and live network bursts sharing one detector millisecond.
+Final regression: 125 submission tests and 579 full-project tests passed.
+Actual renderer check: 90 synthetic frames across three window sizes/modes,
+modal scene freeze, fullscreen button path and F11 restore passed; screenshots
+inspected. A reported fullscreen defect was reproduced from offset (280,180):
+desktop fullscreen now reaches origin (0,0) at 1920x1200 on this monitor and
+restores (280,180) at 1360x860. F11 and queued resize regression checks pass.
+Two recorded-source MediaPipe runs processed 30 frames each in tips/chemistry,
+observed two hands/up to ten tips and stopped without error. A loopback HTTP
+MJPEG stream produced three real OpenCV/FFmpeg frames
+with valid BGR shape and increasing timestamps. A physical phone Wi-Fi session
+was not measured. `git diff --check` is clean. Checklist is recorded in
+`submission/stem_ui/QA_CHECKLIST.md`; Core/report results remain frozen.
+
+Quick user-requested correction: fingertip framing now uses a configured fixed
+scale and whole-hand centering, avoiding inverse small-tip-span magnification
+when fingers fold or identity reacquires. Chemistry dwell default is 1 second;
+the panel label reads the resolved setting. Canonical change: 02/5; modules:
+submission renderer/settings/chemistry_view and tests. Presentation only;
+Core/report results unchanged. Full suite 566 passed; explicit test confirms
+selection at one second and no earlier activation.
+
+Latest reported defect fix: aliased/blurry rendering, delayed chemical release
+and extra fingertip vertices. Change: immutable HandView adds validated raw
+landmarks beside filtered motion landmarks; UI pinch/extension use raw input,
+opening freezes before timed release. Reach guards exclude straight segments
+folded back toward the palm. Live surfaces/hulls retain observed vertices only;
+no prism extrusion or default skeleton joint markers. Renderer requests MSAA
+with context-error fallback, DPI-aware windows, cached supersampled cards/logo,
+native-sized panel glyphs and mipmap/anisotropy. Stable chemistry overlays reuse
+their texture. Reason: user's reported live defects. Canonical section: 02/5;
+code: submission runtime/manipulation/geometry/renderer/chemistry_view/theme/
+app/settings and submission tests. Algorithmic impact: presentation only;
+canonical Core gestures/filter equations unchanged. Experimental impact: UI
+schema 6 identifies raw discrete-state basis and observed-only vertices;
+actual renderer samples are diagnostics. Compatibility: UI HandView raw tuple
+is optional for older synthetic fixtures. Tests updated for observed-only
+near-planar faces and quicker release; new cases cover delayed filtered release,
+two-to-one-hand rebase, 0–10 vertices and backward-folded fingers.
+Existing results invalidated: no; Core/report/baseline profiles untouched.
+Executed: 111 submission tests, 565 full tests passed. 76-frame synthetic GL
+acceptance verifies raw opening while filtered points stay closed, two-tip
+nodes, overlay reuse and injected context-failure fallback (actual default
+4 samples, fallback 0). 139-frame window/interaction and 697-frame chemistry
+graph regressions reran. Provider replay 60 frames observed 2 hands/up to 10
+tips and stopped cleanly (ui-20261014-175453-431303). Screenshots inspected.
+No new live session or physical latency/FPS claim.
+
+Current authorized refinement completed: visual refresh from the user's
+submission design/assets, exact author badge, responsive glass/cyan/gold UI,
+sharper lit atoms, chemistry 3-second observed hover confirmation and close
+pinch manipulation. Per latest user instruction, processing/performance
+telemetry is omitted from the product UI. Controls/functions remain available.
+Follow-up chemistry feedback is addressed by separate pinch hysteresis/loss
+grace, entering a target with an already-confirmed grip, render-rate cursor
+following, second-hand free-space join for whole-component scale/rotation,
+electron selection volume and shared object/electron scale. Framing includes
+electron-shell extents. Progress is rendered directly in GL without texture
+reuploads. Fullscreen button/F11/Esc restore dimensions/context resources.
+Canonical changes: 02 section 5; no algorithm/baseline/protocol changes.
+UI metadata schema 5 logs actual dwell/claim/group diagnostics; research
+schema, G7/ROUND2 data, report and Core code/config remain unchanged.
+Executed validation: 96 submission tests, full suite 550 passed. Synthetic
+OpenGL acceptance 697 frames covers palette/graph/history/window regression;
+additional 139 frames cover dwell progress, two-hand electron-atom resize,
+short-loss freeze/rebase, button/F11/Esc in all three modes and layouts at
+960x660, 1360x860 and 1920x1080. Screenshots were visually inspected. Actual
+provider replay processed 60 mirrored two-hand-fixture frames, observed
+2 hands/up to 10 tips and stopped cleanly (ui-20261014-173237-405165).
+These are recorded/synthetic validations, not new live operator validation,
+physical latency/FPS evidence or VR/commercial certification.
+
+Camera chemistry demonstration (current authorized addition):
+
+Change: isolated camera-composited mode with perspective spatial panel,
+hover/confirmed-pinch targeting, full offline 118-element palette, lit atoms,
+neutral-atom electron-shell illustration, limited neutral covalent bond
+editing, component manipulation and history/local save/load. User clarified
+that both atomic and molecular views are wanted, with molecules prioritized.
+Reason: user requested VR-inspired creation/manipulation directly on camera.
+Canonical file/section changed: 01 section 7 and 02 section 5; 03 unchanged.
+Code/modules affected: submission camera_space/chemistry/chemistry_input/
+chemistry_view plus renderer/app/settings, tests and source documentation.
+Algorithmic impact: application-only picking/editor semantics; no Core
+provider model, equation, baseline config or research gesture changes.
+Experimental impact: UI schema 4 captures molecular graph and atomic-data
+file SHA. No camera-relative/physical atomic lengths or reaction results.
+Compatibility impact: UI adds chemistry mode; one-hand Core contracts and
+ReplayRuntime stay unchanged. Existing UI workspaces use validated schema 1.
+Existing results invalidated: no; G7/ROUND2 source/config/results unchanged.
+Primary data: PubChem periodic-table JSON snapshot, 118 rows with preserved
+electron configurations. Direct local download returned NCBI block HTML;
+that HTML was discarded. All 2,505 web-readable JSON lines were captured,
+parsed and normalized, then all neutral electron totals validated against Z.
+IUPAC supplies the table reference; conservative covalent rules/reference
+graphs are documented with OpenStax sources. No isotope/neutron guesses.
+Templates have illustrative scene-unit coordinates, not optimized geometry.
+Recognized molecular names require graph matching, not formula alone.
+Scope limits: no world localization, real hand/object occlusion, metric
+camera depth, force fields, quantum orbital or reaction simulation.
+
+Fingertip refinement: profile inspection of 90 synthetic render frames
+identified repeated per-bone NumPy operations; batched orthonormal frames
+replace those calls. Bounded error-adaptive display following improves
+large-move response without predicting absent observations. Core filtering
+and existing experiment profiles are unchanged. No measured physical latency
+or FPS improvement is claimed from this profiling run.
+
+Executed chemistry checks: 33 targeted tests, 83 submission tests and
+full regression suite 537 passed. Existing manipulation/window controls
+also re-executed successfully. Synthetic
+OpenGL acceptance completed 179 frames: spatial palette selection, three
+spawns, H2O topology construction, atom separation, undo, full periodic
+table, resize and fullscreen restore. Actual provider replay on the existing
+mirrored two-hand fixture observed 30 frames / 2 hands / up to 10 tips in
+chemistry mode (ui-20261014-164451-017213), clean shutdown. This is recorded/
+synthetic-source evidence, not new live operator chemistry validation.
+
+Spatial/freshness refinement (following the continuity fix):
+
+Change: live-only single-slot acquisition, bounded error-adaptive display
+following, smoothed illustrative palm z, two-hand palm tilt plus baseline
+twist, explicit one-hand push/pull, nonplanar fingertip 3D convex hull with
+fitted-plane display-prism fallback, volumetric hand joints/bones and stable
+session framing. Reuse overlay surfaces/textures and cache preview thumbnails;
+overlay refresh and render following run at independent configured cadences.
+Sphere poles were corrected to closed, nondegenerate faces; sphere uses
+smooth lighting without the dense wire grid. Floor shadows are display cues.
+Reason: user reported flat fingertip geometry and lingering delay.
+Canonical file/section changed: 02 section 5 presentation boundary.
+Code/modules affected: submission/stem_ui acquisition/runtime/manipulation/
+geometry/renderer/app/settings and submission tests.
+Algorithmic impact: UI only; Core x/y filtering and model z pass-through
+contracts remain unchanged. Dropped live packets keep original times/IDs.
+Experimental impact: UI schema 3 identifies latest_camera_single_slot vs
+ordered_replay and logs actual dropped packets/queue wait. Rotation, mesh mode
+and CPU draw cost excluding swap/frame cap are presentation diagnostics.
+Compatibility impact: submission behavior/config/schema changed; no public
+Core contract change. Replay and baseline configs remain unchanged.
+Existing results invalidated: no; no G7/ROUND2 code/config/data changes.
+Tests added/updated: acquisition ownership, newest-packet delivery, buffer
+copy, explicit failure/stop/blocked driver, convex support faces, tilted plane,
+interior nodes, closed sphere, out-of-plane two-hand tilt, push/pull,
+default depth neutrality, bounded following and non-mutating display z.
+Executed: 50 submission tests and full regression suite 504 passed. Mode
+cycling explicitly reaches all four manipulation modes. The new camera pump opened the physical
+webcam, delivered 12 observed snapshots and stopped cleanly without operator
+actions (ui-20261014-160021-783314). Real provider replay on the mirrored
+two-hand fixture rendered 60 observed frames / 2 hands / up to 10 tips
+(ui-20261014-155909-732680). Synthetic OpenGL acceptance exercised 130 frames
+with out-of-plane tilt, push/pull, 3D fingertip hull and fixed framing; existing
+205-frame manipulation and window controls checks also passed. Screenshots
+were inspected. These checks do not certify all live physical hand poses,
+physical depth, sensor-to-photon latency or equivalence to VR headsets.
+
+Active refinement: the user reported intermittent grab and failed size
+changes, requested XR references and functional smoothing fixes. Inspection
+found immediate slot/filter resets on any missing frame, frame-source-only
+pose advancement, no anisotropic stretch, and unclear two-grip feedback.
+Change: bounded presentation-only loss/grip state, target/render smoothing
+separation, uniform/apparent-size/axis-stretch manipulation and live feedback.
+Canonical owner: 02 section 5 presentation refinement; baseline 03 untouched.
+Code: submission/stem_ui only plus its tests/docs. No research algorithm,
+profile, replay, metric or old result changes; no existing result invalidation.
+Executed refinement checks: 33 submission tests and full suite 487 passed.
+Synthetic renderer acceptance drove 205 frames through OpenGL, asserting
+uniform enlargement/shrinkage, axis stretch and short-loss pose freezing.
+Recorded dynamic one-hand source smoke observed 60 frames / up to 5 extended
+tips (ui-20261014-152637-862737); mirrored two-hand source smoke observed
+60 frames / 2 hands / up to 10 tips (ui-20261014-153038-147730). Both closed
+cleanly. All four solid types, help/camera visibility and fullscreen restore
+were exercised again. These are synthetic/recorded-source checks, not new
+simultaneous physical two-hand manipulation validation.
+
+UI_INTERACTION resolves presentation filter overrides from settings.yaml:
+adaptive base/minimum cutoff 2.5 Hz, beta_base 0.6, beta_max 4,
+velocity_gain 1.2 and final maximum cutoff 15 Hz. Public filter equations are
+unchanged. These are engineering UI defaults, not claimed measured optima;
+the frozen F2 experiment profile and report measurements remain unchanged.
+UI schema 2 logs per-hand generation/pinch ratio and application grip/pose
+states so future reported failures can be inspected without raw recording.
+
+Core/report source was committed as c79abbc and pushed on
+feat/submission-round2. The user now authorized the final clean UI task on
+feat/submission-ui-clean. Existing UI branches remain untouched. Direction:
+minimal 3D object interface, automatic live extended-fingertip geometry for
+one/two hands of one operator, optional camera view, fullscreen and hideable
+guidance. The user then prioritized functional correctness and responsive
+one/two-hand interaction inspired by VR grab behavior over visual polish.
+
+Executed UI verification: 18 new automated tests, full suite 472 passed.
+Physical camera opened, processed 10 frames and stopped cleanly without
+requiring new operator hand actions (ui-20261014-144142-466858). Real recorded
+one-hand source smoke rendered both live geometry and solid modes. A
+synthetic mirrored two-hand fixture was processed by the real provider,
+rendering 2 hands / up to 10 extended fingertips over 60 observed frames
+(ui-20261014-143939-582158). This is not simultaneous physical two-hand
+pose validation. Hide/show help/camera, all four solids, resize and fullscreen
+restore were executed. Exclusive fullscreen failed on this Windows display;
+desktop-sized borderless mode replaced it and the controls smoke passed.
+
+Change: additive submission presentation scope and snapshot boundary.
+Reason: user requested all fingertips/two hands and a clean 3D submission UI.
+Canonical sections: 01 section 7, 02 section 5; research algorithms unchanged.
+Modules: submission UI composition/runtime and renderer, outside src.
+Algorithmic impact: existing Core components reused without modification;
+presentation provider max two hands and slot association are demo behavior.
+The renderer's separate grab controller uses pinch engagement, one-hand
+local palm orientation and x/y translation; two-hand midpoint/span/twist
+control position/scale/rotation. Identity/count changes rebase without snap.
+This is application behavior, not a replacement for the canonical gesture
+mapping or a new research comparison. Display pose smoothing is UI-only.
+Experimental impact: separate UI run identities; no new RQ1/RQ2 result.
+Compatibility impact: no existing public Core contract or logger changes.
+Tests: coordinate/mirror mapping, fingertip selection, identity/loss safety,
+mesh geometry, worker lifecycle and recorded-source UI smoke.
+Existing results invalidated: no; research code/config/replay unchanged.
+
+ROUND2 collection: six planned normal-light sources were completed, along
+with two intended challenging-light sources. The operator then confirmed
+that ambient illumination could not be reduced. Those two sources remain
+retained, but their physical challenging-light condition is unverified.
+The guided session was interrupted before the ninth source.
+
+The user explicitly authorized simulated input dimming. The completed study
+is separately identified under `experiments/round2/SIMULATED_PLAN.md`:
+three fixed-gain (0.35) derivatives of the three static normal sources,
+with the same canonical v1.2 primary metrics/profiles and fixed window.
+No synthetic attenuation result is described as real environmental
+low-light robustness. All three normal and simulated B trials returned
+P0=P1 valid rates of 1.0 on 241 analyzed frames each. P1 was NORMAL with
+CLAHE inactive on all 723 normal frames, and DIFFICULT with CLAHE active
+on all 723 simulated frames. This validates activation, not improved
+valid rate or physical low-light robustness.
+
+Change: supplemental source-condition protocol, authorized 2026-10-14.
+Reason: physical lighting control unavailable.
+Canonical impact: no algorithm/interface/baseline/metric changes; this
+is an explicitly documented supplemental image-domain condition under
+the experiment evidence/disclosure rules of docs/00 and docs/03.
+Code: experiments/round2/simulated_study.py and its tests.
+Experimental impact: new simulated-source identities and hashes; separate
+from G7 and from the interrupted real-lighting session.
+Compatibility impact: Core and old logs unchanged.
+Existing results invalidated: no; old evidence is retained with its actual
+limits, and no physical low-light claim is inferred from simulated data.
+
+The old `.venv` references a missing Python 3.11 executable. A separate
+Python 3.12 research environment was installed; its actual package versions
+are recorded for ROUND2. The unmodified main baseline passed 433 automated
+tests in this environment on 2026-10-14. Model SHA-256 matches the retained
+G7 model. This is engineering verification, not experimental superiority.
+
+The first static sources contained substantial real hand movement and are
+retained as acquisition-quality evidence. The user authorized three new
+supported-wrist static trials, preregistered before collection under
+`experiments/round2/HELD_STATIC_PLAN.md`. All three A1 and A2 trials have
+241 common usable frames. F1/F2 reduce A1 radial RMS versus Raw in two
+held trials and increase it slightly in trial 001; F1/F2 are nearly equal.
+F2 A2 RMSE versus Raw is lower than F1 in all three dynamic trials. Raw
+is not ground truth and this metric is not physical latency.
+
+The final research tooling suite passed 454 tests. Core algorithm/config,
+public contracts, old experiments/analysis and G7 evidence remain unchanged
+from main/g7-final, f454c6b8325c85199c0122c0e822fe8e76c1526c. The decision is
+to freeze that Core for the course submission: no algorithm upgrade is
+justified as a prerequisite by this round. This is not enterprise or
+universal robustness certification. See `docs/CORE_SUBMISSION_DECISION.md`.
+
+The updated report source is `reports/core-final/BAO_CAO_CORE.md`; the
+editable deliverable is `output/documents/Bao_cao_Core_DIP_Touchless_STEM.docx`.
+Raw videos, replay logs, plots and local analysis outputs remain local
+experiment artifacts under runs and are not committed.
+
+UI development follows the Core report and must preserve Core/Extension
+separation. Any addition to a public rendering contract must be specified
+with compatibility impact before implementation.
+
+The retained G7 release and experimental artifacts are not overwritten.
+The evidence snapshots below remain historical records; their older
+NOT STARTED labels describe the 2026-09-28 pre-evaluation state, not the
+current ROUND2 task. Later sections contain the actual retained G7 results.
+
+## 2. Historical implementation evidence
 
 As of 2026-09-28, the implementation repository has been verified
 through Gate G6.

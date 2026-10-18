@@ -112,6 +112,29 @@ The term **3D** means interaction with a rendered 3D scene. MediaPipe/model-rela
 
 ## 7. DIP Core vs 3D Extension
 
+### Submission presentation scope — authorized 2026-10-14
+
+#### Camera chemistry demonstration — authorized 2026-10-14
+
+The user approved an additional isolated desktop camera-composited chemistry
+mode: a spatial panel, element palette, illustrative atoms/electron shells,
+and hand-driven construction/removal of molecular bonds. This is a local
+STEM demonstration, not a full AR platform, spatial camera localization,
+physical depth/contact measurement, chemistry reaction simulator or physics
+engine. Chemical manipulation cannot turn one element into another.
+Atomic data must have a recorded primary source; molecular names require
+verified topology, not composition alone. Supported neutral covalent
+building rules must be explicit and limited; unsupported elements remain
+viewable without invented bonding behavior. Core/report results stay frozen.
+
+After the Core report, the user authorized a clean, minimal desktop UI.
+It may visualize extended fingertips of one or two hands of the same
+operator, automatically creating live geometric content. This is an
+application demonstration, not multi-user tracking or a replacement for
+the frozen one-hand research baseline. Its separate presentation runtime
+and snapshot boundary are specified in 02. Two-hand demo observations
+are not mixed into G7/ROUND2 research results. Metric depth remains excluded.
+
 The project has two architectural zones:
 
 - **DIP Core** — the research/processing path.
