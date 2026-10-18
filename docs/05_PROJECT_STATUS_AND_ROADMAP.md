@@ -3,13 +3,16 @@
 ## Current handoff — submission after defense, 2026-10-18
 
 User authorized freezing the current four-tab scope, merging feat/physics-lab
-into main, updating installation/README guidance and preparing a short video
-script. Submission identity: tag submission-2026-10-18; earlier 16/10 tags and
+into main and updating installation/README guidance. The user subsequently
+clarified that the video script is private; remove it and its links from the
+current source, preserving a local ignored copy. ZIP-first instructions state
+one initial setup command followed by one app command, with only the latter
+needed on subsequent launches. Submission identity: tag submission-2026-10-18-r2;
+the earlier 18/10 and 16/10 tags and
 development branches remain intact. Runtime code is the accepted 688f6b4 fix.
 This handoff changes documentation/Git only; no tests are rerun, following the
 user's explicit request. Existing 1091-pass Python 3.11/3.12 evidence below is
-retained with its actual scope and limitations. The video script is guidance,
-not a claim that physical-hand filming has already succeeded. Word/PDF/slides
+retained with its actual scope and limitations. Word/PDF/slides
 and source video remain separate submission artifacts; do not claim the source
 ZIP includes ignored local files. Preserve personal untracked files.
 

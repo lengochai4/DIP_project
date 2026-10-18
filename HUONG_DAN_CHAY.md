@@ -18,7 +18,13 @@ Bản ứng dụng đã chốt nằm trong `submission/stem_ui/`. DIP Core nằm
 
 ## 2. Lấy source
 
-Từ PowerShell hoặc terminal VS Code:
+**Cách tải ZIP, không cần Git:** chọn **Code → Download ZIP** trên GitHub
+`main` hoặc tải tag `submission-2026-10-18-r2`, giải nén toàn bộ. Vào thư mục
+chứa `README.md` và `pyproject.toml`, gõ `powershell` trong thanh địa chỉ File
+Explorer rồi Enter. Chạy lệnh cài ở mục 3, cài xong chạy lệnh mở app ở mục 4.
+Lần sau chỉ cần lệnh mở app. Không chạy trực tiếp bên trong file ZIP.
+
+**Nếu dùng Git**, từ PowerShell hoặc terminal VS Code:
 
 ```powershell
 git clone https://github.com/lengochai4/DIP_project.git
@@ -26,7 +32,7 @@ cd DIP_project
 ```
 
 Bản chốt sau vấn đáp ngày **18/10/2026** nằm trên `main`, được đánh dấu bằng tag
-`submission-2026-10-18`, gồm đủ bốn tab và bản sửa buông vật thể Hóa học.
+`submission-2026-10-18-r2`, gồm đủ bốn tab và bản sửa buông vật thể Hóa học.
 Các tag ngày 16/10 vẫn giữ bản cũ. Nếu đã có repo, giữ/commit các thay đổi đang làm trước
 khi chuyển nhánh rồi cập nhật:
 
@@ -39,7 +45,7 @@ git pull --ff-only
 Để lấy đúng bản nộp đã chốt dù `main` có thay đổi về sau:
 
 ```powershell
-git clone --branch submission-2026-10-18 https://github.com/lengochai4/DIP_project.git DIP_submission
+git clone --branch submission-2026-10-18-r2 https://github.com/lengochai4/DIP_project.git DIP_submission
 cd DIP_submission
 ```
 
@@ -181,5 +187,4 @@ Gợi ý thư mục nộp chung theo yêu cầu lớp (điền số nhóm và th
 ```
 
 Nén thư mục ngoài thành ZIP; một người đại diện nộp. Các file báo cáo/trình chiếu
-do nhóm đặt vào, không tự sinh từ ZIP GitHub. Kịch bản quay ngắn:
-[submission/KICH_BAN_VIDEO.md](submission/KICH_BAN_VIDEO.md).
+do nhóm đặt vào, không tự sinh từ ZIP GitHub.

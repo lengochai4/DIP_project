@@ -5,7 +5,7 @@ một hoặc hai tay của cùng người dùng. Phần nghiên cứu tập trun
 và lọc tín hiệu chuyển động; bốn tab ứng dụng minh họa khả năng tương tác.
 
 **Bản chốt sau vấn đáp ngày 18/10/2026:** nhánh `main`, tag
-[`submission-2026-10-18`](https://github.com/lengochai4/DIP_project/tree/submission-2026-10-18).
+[`submission-2026-10-18-r2`](https://github.com/lengochai4/DIP_project/tree/submission-2026-10-18-r2).
 Các tag `submission-2026-10-16` và `submission-2026-10-16-r2` giữ nguyên bản cũ.
 
 ## Cài và chạy nhanh
@@ -14,19 +14,25 @@ Windows 10/11, Python **>=3.11 64-bit** theo `pyproject.toml`, webcam và driver
 đồ họa hỗ trợ OpenGL. Bộ kiểm tra đã chạy bằng Python 3.11.9 và 3.12.14;
 phiên bản Python khác còn phụ thuộc wheel của các thư viện native.
 
-Clone repo, hoặc tải ZIP của `main`/tag bản chốt rồi giải nén. Mở terminal tại
-thư mục chứa `pyproject.toml`:
+**Tải ZIP, không cần Git:** trên GitHub chọn **Code → Download ZIP**, giải nén
+rồi mở thư mục chứa `README.md` và `pyproject.toml`. Trong thanh địa chỉ File
+Explorer, gõ `powershell` và Enter để mở terminal đúng thư mục.
+
+**Lần đầu — một lệnh cài thư viện/model:**
 
 ```powershell
-git clone https://github.com/lengochai4/DIP_project.git
-cd DIP_project
 python -X utf8 -m submission.setup_ui
+```
+
+**Cài xong — một lệnh mở app, cũng là lệnh dùng cho các lần sau:**
+
+```powershell
 .\.venv-ui\Scripts\python.exe -X utf8 -m submission.stem_ui.app
 ```
 
-Nếu tải ZIP thì bỏ hai lệnh `git clone`/`cd`, mở terminal trong thư mục source
-đã giải nén. Có nhiều Python thì dùng `py -3.11 -X utf8 -m submission.setup_ui`
-hoặc `py -3.12 -X utf8 -m submission.setup_ui` để chọn môi trường cài.
+Lệnh cài không tự mở app. Có nhiều Python thì dùng
+`py -3.11 -X utf8 -m submission.setup_ui` hoặc
+`py -3.12 -X utf8 -m submission.setup_ui` để chọn môi trường cài.
 
 Hoặc nhấp đúp **Cai_dat_UI.bat** một lần, sau đó **Chay_UI.bat**. Bộ cài tạo
 `.venv-ui`, cài thư viện theo `pyproject.toml`, tải model và kiểm tra SHA-256.
@@ -55,8 +61,7 @@ Phím chung: **H** ẩn/hiện hướng dẫn, **F11** phóng to/thu khung, **Ta
 nhập IP/port Wi-Fi của điện thoại; chỉ một nguồn camera hoạt động tại một thời điểm.
 
 [Hướng dẫn thao tác](submission/stem_ui/README.md) ·
-[Đối chiếu công thức Vật lý](submission/stem_ui/PHYSICS_AUDIT.md) ·
-[Kịch bản quay video 3 phút rưỡi](submission/KICH_BAN_VIDEO.md)
+[Đối chiếu công thức Vật lý](submission/stem_ui/PHYSICS_AUDIT.md)
 
 ## Luồng xử lý và giới hạn
 
@@ -101,8 +106,7 @@ DIP_project/
 ├── models/README.md          # Nguồn/checksum model; binary tải lúc cài
 ├── docs/                     # Sáu đặc tả chuẩn và trạng thái dự án
 ├── reports/core-final/       # Nguồn báo cáo Core
-├── HUONG_DAN_CHAY.md          # Cài/chạy và xử lý lỗi
-└── submission/KICH_BAN_VIDEO.md
+└── HUONG_DAN_CHAY.md          # Cài/chạy và xử lý lỗi
 ```
 
 **Giữ nguyên source khi nộp**, không xóa `experiments/` hay các thư mục vì nghĩ UI

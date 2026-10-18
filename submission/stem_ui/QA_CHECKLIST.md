@@ -3,11 +3,12 @@
 ## Bàn giao lên main — 18/10/2026
 
 Bản code chốt là `688f6b4` (UI schema 21), được đưa lên `main` cùng tài liệu
-và tag `submission-2026-10-18`. Lượt bàn giao chỉ sửa README/hướng dẫn/kịch bản,
+và tag hiện tại `submission-2026-10-18-r2`. Lượt bàn giao chỉ sửa tài liệu,
 không đổi mã chạy và không chạy thêm test theo yêu cầu người dùng. Bằng chứng
 1.091 test trên hai Python bên dưới là lượt đã thực hiện trước khi chốt fix.
-Kịch bản ở `submission/KICH_BAN_VIDEO.md` chưa phải video đã quay; Word/PDF,
-PowerPoint và video nộp phải được nhóm gửi kèm riêng với source.
+Word/PDF, PowerPoint và video nộp phải được nhóm gửi kèm riêng với source.
+Theo yêu cầu người dùng, kịch bản quay không nằm trong bản source hiện tại;
+mã chạy giữ nguyên so với `688f6b4`, không chạy thêm test cho sửa tài liệu.
 
 ## Sửa vật thể Hóa học chạy theo sau buông — 18/10/2026
 
