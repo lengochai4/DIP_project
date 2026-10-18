@@ -5,7 +5,8 @@ Bản ứng dụng đã chốt nằm trong `submission/stem_ui/`. DIP Core nằm
 
 ## 1. Yêu cầu
 
-- Windows 10/11, Python **>=3.11 64-bit** theo `pyproject.toml` và Git.
+- Windows 10/11, Python **>=3.11 64-bit** theo `pyproject.toml`.
+  Git chỉ cần nếu clone/cập nhật repo; tải ZIP thì không cần Git để chạy app.
 - Cài Python từ [python.org](https://www.python.org/downloads/windows/), bật
   thêm Python vào PATH. Kiểm tra bằng `python --version`; nếu dùng Launcher,
   `py -3.11 --version` hoặc `py -3.12 --version` chọn phiên bản cụ thể.
@@ -24,8 +25,9 @@ git clone https://github.com/lengochai4/DIP_project.git
 cd DIP_project
 ```
 
-Bản nộp ngày 16/10/2026 nằm trên `main`, được đánh dấu bằng tag
-`submission-2026-10-16-r2`. Nếu đã có repo, giữ/commit các thay đổi đang làm trước
+Bản chốt sau vấn đáp ngày **18/10/2026** nằm trên `main`, được đánh dấu bằng tag
+`submission-2026-10-18`, gồm đủ bốn tab và bản sửa buông vật thể Hóa học.
+Các tag ngày 16/10 vẫn giữ bản cũ. Nếu đã có repo, giữ/commit các thay đổi đang làm trước
 khi chuyển nhánh rồi cập nhật:
 
 ```powershell
@@ -37,7 +39,7 @@ git pull --ff-only
 Để lấy đúng bản nộp đã chốt dù `main` có thay đổi về sau:
 
 ```powershell
-git clone --branch submission-2026-10-16-r2 https://github.com/lengochai4/DIP_project.git DIP_submission
+git clone --branch submission-2026-10-18 https://github.com/lengochai4/DIP_project.git DIP_submission
 cd DIP_submission
 ```
 
@@ -86,14 +88,22 @@ Camera mặc định đang tắt. Bấm **Bật camera**, chọn chế độ:
 
 - **Khối 3D:** chụm cái–trỏ để cầm, di chuyển/xoay tay để điều khiển; mở ngón
   để buông. Hai tay cùng chụm để đổi cỡ. Các chế độ kéo dãn/tiến lùi có hướng dẫn.
+  Xòe tay tại mép trống khoảng 0,45 giây để gọi bảng đổi khối; di tay nhắm lại
+  rồi giữ trỏ 1 giây hoặc chụm chọn. Mở ngón sau chọn rồi chụm lại để cầm.
 - **Đầu ngón:** ngón đang duỗi tạo các đỉnh trực tiếp; hỗ trợ một/hai tay cùng
-  người dùng. Không cần thêm điểm thủ công.
-- **Hóa học AR:** giữ trỏ trên nút khoảng 1 giây để chọn; chọn mẫu phân tử hoặc
+  người dùng. Có số ngón từng tay và trạng thái điểm/đoạn/mặt/khối; không thêm điểm thủ công.
+- **Hóa học AR:** giữ trỏ trên nút khoảng 1 giây hoặc mở–nhắm–chụm để chọn mẫu phân tử hoặc
   nguyên tố. **Cầm cả khối** để di chuyển/đổi cỡ; **Ghép/tách** để sửa liên kết.
-  Có chuột dự phòng, hoàn tác, lưu/mở trên máy.
+  Bảng kéo/đổi cỡ và thu ra viền được, chọn mũi tên để mở lại. Tách trỏ–cái
+  đóng băng vật trong lúc xác nhận buông. Có chuột dự phòng, hoàn tác, lưu/mở.
+- **Vật lý:** thư viện tám bài cơ học. Chụm kéo vật/tay nắm, mở để buông;
+  **Điều chỉnh** đổi thông số, **Đo / Lưu** mở vector/đồ thị/năng lượng, A/B
+  và xuất CSV/ảnh, **Bài học** nêu giả thiết/công thức/thử thách. Có bảng lệnh
+  nhanh bằng xòe tay ở mép trống và xem cảnh một/hai tay khi đang dừng.
 
 **H** ẩn/hiện hướng dẫn; **F11** hoặc nút phóng to mở toàn màn hình, **Esc** trở
-về cửa sổ khi đang toàn màn hình. Thao tác chi tiết:
+về cửa sổ khi đang toàn màn hình (đóng bảng chọn khối đang mở trước).
+**Tab** qua bốn chế độ; **V** mở Vật lý, **P** mở Hóa học. Thao tác chi tiết:
 [submission/stem_ui/README.md](submission/stem_ui/README.md).
 
 ## 5. Chọn camera khác hoặc DroidCam
@@ -158,3 +168,18 @@ tự động theo SHA-256 khi cài; vì vậy source ZIP cần Internet ở lầ
 Không cần đóng gói `.venv`, `.venv-research`, `.venv-ui` hoặc `__pycache__`.
 Nộp báo cáo Word riêng. Nếu thầy yêu cầu tái hiện số liệu từ video gốc, cần gửi
 thêm bộ dữ liệu thực nghiệm riêng; ZIP source không tự chứa video trong `runs/`.
+
+Gợi ý thư mục nộp chung theo yêu cầu lớp (điền số nhóm và thông tin người đại diện):
+
+```text
+[GsoNhom]_[MSSV]_[HoTenKhongDau]/
+├── Source/              # Nguyên source giải nén, có README.md và pyproject.toml
+├── Bao_cao.docx
+├── Bao_cao.pdf
+├── Trinh_chieu.pptx
+└── Demo.mp4             # Video nếu được yêu cầu gửi kèm
+```
+
+Nén thư mục ngoài thành ZIP; một người đại diện nộp. Các file báo cáo/trình chiếu
+do nhóm đặt vào, không tự sinh từ ZIP GitHub. Kịch bản quay ngắn:
+[submission/KICH_BAN_VIDEO.md](submission/KICH_BAN_VIDEO.md).

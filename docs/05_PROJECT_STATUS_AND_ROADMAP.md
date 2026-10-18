@@ -1,6 +1,19 @@
 # 05 — Project Status and Roadmap
 
-## Current task — chemistry post-release drift fix, 2026-10-18
+## Current handoff — submission after defense, 2026-10-18
+
+User authorized freezing the current four-tab scope, merging feat/physics-lab
+into main, updating installation/README guidance and preparing a short video
+script. Submission identity: tag submission-2026-10-18; earlier 16/10 tags and
+development branches remain intact. Runtime code is the accepted 688f6b4 fix.
+This handoff changes documentation/Git only; no tests are rerun, following the
+user's explicit request. Existing 1091-pass Python 3.11/3.12 evidence below is
+retained with its actual scope and limitations. The video script is guidance,
+not a claim that physical-hand filming has already succeeded. Word/PDF/slides
+and source video remain separate submission artifacts; do not claim the source
+ZIP includes ignored local files. Preserve personal untracked files.
+
+## Earlier task — chemistry post-release drift fix, 2026-10-18
 
 Change: atom/component-only early contact-break freeze and observed release.
 Reason: user reported objects continuing to follow after opening; reproduced
