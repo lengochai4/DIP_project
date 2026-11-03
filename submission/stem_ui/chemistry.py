@@ -9,6 +9,13 @@ import re
 import numpy as np
 
 DATA=Path(__file__).with_name('data')/'pubchem-periodic-table.json'
+COMPOUNDS_DATA=Path(__file__).with_name('data')/'chemical_compounds.json'
+
+
+def load_compounds():
+    if not COMPOUNDS_DATA.is_file(): return {}
+    try: return json.loads(COMPOUNDS_DATA.read_text(encoding='utf-8'))
+    except Exception: return {}
 
 
 @dataclass(frozen=True)
@@ -89,6 +96,14 @@ class ChemistryScene:
                     if j not in seen: seen.add(j); todo.append(j)
             if len(seen)!=len(symbols): raise ValueError(f'Disconnected template: {key}')
             self._templates.append((t['label'],symbols,graph))
+        self.compounds=load_compounds()
+        for key,t in self.compounds.items():
+            symbols=tuple(t['symbols'])
+            if not symbols or any(s not in self.elements for s in symbols): continue
+            graph=[{} for _ in symbols]
+            for a,b,n in t['bonds']:
+                graph[a][b]=n; graph[b][a]=n
+            self._templates.append((t['label'],symbols,graph))
 
     def state(self):
         return {'schema':1,'kind':'illustrative_molecular_graph','positions_are':'display_scene_units',
@@ -121,8 +136,13 @@ class ChemistryScene:
             if key in bonds: raise ValueError('Liên kết trùng')
             bonds[key]=order; valences[a]+=order; valences[b]+=order
         for i,v in valences.items():
-            cap=self.settings['chemistry_covalent_limits'].get(atoms[i].symbol)
-            if cap is None or v>cap: raise ValueError('Liên kết vượt phạm vi hóa trị demo')
+            sym=atoms[i].symbol
+            cap=self.settings['chemistry_covalent_limits'].get(sym)
+            if cap is not None:
+                limit=6 if sym in ('S','P','N') else cap
+                if v>limit: raise ValueError('Liên kết vượt phạm vi hóa trị demo')
+            else:
+                if v>6: raise ValueError('Liên kết vượt phạm vi hóa trị demo')
         # Validate completely before replacing an existing workspace.
         self.atoms=atoms; self.bonds=bonds; self.next_id=max(atoms,default=0)+1
         self.selected=None; self.revision+=1
@@ -272,9 +292,11 @@ class ChemistryScene:
         return label
 
     def add_template(self,key):
-        t=self.settings['chemistry_templates'][key]
+        t=self.settings['chemistry_templates'].get(key) or getattr(self,'compounds',{}).get(key)
+        if t is None:
+            self.message=f'Không tìm thấy mẫu {key}'; return
         if len(self.atoms)+len(t['symbols'])>self.settings['chemistry_max_atoms']:
-            self.message='Không đủ chỗ để thêm mẫu'; return
+            self.message='Không đủ chỗ để thêm mẫu; xóa bớt để thêm'; return
         self.remember(); ids=[]
         origin=np.array((.9,0.,0.))
         for s,p in zip(t['symbols'],t['positions']):

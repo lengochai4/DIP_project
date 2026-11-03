@@ -12,7 +12,7 @@ def main():
     parser=argparse.ArgumentParser(description='DIP Touchless STEM — UI nộp đồ án')
     parser.add_argument('--replay',type=Path)
     parser.add_argument('--camera',type=int,default=0)
-    parser.add_argument('--mode',choices=('solid','tips','chemistry','physics'),default='solid')
+    parser.add_argument('--mode',choices=('solid','tips','chemistry','physics','tracking'),default='solid')
     parser.add_argument('--smoke-frames',type=int,default=0)
     parser.add_argument('--screenshot',type=Path)
     args=parser.parse_args()

@@ -36,6 +36,7 @@ class ChemistryInput:
         self.dock_pending=None
         self.previous_time=None
         self.template_page=0
+        self.compound_page=0; self.compound_category='all'
         self.grab_settings={**settings,'grip_press_ratio':settings['chemistry_grip_press_ratio'],
             'pose_response_hz':settings['chemistry_move_response_hz'],
             'rotation_response_hz':settings['chemistry_rotate_response_hz'],
@@ -103,7 +104,7 @@ class ChemistryInput:
             self.layout.reset(); self.panel_target=None
             if self.page=='compact': self.page=self.expanded_page
             return
-        if action in ('home','elements','table','templates','compact'):
+        if action in ('home','elements','table','templates','compounds','compact'):
             for key in list(self.claims):
                 if self.claims[key].kind.startswith('panel_'): self.end(key)
             if action=='compact' and self.page!='compact':
@@ -116,6 +117,15 @@ class ChemistryInput:
         if action in ('templates_prev','templates_next'):
             count=(len(self.settings['chemistry_templates'])+7)//8
             self.template_page=int(np.clip(self.template_page+(1 if action=='templates_next' else -1),0,max(0,count-1)))
+            return
+        if action.startswith('compound_cat:'):
+            self.compound_category=action.split(':',1)[1]
+            self.compound_page=0
+            return
+        if action in ('compounds_prev','compounds_next'):
+            items=self.filtered_compounds()
+            count=max(1,(len(items)+6)//7)
+            self.compound_page=int(np.clip(self.compound_page+(1 if action=='compounds_next' else -1),0,max(0,count-1)))
             return
         scene.freeze(tuple(scene.atoms)); scene.finish_edit()
         self.claims.clear(); self.groups.clear()
@@ -482,6 +492,12 @@ class ChemistryInput:
         self.layout.zoom(math.exp(float(np.clip(amount,-5,5))*self.settings['chemistry_panel_zoom_step']))
         self.panel_target=None
         return True
+
+    def filtered_compounds(self):
+        cat=getattr(self,'compound_category','all')
+        if not hasattr(self.scene,'compounds') or not self.scene.compounds: return []
+        if cat=='all': return list(self.scene.compounds.items())
+        return [(k,v) for k,v in self.scene.compounds.items() if v.get('category')==cat]
 
     def _pinch_point(self,hand):
         a,b=hand.landmarks[4],hand.landmarks[8]

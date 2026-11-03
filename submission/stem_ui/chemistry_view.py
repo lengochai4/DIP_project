@@ -142,8 +142,9 @@ class CameraChemistryView:
         pygame.draw.line(surface,(161,213,232,150),(32,78),(w-32,78),2)
         if control.page=='home':
             text(f"Giữ {self.settings['chemistry_dwell_s']:g}s hoặc chụm để chọn" if self.settings['chemistry_quick_select']=='point_pinch' else f"Giữ {self.settings['chemistry_dwell_s']:g}s hoặc đẩy trỏ để chọn",(32,99),29)
-            button('BẢNG NGUYÊN TỐ',(32,165,w-64,130),'elements')
-            button('MẪU PHÂN TỬ 3D',(32,322,w-64,105),'templates')
+            button('BẢNG NGUYÊN TỐ',(32,150,w-64,88),'elements')
+            button('72 CÔNG THỨC HÓA HỌC',(32,250,w-64,88),'compounds')
+            button('MẪU PHÂN TỬ 3D CƠ BẢN',(32,350,w-64,88),'templates')
             if self.renderer.help_visible:
                 text('THAO TÁC BẰNG TAY',(32,475),24,ACCENT)
                 text('Chụm sát cái–trỏ trên nguyên tử để cầm',(32,522),26)
@@ -157,8 +158,9 @@ class CameraChemistryView:
             text('Nguyên tố thường dùng',(32,93),31)
             for i,symbol in enumerate(self.settings['chemistry_common_elements']):
                 button(symbol,(32+(i%4)*166,150+(i//4)*142,150,122),'element:'+symbol)
-            button('Bảng tuần hoàn 118',(32,451,390,73),'table')
-            button('Mẫu 3D',(438,451,250,73),'templates')
+            button('Bảng 118',(32,451,195,73),'table')
+            button('72 Công thức',(237,451,250,73),'compounds')
+            button('Mẫu 3D',(497,451,191,73),'templates')
             selected=scene.atoms.get(scene.selected)
             if selected:
                 element=scene.elements[selected.symbol]
@@ -168,6 +170,23 @@ class CameraChemistryView:
                 config=element.configuration
                 text(config[:46],(32,688),23,(166,189,205))
                 if 'predicted' in config.lower(): text('Cấu hình trong nguồn là dự đoán',(32,725),21,(239,196,130))
+        elif control.page=='compounds':
+            cat_map={'all':'Tất cả','oxit':'Oxit','axit':'Axit','bazo':'Bazơ','muoi':'Muối','huu_co':'Hữu cơ'}
+            cat=getattr(control,'compound_category','all')
+            items=control.filtered_compounds()
+            pages=max(1,(len(items)+6)//7)
+            current=int(np.clip(getattr(control,'compound_page',0),0,pages-1))
+            control.compound_page=current
+            text(f'72 Công thức • {cat_map.get(cat,cat)} ({len(items)}) • Trang {current+1}/{pages}',(32,93),26)
+            cat_list=[('all','Tất cả'),('oxit','Oxit'),('axit','Axit'),('bazo','Bazơ'),('muoi','Muối'),('huu_co','Hữu cơ')]
+            for ci,(cid,cname) in enumerate(cat_list):
+                cx=32+ci*109
+                button(cname,(cx,135,103,46),'compound_cat:'+cid,selected=(cat==cid))
+            for i,(key,t) in enumerate(items[current*7:(current+1)*7]):
+                button(t['label'],(32,192+i*66,w-64,58),'template:'+key)
+            button('Trang trước',(32,693,210,52),'compounds_prev')
+            button('Nguyên tố',(256,693,210,52),'elements')
+            button('Trang sau',(480,693,208,52),'compounds_next')
         elif control.page=='templates':
             templates=list(self.settings['chemistry_templates'].items())
             pages=max(1,(len(templates)+7)//8); current=min(control.template_page,pages-1)
@@ -175,7 +194,7 @@ class CameraChemistryView:
             for i,(key,t) in enumerate(templates[current*8:(current+1)*8]):
                 button(t['label'],(32,145+i*67,w-64,58),'template:'+key)
             button('Trang trước',(32,693,210,52),'templates_prev')
-            button('Nguyên tố',(256,693,210,52),'elements')
+            button('72 Công thức',(256,693,210,52),'compounds')
             button('Trang sau',(480,693,208,52),'templates_next')
         else:
             text('118 nguyên tố • chọn để tạo nguyên tử; dữ liệu PubChem',(32,91),31)
@@ -221,7 +240,8 @@ class CameraChemistryView:
         manipulating=any(c.kind.startswith('panel_') for c in self.input.claims.values())
         if manipulating and self.panel_raster is not None and self.panel_key is not None and self.panel_key[1]==self.input.page:
             raster=self.panel_raster
-        semantic=(self.space.aspect,self.input.page,self.input.template_page,symbol,
+        semantic=(self.space.aspect,self.input.page,self.input.template_page,
+                  getattr(self.input,'compound_page',0),getattr(self.input,'compound_category','all'),symbol,
                   self.scene.edit,self.scene.electrons,self.scene.order,self.renderer.help_visible,self.content[2:],
                   raster,self.input.layout.edge if self.input.page=='compact' else None)
         key=semantic+((),)

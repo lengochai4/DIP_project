@@ -70,7 +70,7 @@ class PhysicsView:
         self.textures={}; self.fonts={}; self.identity=None; self.run_id=None; self.geometry=None
         self.mouse_claim=None; self.last_ui=-math.inf; self.ui_dirty=True
         self.measure_points=None; self.object_labels=[]; self.press_cursors=set(); self.body_targets=[]
-        self.cursor_generations={}
+        self.cursor_generations={}; self.lesson_pages=1; self.tools_pages=1
         self.root=Path(__file__).resolve().parents[2]/'runs/ui-physics'
         self.layout(); self.setup_projection()
 
@@ -272,7 +272,8 @@ class PhysicsView:
                 self.panel_rect=pygame.Rect(4 if edge=='left' else w-42,round(np.clip(h*along-23,4,h-50)),38,46)
             else:
                 self.panel_rect=pygame.Rect(round(np.clip(w*along-23,4,w-50)),4 if edge=='top' else h-42,46,38)
-        self.rows=max(1,min(7,(height-(86 if height<290 else 114)-88)//44))
+        top_offset = 138 if height<290 else 172
+        self.rows=max(1,min(7,(height-top_offset-8)//44))
         self.page_count=max(1,math.ceil(len(self.model.params)/self.rows))
         self.param_page%=self.page_count
         self.stage=pygame.Rect(12 if self.collapsed else width+28,14,w-(24 if self.collapsed else width+42),h-28)
@@ -322,7 +323,19 @@ class PhysicsView:
         self._button(surface,m.spec['title']+' v',(10,24 if small else 37,w-20,26 if small else 34),'library',self.library)
         for n,(label,page) in enumerate((('Điều chỉnh','adjust'),('Đo / Lưu','tools'),('Bài học','lesson'))):
             bw=(w-24)//3; self._button(surface,label,(10+n*(bw+2),56 if small else 78,bw,24 if small else 28),'page:'+page,self.page==page)
-        body=pygame.Rect(10,86 if small else 114,w-20,max(28,h-(86 if small else 114)-88)); self.body_rect=body
+
+        # 1. Action & execution row (Chạy, Đặt lại, Tốc độ) placed directly under tabs
+        y_run = 82 if small else 108
+        labels=(('Kiểm tra' if m.static else 'Dừng' if m.running else 'Chạy','run'),('Đặt lại','reset'),('¼×' if m.speed!=1 else '1×','slow'))
+        bw=(w-28)//3
+        for i,(label,action) in enumerate(labels):
+            self._button(surface,label,(10+i*(bw+4),y_run,bw,24 if small else 28),action,m.running if action=='run' else m.speed!=1 if action=='slow' else False)
+
+        # 2. Content body extending from below nav & divider down to bottom
+        y_nav = y_run + (26 if small else 31)
+        y_div = y_nav + (24 if small else 28)
+        body_y = y_div + 4
+        body=pygame.Rect(10,body_y,w-20,max(28,h-body_y-8)); self.body_rect=body
         previous=surface.get_clip(); surface.set_clip(body)
         if self.library:
             self._paint_library(surface,body)
@@ -342,25 +355,29 @@ class PhysicsView:
         elif self.page=='tools': self._paint_tools(surface,body)
         else: self._paint_lesson(surface,body)
         surface.set_clip(previous)
+
+        # 3. Page navigation row
         if self.library:
             pages=max(1,math.ceil(8/max(1,body.h//31))); self.library_page=getattr(self,'library_page',0)%pages
-            self._button(surface,'‹',(10,h-81,34,25),'library_prev')
-            self._text(surface,f'{self.library_page+1}/{pages}',(w//2-15,h-78),12,MUTED)
-            self._button(surface,'›',(w-44,h-81,34,25),'library_next')
+            self._button(surface,'‹',(10,y_nav,34,22 if small else 24),'library_prev')
+            self._text(surface,f'{self.library_page+1}/{pages}',(w//2-15,y_nav+3),12,MUTED)
+            self._button(surface,'›',(w-44,y_nav,34,22 if small else 24),'library_next')
         elif self.page=='adjust':
-            self._button(surface,'‹',(10,h-81,34,25),'param_prev')
-            self._text(surface,f'Thông số {self.param_page+1}/{self.page_count}',(50,h-78),12,MUTED)
-            self._button(surface,'›',(w-44,h-81,34,25),'param_next')
+            self._button(surface,'‹',(10,y_nav,34,22 if small else 24),'param_prev')
+            self._text(surface,f'Thông số {self.param_page+1}/{self.page_count}',(w//2-40,y_nav+3),12,MUTED)
+            self._button(surface,'›',(w-44,y_nav,34,22 if small else 24),'param_next')
         elif self.page=='lesson':
-            self._button(surface,'‹',(10,h-81,25,25),'lesson_prev')
-            self._button(surface,('Đạt' if m.achieved else 'Thử thách')+f' {getattr(self,"lesson_page",0)+1}/{self.lesson_pages}',(39,h-81,w-78,25),'challenge',m.challenge)
-            self._button(surface,'›',(w-35,h-81,25,25),'lesson_next')
+            self._button(surface,'‹',(10,y_nav,25,22 if small else 24),'lesson_prev')
+            self._button(surface,('Đạt' if m.achieved else 'Thử thách')+f' {getattr(self,"lesson_page",0)+1}/{getattr(self,"lesson_pages",1)}',(37,y_nav,w-74,22 if small else 24),'challenge',m.challenge)
+            self._button(surface,'›',(w-35,y_nav,25,22 if small else 24),'lesson_next')
         else:
-            self._button(surface,'‹ Công cụ',(10,h-81,(w-24)//2,25),'tools_prev')
-            self._button(surface,'Công cụ ›',(14+(w-24)//2,h-81,(w-24)//2,25),'tools_next')
-        labels=(('Kiểm tra' if m.static else 'Dừng' if m.running else 'Chạy','run'),('Đặt lại','reset'),('¼×' if m.speed!=1 else '1×','slow'))
-        bw=(w-28)//3
-        for i,(label,action) in enumerate(labels): self._button(surface,label,(10+i*(bw+4),h-45,bw,32),action,m.running if action=='run' else m.speed!=1 if action=='slow' else False)
+            self._button(surface,'‹ Công cụ',(10,y_nav,(w-24)//2,22 if small else 24),'tools_prev')
+            self._button(surface,'Công cụ ›',(14+(w-24)//2,y_nav,(w-24)//2,22 if small else 24),'tools_next')
+
+        # 4. Horizontal divider line separating controls and content
+        pygame.draw.line(surface,(65,98,118),(12,y_div),(w-12,y_div),1)
+        pygame.draw.line(surface,ACCENT,(12,y_div),(54,y_div),2)
+
         # Body clipping also constrains invisible controls' interactive targets.
         self.targets=[(a,b) for a,b in self.targets if r.contains(a)]
         return surface

@@ -9,7 +9,7 @@ from dip_touchless.core import InteractionState
 
 from .application import Stem3DExtension
 from .renderer import OpenGLStemRenderer
-from .scene_state import Stem3DSceneState
+from .scenes import build_tier1_scene_registry
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -61,24 +61,6 @@ def main() -> None:
         "renderer"
     ]
 
-    scene_state = Stem3DSceneState(
-        initial_scale=(
-            renderer_config[
-                "initial_scale"
-            ]
-        ),
-        min_scale=(
-            renderer_config[
-                "min_scale"
-            ]
-        ),
-        max_scale=(
-            renderer_config[
-                "max_scale"
-            ]
-        ),
-    )
-
     renderer = OpenGLStemRenderer(
         width=int(
             renderer_config["width"]
@@ -93,12 +75,18 @@ def main() -> None:
         ),
         title=(
             "DIP Touchless STEM "
-            "- G5 Renderer Smoke"
+            "- U4 Scene Smoke"
         ),
     )
 
+    scene_registry = build_tier1_scene_registry(
+        initial_scale=renderer_config["initial_scale"],
+        min_scale=renderer_config["min_scale"],
+        max_scale=renderer_config["max_scale"],
+    )
+
     extension = Stem3DExtension(
-        scene_state=scene_state,
+        scene_registry=scene_registry,
         renderer=renderer,
     )
 
@@ -106,9 +94,10 @@ def main() -> None:
         "Opening STEM 3D smoke demo..."
     )
     print(
-        "Expected: rotating cube + XYZ axes "
-        "with cyclic scale."
+        "Expected: coordinate geometry, molecule, and orbital scenes "
+        "with rotation/scale interaction."
     )
+    print("Use live_demo.py and its camera/status window to switch scenes.")
     print(
         "Press ESC or close the window to exit."
     )

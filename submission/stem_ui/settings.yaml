@@ -1,3 +1,4 @@
+window_maximized: true
 window: [1360, 860]
 window_desktop_margin: [32, 80]
 render_msaa_samples: 4
@@ -79,7 +80,7 @@ one_hand_scale_enabled: true
 grab_min_span: 0.10
 mirror: true
 camera_ar_fov_deg: 44.0
-chemistry_max_atoms: 32
+chemistry_max_atoms: 80
 chemistry_scene_limit: 8.0
 chemistry_history_limit: 40
 chemistry_response_hz: 9.0
@@ -410,11 +411,11 @@ chemistry_templates:
 # Presentation defaults for faster response; not the F2 research profile.
 filter_overrides:
   adaptive:
-    base_cutoff_hz: 2.5
+    base_cutoff_hz: 0.8
     beta_min: 0.0
-    beta_base: 0.6
-    beta_max: 4.0
-    velocity_gain: 1.2
+    beta_base: 0.0
+    beta_max: 3.5
+    velocity_gain: 0.8
     velocity_max: 10.0
-    final_cutoff_min_hz: 2.5
+    final_cutoff_min_hz: 0.8
     final_cutoff_max_hz: 15.0

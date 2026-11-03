@@ -21,6 +21,11 @@ Canonical specifications are the source of truth.
 
 Do not override them with assumptions from this file, README, comments or existing legacy code.
 
+For post-G7 UI/Extension tasks, also read
+`docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md` after the canonical files.
+That document is supplemental and non-canonical; it is subordinate to
+`docs/00`–`docs/05` and must not redefine research contracts or results.
+
 ---
 
 ## 2. Environment setup
@@ -193,3 +198,25 @@ docs/05_PROJECT_STATUS_AND_ROADMAP.md
 The current gate/task in that file determines what should be implemented next.
 
 Do not implement future roadmap features merely because they are listed.
+
+## 10. Post-G7 UI/Extension work
+
+The frozen G7 release is tag `g7-final`, resolving to commit
+`f454c6b8325c85199c0122c0e822fe8e76c1526c`. The recorded primary live-demo
+execution revision `6a87dc50f9d3920ed9fd39a2669e266be00f9735` is distinct
+from the release commit. Never move, delete, or rewrite the G7 tag.
+
+G8 is a post-G7 presentation/Extension continuation, not a change to the
+canonical-v1.2 research baseline or a claim of commercial readiness.
+Keep Core algorithms, frozen experiment meanings, G7 results, and their
+provenance unchanged. Use `docs/06_G8_UI_EXTENSION_PRODUCTIZATION.md` as
+supplemental direction and `docs/05_PROJECT_STATUS_AND_ROADMAP.md` for
+the active task.
+
+The 3D scene interaction path consumes `InteractionState` only. The
+read-only `RealtimeRuntime` presentation callback may also feed a
+presentation adapter with the documented image copy, `TrackingFrame`, and
+`InteractionState | None`; UI code must not mutate Core processing.
+Prefer changes under `extensions/stem3d/` and `tests/extensions/`. Touch
+Core only when a verified public seam is insufficient, and document the
+contract and G7 compatibility impact before changing it.

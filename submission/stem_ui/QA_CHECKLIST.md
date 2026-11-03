@@ -1,5 +1,15 @@
 # Checklist rà soát UI nộp đồ án
 
+## Bàn giao lên main — 18/10/2026
+
+Bản code chốt là `688f6b4` (UI schema 21), được đưa lên `main` cùng tài liệu
+và tag hiện tại `submission-2026-10-18-r2`. Lượt bàn giao chỉ sửa tài liệu,
+không đổi mã chạy và không chạy thêm test theo yêu cầu người dùng. Bằng chứng
+1.091 test trên hai Python bên dưới là lượt đã thực hiện trước khi chốt fix.
+Word/PDF, PowerPoint và video nộp phải được nhóm gửi kèm riêng với source.
+Theo yêu cầu người dùng, kịch bản quay không nằm trong bản source hiện tại;
+mã chạy giữ nguyên so với `688f6b4`, không chạy thêm test cho sửa tài liệu.
+
 ## Sửa vật thể Hóa học chạy theo sau buông — 18/10/2026
 
 - Tái hiện lỗi trước khi sửa ở cả cầm phân tử và kéo nguyên tử: ngón đã mở

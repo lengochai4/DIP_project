@@ -1,34 +1,10 @@
 # DIP Touchless STEM
 
-## Chạy giao diện nộp đồ án
-
-Giao diện đã chốt: `submission/stem_ui/`. Xem
-**[Hướng dẫn cài và chạy bằng tiếng Việt](HUONG_DAN_CHAY.md)**.
-
-Nhánh phát triển sau vấn đáp `feat/physics-lab` bổ sung tám bài cơ học ứng
-dụng, thao tác tay, đo/đồ thị, so sánh A/B và xuất dữ liệu. Xem
-[hướng dẫn tab Vật lý](submission/stem_ui/README.md#vật-lý-ứng-dụng--tám-bài-cơ-học).
-Nhánh này kế thừa mốc Hóa học `825ac93`; bản nộp/tag bên dưới vẫn được giữ riêng.
-
-Bản nộp ngày **16/10/2026**: nhánh `main`, tag `submission-2026-10-16-r2`.
-Giữ tag `submission-2026-10-16` làm bản trước khi sửa bộ cài Python.
-Chi tiết cài đặt, model SHA-256 và test tại
-[biên bản kiểm tra](submission/stem_ui/QA_CHECKLIST.md).
-
-Windows, Python **>=3.11 64-bit** theo `pyproject.toml`, tại thư mục gốc source:
-
-```powershell
-python -X utf8 -m submission.setup_ui
-.\.venv-ui\Scripts\python.exe -X utf8 -m submission.stem_ui.app
-```
-
-Hoặc nhấp đúp **Cai_dat_UI.bat** một lần, sau đó **Chay_UI.bat**.
-Bộ cài tạo môi trường riêng, để pip chọn thư viện tương thích theo `pyproject.toml`
-và tải model có kiểm tra SHA-256. Bản snapshot 3.12 chỉ dùng khi chọn `--locked`.
-Phiên bản Python mới vẫn cần được các thư viện native hỗ trợ; bộ cài không
-cam kết mọi phiên bản tương lai đều chạy. Camera chỉ bật khi bấm **Bật camera**.
-Các phần dưới mô tả Core và quy
-trình nghiên cứu; `.[dev]` riêng lẻ chưa cài thư viện dựng giao diện.
+**V2 product frontend:** new PySide6 application with semantic gestures and nine
+STEM labs. Run `.\setup_v2.ps1` then `.\launch_v2.ps1`. See
+[V2 setup and walkthrough](release/v2/README.md) and
+[product specification](docs/07_V2_PRODUCT_SPEC.md). Physical usability testing
+is deferred; the frozen G7 research and v1.0 fallback remain unchanged.
 
 **Real-Time Touchless 3D STEM Interaction Using Adaptive Image Preprocessing and Motion Signal Filtering with a Single RGB Camera**
 
@@ -75,11 +51,10 @@ Do not assume that a globally installed Python package is part of the project en
 Clone the repository:
 
 ```powershell
-git clone https://github.com/lengochai4/DIP_project.git
-cd DIP_project
+python -X utf8 -m submission.setup_ui
 ```
 
-Create a virtual environment:
+**Cài xong — một lệnh mở app, cũng là lệnh dùng cho các lần sau:**
 
 ```powershell
 python -m venv .venv
@@ -122,82 +97,36 @@ pytest
 
 ```text
 DIP_project/
-├── src/
-│   └── dip_touchless/       # DIP Core package
-├── extensions/
-│   └── stem3d/              # 3D STEM application layer
-├── tests/                   # Automated tests
-├── config/                  # Runtime / experiment configuration
-├── experiments/             # Experiment runners
-├── analysis/                # Metrics, plots and result analysis
-├── data/                    # Local/recorded experiment inputs
-├── results/                 # Generated experiment results
-├── docs/                    # Canonical specifications
-├── AGENTS.md                # AI/contributor entry instructions
-├── pyproject.toml
-└── README.md
+├── src/dip_touchless/         # DIP Core: thu ảnh, tiền xử lý, tracking, lọc, tương tác
+├── submission/stem_ui/       # App bốn tab, OpenGL, cử chỉ và dữ liệu STEM
+│   ├── app.py                # Điểm chạy UI
+│   ├── chemistry*.py         # Dữ liệu/đồ thị và tương tác Hóa học
+│   ├── physics*.py           # Mô hình SI, tương tác và trình bày Vật lý
+│   └── physics_labs.yaml     # Tham số, giả thiết, công thức và nguồn tám bài
+├── config/                   # Cấu hình Core và thực nghiệm
+├── experiments/              # Replay/thực nghiệm; UI dùng hàm tạo bộ lọc ở đây
+├── analysis/                 # Phân tích và dựng kết quả nghiên cứu
+├── tests/                    # Kiểm tra tự động
+├── models/README.md          # Nguồn/checksum model; binary tải lúc cài
+├── docs/                     # Sáu đặc tả chuẩn và trạng thái dự án
+├── reports/core-final/       # Nguồn báo cáo Core
+└── HUONG_DAN_CHAY.md          # Cài/chạy và xử lý lỗi
 ```
 
-Generated/local data under `data/`, `results/`, runtime logs and `.venv/` should not be committed unless explicitly required.
+**Giữ nguyên source khi nộp**, không xóa `experiments/` hay các thư mục vì nghĩ UI
+không dùng. ZIP GitHub không có môi trường Python, model binary, log/video `runs/`
+hoặc Word/PDF/PowerPoint cục bộ; tài liệu nộp và dữ liệu thực nghiệm nếu được yêu cầu
+phải gửi kèm riêng. Đổi tên thư mục được, chạy từ nơi chứa `pyproject.toml`.
 
----
+## Kiểm chứng đã thực hiện
 
-## 5. Canonical specifications
+Trước khi chốt bản sửa buông vật thể Hóa học `688f6b4`, toàn bộ **1.091 test đã
+qua trên Python 3.11.9 và 3.12.14**. Có kiểm tra native OpenGL, chuyển tab,
+resize/F11, lưu/xuất, cầm/buông, mất tay và nhập lại. Hồ sơ/giới hạn bằng chứng:
+[QA_CHECKLIST.md](submission/stem_ui/QA_CHECKLIST.md). Theo yêu cầu người dùng,
+lần bàn giao/merge này không chạy thêm test, không đổi mã thực thi so với bản đã chốt.
 
-The README is an introduction only.
-
-Normative project decisions are defined in exactly these six files:
-
-```text
-docs/
-├── 00_GOVERNANCE.md
-├── 01_MASTER_SPEC.md
-├── 02_ARCHITECTURE_AND_CONTRACTS.md
-├── 03_ALGORITHM_AND_EXPERIMENTS.md
-├── 04_IMPLEMENTATION_TESTING_GUIDE.md
-└── 05_PROJECT_STATUS_AND_ROADMAP.md
-```
-
-Their responsibilities are:
-
-- `00_GOVERNANCE.md` — source-of-truth, precedence and change discipline;
-- `01_MASTER_SPEC.md` — scope, non-goals, research questions and contribution boundary;
-- `02_ARCHITECTURE_AND_CONTRACTS.md` — architecture, module boundaries and public contracts;
-- `03_ALGORITHM_AND_EXPERIMENTS.md` — algorithms, baselines and experiment definitions;
-- `04_IMPLEMENTATION_TESTING_GUIDE.md` — implementation gates, testing and coding rules;
-- `05_PROJECT_STATUS_AND_ROADMAP.md` — current stage, tasks, risks and Definition of Done.
-
-If this README conflicts with a canonical specification, the canonical specification takes precedence.
-
----
-
-## 6. Development workflow
-
-The project is developed incrementally by gates:
-
-```text
-G0 — Foundation / contracts / config / logging
-G1 — Raw + Replay baseline
-G2 — DIP preprocessing
-G3 — Canonical Fixed 1-Euro
-G4 — Bounded Adaptive 1-Euro
-G5 — Gesture + 3D STEM extension
-G6 — Minimal experiment tooling
-G7 — Final evaluation and delivery
-```
-
-Do not skip ahead to renderer polish before the DIP Core is stable.
-
-Each meaningful task should follow:
-
-```text
-implement
-→ run targeted tests
-→ inspect git diff/status
-→ commit
-```
-
-Example:
+Để tự kiểm tra cài đặt hoặc chạy bộ test khi cần:
 
 ```powershell
 pytest
@@ -272,11 +201,3 @@ docs/05_PROJECT_STATUS_AND_ROADMAP.md
 for the current project gate, task, blockers and Definition of Done.
 
 Do not infer implementation completion from this README.
-
-## Author
-```
-Nguyen Dak Loc - 24110107
-Le Ngoc Hai - 24110089
-Tran Gia Kiet - 24110103
-```
-This project is supported by Assoc.Prof.Hoang Van Dung and Ho Chi Minh City University of Technology and Engineering.
