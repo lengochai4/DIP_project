@@ -13,10 +13,12 @@ from .geometry import (Tip, FingerSelection, live_mesh, solid_mesh,
                        world_position, preview_position, project_live_tip, TIPS)
 from .geometry import bone_transforms
 from .manipulation import GrabController
+from .camera_space import CameraCover
 from .chemistry_view import CameraChemistryView
 from .physics_view import PhysicsView
 from .solid_palette import SolidPalette, tip_summary
 from .screen_sprites import ScreenSprites
+from .home_hub import VirtualHomeHub
 from .theme import BG, PANEL, INK, MUTED, ACCENT, GOLD, AUTHORS, card, glass, outline, atom_mark, header_height, scene_rect, fit_desktop_window
 
 COLORS = ((.20,.72,.90),(.28,.46,.82),(.48,.87,.94),(.47,.60,.79))
@@ -71,12 +73,28 @@ class SubmissionRenderer:
         self.droidcam_port=str(settings.get('droidcam_wifi_port',4747))
         self.chemistry=CameraChemistryView(settings,self)
         self.physics=PhysicsView(settings,self)
+        self.home_hub=VirtualHomeHub(settings)
+        self.geometry_dropdown_open=False
+        self.solid_camera_texture=None
+        self.solid_camera_key=None
+        self.solid_camera_size=None
+        self._solid_btn_target=None
+        self._solid_btn_dwell=0.0
 
     def open(self):
         os.environ.setdefault('SDL_WINDOWS_DPI_AWARENESS',self.settings['windows_dpi_awareness'])
         pygame.init()
         pygame.display.gl_set_attribute(pygame.GL_DEPTH_SIZE,24)
         self._set_display()
+        if self.settings.get('window_maximized', False) and self._window and not self.fullscreen:
+            self._window.maximize()
+            pygame.event.pump()
+            new_size = pygame.display.get_window_size()
+            if new_size != self.size:
+                self.size = new_size
+                self.windowed = self.size
+                self._set_display()
+            self._window.resizable = False
         pygame.display.set_caption('DIP Touchless STEM • Đồ án')
         font_path = Path('C:/Windows/Fonts/segoeui.ttf')
         self.fonts = {size:pygame.font.Font(str(font_path) if font_path.is_file() else None,size)
@@ -108,11 +126,14 @@ class SubmissionRenderer:
             gl.glDeleteLists(display_list,1)
         if hasattr(self,'texture'):
             gl.glDeleteTextures([self.texture])
+        if hasattr(self,'solid_camera_texture') and self.solid_camera_texture is not None:
+            gl.glDeleteTextures([self.solid_camera_texture]); self.solid_camera_texture=None
         if hasattr(self,'unit_sphere'): gl.glDeleteLists(self.unit_sphere,1)
         if hasattr(self,'unit_bone'): gl.glDeleteLists(self.unit_bone,1)
         # SDL desktop fullscreen handles monitor bounds/origin and taskbar;
         # merely enlarging a borderless window leaves its old screen offset.
-        flags = pygame.OPENGL | pygame.DOUBLEBUF | (pygame.NOFRAME if self.fullscreen else pygame.RESIZABLE)
+        resizable_flag = 0 if self.settings.get('window_maximized', False) else pygame.RESIZABLE
+        flags = pygame.OPENGL | pygame.DOUBLEBUF | (pygame.NOFRAME if self.fullscreen else resizable_flag)
         if not self.fullscreen and self.initial_window_fit:
             desktops=pygame.display.get_desktop_sizes()
             desktop=desktops[min(self.display_index,len(desktops)-1)]
@@ -175,6 +196,8 @@ class SubmissionRenderer:
             gl.glDeleteLists(display_list,1)
         if hasattr(self,'texture'):
             gl.glDeleteTextures([self.texture])
+        if hasattr(self,'solid_camera_texture') and self.solid_camera_texture is not None:
+            gl.glDeleteTextures([self.solid_camera_texture]); self.solid_camera_texture=None
         if hasattr(self,'quadric'):
             glu.gluDeleteQuadric(self.quadric)
         if hasattr(self,'unit_sphere'): gl.glDeleteLists(self.unit_sphere,1)
@@ -198,12 +221,16 @@ class SubmissionRenderer:
     def _suspend_solid(self):
         self.dragging=False; self.grab.release(); self.solid_palette.suspend()
         self.palette_cursor_points.clear(); self.solid_context=None
+        self._solid_btn_target=None; self._solid_btn_dwell=0.0; self._solid_btn_rect=None
+        self._solid_cursor_pt=None; self._solid_ui_busy=False
 
     def enter_basic(self, mode):
         if self.mode != mode:
             self._suspend_solid(); self.chemistry.input.release(); self.physics.suspend()
             self.last_identity=None
         self.mode=mode; self.menu=False
+        if mode in ('solid', 'tracking'):
+            self.camera_visible = True
 
     def events(self):
         actions = []
@@ -211,6 +238,9 @@ class SubmissionRenderer:
             if event.type == pygame.QUIT:
                 actions.append('quit')
             elif event.type == pygame.VIDEORESIZE and not self.fullscreen and (event.w,event.h)!=self.size and (event.w,event.h)==pygame.display.get_window_size():
+                if self.settings.get('window_maximized', False):
+                    if event.w < self.size[0] or event.h < self.size[1]:
+                        continue
                 desktops=pygame.display.get_desktop_sizes()
                 desktop=desktops[min(self.display_index,len(desktops)-1)]
                 minimum=fit_desktop_window((960,660),desktop,self.settings['window_desktop_margin'])
@@ -269,8 +299,7 @@ class SubmissionRenderer:
                     self.chemistry.input.command({pygame.K_e:'edit',pygame.K_o:'electrons',pygame.K_t:'table',pygame.K_z:'undo',
                         pygame.K_y:'redo',pygame.K_BACKSPACE:'delete',pygame.K_l:'save',pygame.K_j:'load'}[key])
                 elif key == pygame.K_TAB:
-                    if self.mode=='solid': self.enter_basic('tips')
-                    elif self.mode=='tips': self.enter_chemistry()
+                    if self.mode=='solid': self.enter_chemistry()
                     elif self.mode=='chemistry': self.enter_physics()
                     else: self.enter_basic('solid')
                 elif pygame.K_1 <= key <= pygame.K_4:
@@ -281,6 +310,15 @@ class SubmissionRenderer:
                 elif self.mode=='physics' and not self.droidcam_dialog: self.physics.wheel(event.y,pygame.mouse.get_pos())
                 elif not self.droidcam_dialog and not self.solid_palette.open: self.zoom=float(np.clip(self.zoom*math.exp(event.y*.08),.55,1.8))
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button==1:
+                view=scene_rect(self.size,self.camera_visible,self.mode)
+                home_action=self.home_hub.handle_click(event.pos,self.size,header_height(self.size[0]),view=view)
+                if home_action:
+                    if home_action in ('solid', 'tracking'): self.enter_basic(home_action)
+                    elif home_action=='chemistry': self.enter_chemistry()
+                    elif home_action=='physics': self.enter_physics()
+                    continue
+                if self.home_hub.expanded:
+                    continue
                 if self.mode=='solid' and self.solid_palette.open and not self.droidcam_dialog:
                     action=next((a for rect,a in self.solid_palette.targets if rect.collidepoint(event.pos)),None)
                     if action:
@@ -295,14 +333,16 @@ class SubmissionRenderer:
                     elif action in ('droidcam_connect','webcam_connect'): actions.append(action)
                     continue
                 if action:
-                    if action.startswith('kind:'):
-                        self.enter_basic('solid'); self.kind=action.split(':')[1]; self.menu=False
+                    if action=='geom_dropdown':
+                        self.geometry_dropdown_open=not getattr(self,'geometry_dropdown_open',False)
+                    elif action.startswith('kind:'):
+                        self.enter_basic('solid'); self.kind=action.split(':')[1]; self.menu=False; self.geometry_dropdown_open=False
                     elif action in ('solid','tips'):
-                        self.enter_basic(action)
+                        self.enter_basic(action); self.geometry_dropdown_open=False
                     elif action=='chemistry':
-                        self.enter_chemistry()
+                        self.enter_chemistry(); self.geometry_dropdown_open=False
                     elif action=='physics':
-                        self.enter_physics()
+                        self.enter_physics(); self.geometry_dropdown_open=False
                     elif action=='camera':
                         self.camera_visible=not self.camera_visible
                     elif action=='droidcam':
@@ -324,6 +364,7 @@ class SubmissionRenderer:
                     else:
                         actions.append(action)
                 else:
+                    self.geometry_dropdown_open=False
                     if self.mode=='chemistry': self.chemistry.mouse('down',event.pos)
                     elif self.mode=='physics': self.physics.mouse('down',event.pos)
                     else: self.dragging=True
@@ -385,9 +426,18 @@ class SubmissionRenderer:
         self._text(surface,line,(x,y),size,color)
         return y+size+7
 
+    def _mouse_pos(self):
+        try:
+            if pygame.display.get_init():
+                return pygame.mouse.get_pos()
+        except pygame.error:
+            pass
+        return (0, 0)
+
     def _button(self,surface,label,rect,action,active=False):
         rect=pygame.Rect(rect)
-        hovered=rect.collidepoint(pygame.mouse.get_pos())
+        finger_hover=getattr(self,'_solid_btn_target',None)==action
+        hovered=rect.collidepoint(self._mouse_pos()) or finger_hover
         surface.blit(glass(rect.size,250,10,active or hovered,self.settings['ui_card_supersample']),rect)
         surface.blit(outline(rect.size,ACCENT if active else (83,119,139),samples=self.settings['ui_card_supersample']),rect)
         if active: pygame.draw.line(surface,GOLD,(rect.x+14,rect.bottom-2),(rect.right-14,rect.bottom-2),2)
@@ -406,6 +456,7 @@ class SubmissionRenderer:
         draw_started=time.perf_counter()
         draw_dt=0 if self.last_draw_at is None else draw_started-self.last_draw_at
         self.last_draw_at=draw_started
+        self._update_home_hub(draw_dt,snapshot,active,now,view=view)
         if self.mode=='chemistry':
             return self._draw_chemistry(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,draw_dt,draw_started)
         if self.mode=='physics':
@@ -422,6 +473,12 @@ class SubmissionRenderer:
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         gl.glEnable(gl.GL_SCISSOR_TEST); gl.glScissor(vx,h-vy-vh,vw,vh)
         gl.glViewport(vx,h-vy-vh,vw,vh)
+        if snapshot is not None and self.camera_visible and active:
+            gl.glDisable(gl.GL_DEPTH_TEST); gl.glDisable(gl.GL_LIGHTING)
+            gl.glMatrixMode(gl.GL_PROJECTION); gl.glLoadIdentity(); gl.glOrtho(0,1,1,0,-1,1)
+            gl.glMatrixMode(gl.GL_MODELVIEW); gl.glLoadIdentity()
+            self._draw_solid_camera_backdrop(snapshot,run_id,vw,vh)
+            gl.glEnable(gl.GL_DEPTH_TEST)
         gl.glMatrixMode(gl.GL_PROJECTION); gl.glLoadIdentity()
         glu.gluPerspective(44,vw/vh,.1,100)
         gl.glMatrixMode(gl.GL_MODELVIEW); gl.glLoadIdentity()
@@ -436,7 +493,8 @@ class SubmissionRenderer:
         gl.glMaterialf(gl.GL_FRONT_AND_BACK,gl.GL_SHININESS,80)
         gl.glLightModeli(gl.GL_LIGHT_MODEL_TWO_SIDE,gl.GL_TRUE)
         gl.glEnable(gl.GL_COLOR_MATERIAL); gl.glEnable(gl.GL_NORMALIZE)
-        self._floor()
+        if self.mode != 'tracking':
+            self._floor()
         fresh = snapshot is not None and active and not self.droidcam_dialog and time.monotonic()-snapshot.delivered_at <= self.settings['stale_after_s']
         hands=snapshot.hands if fresh else ()
         identity=(run_id,snapshot.frame_id) if fresh else None
@@ -444,6 +502,13 @@ class SubmissionRenderer:
         present={hand.slot for hand in hands}
         for s in self.last_slots-present:
             self.selectors[s].reset()
+        if self.mode=='solid' and fresh and not self.solid_palette.open:
+            self._update_solid_finger_buttons(draw_dt, hands, view=view, snapshot=snapshot)
+            if getattr(self, '_solid_ui_busy', False):
+                self.grab.release()
+        elif self.mode!='solid' or not fresh:
+            self._solid_btn_target=None; self._solid_btn_dwell=0.0; self._solid_btn_rect=None
+            self._solid_cursor_pt=None; self._solid_ui_busy=False
         if identity != self.last_identity:
             for hand in hands:
                 # Angle hysteresis cannot transfer to a new hand generation.
@@ -452,10 +517,11 @@ class SubmissionRenderer:
                 self.selectors[hand.slot].update(hand.raw_landmarks or hand.landmarks,snapshot.image.shape[1]/snapshot.image.shape[0])
             if self.mode=='solid' and fresh:
                 aspect=snapshot.image.shape[1]/snapshot.image.shape[0]
-                if not self.solid_palette.open:
+                ui_busy=getattr(self,'_solid_ui_busy',False)
+                if not self.solid_palette.open and not ui_busy:
                     self.grab.update(self.solid_palette.grab_hands(hands,aspect),snapshot.timestamp_s,aspect,view_rotation)
                 chosen=self.solid_palette.update(hands,snapshot.timestamp_s,aspect,view,
-                    busy=self.dragging or bool(self.grab.slots) or any(g.held or g.pending_since is not None for g in self.grab.grips.values()) or self.menu)
+                    busy=ui_busy or self.dragging or bool(self.grab.slots) or any(g.held or g.pending_since is not None for g in self.grab.grips.values()) or self.menu)
                 if chosen in KINDS: self.kind=chosen
                 if chosen is not None or self.solid_palette.open:
                     self.dragging=False; self.grab.release()
@@ -479,7 +545,10 @@ class SubmissionRenderer:
         self.live_points={key:self.hand_points[key] for key in targets}
         tips=[Tip(key[0],key[2],tuple(value)) for key,value in self.live_points.items()]
         world_labels=[]
-        if self.mode=='solid':
+        if self.mode=='tracking':
+            if snapshot is not None and self.camera_visible and active and hands:
+                self._draw_solid_hand_keypoints(view, snapshot, hands, draw_dt)
+        elif self.mode=='solid':
             pose=self.grab.pose
             vertices=np.array(solid_mesh(self.kind).vertices)*(pose.scale*pose.stretch)
             vertices=vertices@pose.rotation.T+pose.position
@@ -489,6 +558,8 @@ class SubmissionRenderer:
             gl.glMultMatrixf(matrix.T.astype(np.float32))
             gl.glScalef(*(pose.scale*pose.stretch))
             gl.glCallList(self.solid_lists[self.kind]); gl.glPopMatrix()
+            if snapshot is not None and self.camera_visible and active and hands:
+                self._draw_solid_hand_keypoints(view, snapshot, hands, draw_dt)
         else:
             gl.glPushMatrix()
             fit=1.0
@@ -536,8 +607,11 @@ class SubmissionRenderer:
                      self.fullscreen,self.grab.scale_mode,active,error,status,camera_index,source_kind,self.droidcam_dialog,
                      self.droidcam_host,self.droidcam_port,self.droidcam_field,fresh,len(hands),
                      self.grab.feedback,tuple(bool(self.grab.grips.get(s) and self.grab.grips[s].held) for s in (0,1)),
+                     self.home_hub.expanded,tuple(self.home_hub.pos) if self.home_hub.pos is not None else None,
+                     self.home_hub.dwell_target,round(self.home_hub.dwell_time,2) if self.home_hub.dwell_target else None,getattr(self,'geometry_dropdown_open',False),
+                     getattr(self,'_solid_btn_target',None),
                      tip_summary(tips,getattr(self,'live_mesh_mode','points')) if self.mode=='tips' else None)
-        hover=next((action for rect,action in reversed(self.buttons) if rect.collidepoint(pygame.mouse.get_pos())),None)
+        hover=next((action for rect,action in reversed(self.buttons) if rect.collidepoint(self._mouse_pos())),None)
         dynamic=hover
         # Static controls upload only on a semantic change. Side preview/mouse
         # hover remain bounded; fingertip labels now follow independently.
@@ -562,6 +636,7 @@ class SubmissionRenderer:
         gl.glDisable(gl.GL_SCISSOR_TEST)
         # Guidance/cards stay above labels, as with the original raster UI.
         self._overlay(overlay)
+        if self.mode=='solid': self._draw_solid_button_feedback()
         self._draw_basic_preview(snapshot,view,hands,fresh,active,run_id,now)
         gl.glEnable(gl.GL_SCISSOR_TEST); gl.glScissor(vx,h-vy-vh,vw,vh)
         if self.mode=='solid': self._draw_solid_palette(view,draw_dt)
@@ -607,7 +682,8 @@ class SubmissionRenderer:
                 pygame.draw.circle(surface,GOLD if grip and grip.held else color,positions[8],9,2)
             self.basic_preview_surface=surface; self.basic_preview_key=key
             self.basic_preview_semantic=semantic; self.basic_preview_at=now
-        self.sprites.draw(('basic-preview',),self.basic_preview_surface,rect[:2],version=self.basic_preview_key)
+        pos=(-2000,-2000) if self.mode in ('solid', 'tracking') else rect[:2]
+        self.sprites.draw(('basic-preview',),self.basic_preview_surface,pos,version=self.basic_preview_key)
 
     def _draw_solid_palette(self,view,dt):
         palette=self.solid_palette; x,y,w,h=view
@@ -696,7 +772,7 @@ class SubmissionRenderer:
         # Camera pixels and atom-label motion are drawn independently. A fresh
         # background frame must not upload a window-sized UI texture by itself.
         preview=(snapshot.frame_id,len(hands)) if snapshot and self.camera_visible else None
-        overlay_key=semantic_key+(pygame.mouse.get_pos(),preview)
+        overlay_key=semantic_key+(pygame.mouse.get_pos(),preview,self.home_hub.expanded,tuple(self.home_hub.pos) if self.home_hub.pos is not None else None,self.home_hub.dwell_target,round(self.home_hub.dwell_time,2) if self.home_hub.dwell_target else None)
         if overlay_key!=self.last_overlay_key and (semantic_key!=getattr(self,'_chemistry_semantic_key',None) or now-self.last_overlay_at>=1/self.settings['overlay_fps'] or not isinstance(self.last_overlay_key,tuple) or self.last_overlay_key[0]!='chemistry'):
             overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,[None]*count,fresh,[])
             self.last_overlay_at=now; self.last_overlay_key=overlay_key
@@ -730,7 +806,8 @@ class SubmissionRenderer:
         hands=snapshot.hands if fresh else ()
         key=('physics',self.size,self.fullscreen,self.camera_visible,self.help_visible,active,error,status,
             self.physics.model.message,self.physics.page_key,source_kind,self.droidcam_dialog,self.droidcam_host,self.droidcam_port,self.droidcam_field,
-            snapshot.frame_id if snapshot and self.camera_visible else None)
+            snapshot.frame_id if snapshot and self.camera_visible else None,
+            self.home_hub.expanded,tuple(self.home_hub.pos) if self.home_hub.pos is not None else None,self.home_hub.dwell_target,round(self.home_hub.dwell_time,2) if self.home_hub.dwell_target else None)
         if key!=self.last_overlay_key:
             overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,[],fresh,[])
             self.last_overlay_key=key
@@ -788,28 +865,37 @@ class SubmissionRenderer:
         x=(w-controls)//2 if compact else right; cy=92 if compact else hh//2-11
         for label,bw,action,on in top_controls:
             self._button(overlay,label,(x,cy,bw,38),action,on); x+=bw+6
-        sy=hh+15
-        self._card(overlay,(20,sy-5,482,46),230)
-        for label,x,bw,action in (('Khối 3D',26,100,'solid'),('Đầu ngón',132,104,'tips'),('Hóa học AR',242,120,'chemistry'),('Vật lý',368,128,'physics')):
-            self._button(overlay,label,(x,sy, bw,36),action,self.mode==action)
         if self.mode=='solid':
-            mx,my=(26,sy+46) if w<1200 else (518,sy)
-            self._button(overlay,NAMES[KINDS.index(self.kind)],(mx,my,130,36),'menu')
-            pygame.draw.polygon(overlay,MUTED,((mx+115,my+15),(mx+123,my+15),(mx+119,my+20)))
-            label={'uniform':'Hai tay: đổi cỡ','stretch':'Hai tay: kéo dãn','distance':'Một tay: đổi cỡ','depth':'Một tay: tiến/lùi'}[self.grab.scale_mode]
-            self._button(overlay,label,(168,my,152,36) if w<1200 else (660,sy,152,36),'scale_mode',self.grab.scale_mode!='uniform')
-        if w>=800 or self.mode=='solid':
-            self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại' if self.mode=='solid' else 'Đặt lại góc nhìn',(w-168,sy+46 if w<800 else sy,148,36),'reset')
+            panel_x=20; panel_y=vy+12; panel_w=210
+            is_open=getattr(self,'geometry_dropdown_open',False)
+            panel_h=268 if is_open else 145
+            self._card(overlay,(panel_x,panel_y,panel_w,panel_h),238)
+            self._text(overlay,'HÌNH HỌC • 3D',(panel_x+14,panel_y+12),12,ACCENT)
+            cur_name=NAMES[KINDS.index(self.kind)]
+            btn_y=panel_y+34
+            self._button(overlay,f'{cur_name}  ▾',(panel_x+10,btn_y,panel_w-20,32),'geom_dropdown',is_open)
+            opt_y=btn_y+36
+            if is_open:
+                for i,k in enumerate(KINDS):
+                    self._button(overlay,NAMES[i],(panel_x+10,opt_y+i*26,panel_w-20,24),f'kind:{k}',self.kind==k)
+                opt_y+=4*26+6
+                # Vách ngăn phân tách danh sách hình khối và các tác vụ bên dưới
+                pygame.draw.line(overlay,(50,85,110,180),(panel_x+12,opt_y),(panel_x+panel_w-12,opt_y),1)
+                pygame.draw.line(overlay,(80,140,175,130),(panel_x+12,opt_y+1),(panel_x+panel_w-12,opt_y+1),1)
+                opt_y+=10
+            scale_label={'uniform':'Đổi cỡ vật','stretch':'Kéo dãn vật','distance':'Đổi cỡ 1 tay','depth':'Tiến/lùi 1 tay'}[self.grab.scale_mode]
+            self._button(overlay,scale_label,(panel_x+10,opt_y,panel_w-20,28),'scale_mode',self.grab.scale_mode!='uniform')
+            self._button(overlay,'Đặt lại vật thể',(panel_x+10,opt_y+32,panel_w-20,28),'reset')
         # Scene frame is only an outline, leaving the camera unobstructed.
         pygame.draw.rect(overlay,(53,105,124,190),view,1,border_radius=18)
         pygame.draw.line(overlay,ACCENT,(vx+20,vy),(vx+92,vy),2)
         pygame.draw.line(overlay,GOLD,(vx+vw-92,vy+vh-1),(vx+vw-20,vy+vh-1),2)
-        if self.mode not in ('chemistry','physics'):
+        if self.mode not in ('solid', 'chemistry', 'physics', 'tracking'):
             feedback=self.grab.feedback if self.mode=='solid' and self.grab.slots else ('Đưa tay vào camera để bắt đầu' if not hands else 'Duỗi ngón để tạo hình' if self.mode=='tips' else 'Chụm cái–trỏ để cầm khối')
             if self.mode=='tips': feedback=tip_summary(tips,getattr(self,'live_mesh_mode','points'))
             self._text(overlay,feedback,(vx+18,vy+16),15,ACCENT if hands else MUTED)
         for label,pos in world_labels: self._text(overlay,label,pos,13,INK)
-        if self.camera_visible:
+        if self.camera_visible and self.mode not in ('solid', 'chemistry', 'physics', 'tracking'):
             pw=min(300,w//4); px=w-20-pw; py=vy
             self._card(overlay,(px,py,pw,vh),245)
             previous_clip=overlay.get_clip(); overlay.set_clip(pygame.Rect(px,py,pw,vh))
@@ -849,7 +935,7 @@ class SubmissionRenderer:
             elif vh>=240:
                 self._wrap(overlay,'Đưa một hoặc hai tay vào khung. Tránh che đầu ngón và chồng hai lòng bàn tay.',(px+18,py+chmax+108),pw-36,15)
             overlay.set_clip(previous_clip)
-        if self.help_visible and self.mode not in ('chemistry','physics') and not (self.camera_visible and vw<820):
+        if self.help_visible and self.mode not in ('chemistry','physics','tracking') and not (self.camera_visible and vw<820 and self.mode not in ('solid', 'chemistry', 'physics', 'tracking')):
             hw=min(342,vw-36); hx=vx+18; hy=vy+54
             self._card(overlay,(hx,hy,hw,184),231,True)
             self._text(overlay,'THAO TÁC BẰNG TAY',(hx+16,hy+15),13,ACCENT)
@@ -880,6 +966,7 @@ class SubmissionRenderer:
             elif claims: label='Đang cầm • Chụm tay còn lại trong vùng trống để xoay / đổi cỡ'
             elif scene.electrons: label+=(' • Chọn Cầm cả khối để dùng hai tay đổi cỡ' if scene.edit else ' • Cầm nguyên tử, chụm tay còn lại để đổi cỡ cả lớp e')
         elif self.mode=='physics': label=self.physics.model.message
+        elif self.mode=='tracking': label='Đưa bàn tay lên trước camera để hiển thị 21 điểm mốc nhận diện (Hand Landmarks)'
         else: label='Kéo chuột để xem góc khác  •  Cuộn để gần / xa  •  R để đặt lại'
         if error: label=error
         if replay: label='Phát lại  •  '+label
@@ -897,7 +984,345 @@ class SubmissionRenderer:
             overlay.set_clip(None)
         if self.droidcam_dialog and not replay:
             self._draw_droidcam_dialog(overlay,source_kind,error)
+        self.home_hub.draw(overlay,self.fonts,self.mode,view=view)
         return overlay
+
+    def _update_home_hub(self,dt,snapshot,active,now,view=None):
+        fresh=snapshot is not None and active and not self.droidcam_dialog and now-snapshot.delivered_at<=self.settings['stale_after_s']
+        hands=snapshot.hands if fresh else ()
+        mouse_pos=None; mouse_down=False
+        try:
+            if pygame.display.get_init():
+                cur_mouse=pygame.mouse.get_pos()
+                mouse_down=bool(pygame.mouse.get_pressed()[0])
+                if mouse_down or cur_mouse!=getattr(self,'_last_mouse_pos',None):
+                    self._last_mouse_pos=cur_mouse
+                    self._mouse_active_time=now
+                if mouse_down or not hands or (now-getattr(self,'_mouse_active_time',0.0)<2.0):
+                    mouse_pos=cur_mouse
+        except (pygame.error, IndexError):
+            pass
+        source_aspect=snapshot.image.shape[1]/snapshot.image.shape[0] if snapshot is not None else None
+        home_action=self.home_hub.update(dt,self.size,header_height(self.size[0]),
+                                         hands=hands,
+                                         mouse_pos=mouse_pos,
+                                         mouse_down=mouse_down,
+                                         mirror=self.settings['mirror'],
+                                         view=view,
+                                         source_aspect=source_aspect)
+        if home_action:
+            if home_action in ('solid', 'tracking'): self.enter_basic(home_action)
+            elif home_action=='chemistry': self.enter_chemistry()
+            elif home_action=='physics': self.enter_physics()
+
+    def _draw_solid_camera_backdrop(self,snapshot,run_id,vw,vh):
+        if not hasattr(self,'solid_camera_texture') or self.solid_camera_texture is None:
+            self.solid_camera_texture=gl.glGenTextures(1)
+            self.solid_camera_key=None; self.solid_camera_size=None
+        source_aspect=snapshot.image.shape[1]/snapshot.image.shape[0] if snapshot is not None else 4/3
+        cover=CameraCover(source_aspect,vw/max(1,vh))
+        key=(run_id,snapshot.frame_id)
+        if key!=getattr(self,'solid_camera_key',None):
+            image=snapshot.image
+            if self.settings['mirror']: image=image[:,::-1]
+            image=np.ascontiguousarray(image)
+            gl.glBindTexture(gl.GL_TEXTURE_2D,self.solid_camera_texture)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MIN_FILTER,gl.GL_LINEAR)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MAG_FILTER,gl.GL_LINEAR)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_WRAP_S,gl.GL_CLAMP_TO_EDGE)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_WRAP_T,gl.GL_CLAMP_TO_EDGE)
+            gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT,1)
+            size=(image.shape[1],image.shape[0])
+            if size!=getattr(self,'solid_camera_size',None):
+                gl.glTexImage2D(gl.GL_TEXTURE_2D,0,gl.GL_RGB,*size,0,gl.GL_BGR,gl.GL_UNSIGNED_BYTE,image)
+            else:
+                gl.glTexSubImage2D(gl.GL_TEXTURE_2D,0,0,0,*size,gl.GL_BGR,gl.GL_UNSIGNED_BYTE,image)
+            self.solid_camera_size=size; self.solid_camera_key=key
+        gl.glEnable(gl.GL_TEXTURE_2D); gl.glBindTexture(gl.GL_TEXTURE_2D,self.solid_camera_texture); gl.glColor4f(1,1,1,1)
+        gl.glBegin(gl.GL_QUADS)
+        for (u,v),(a,b) in zip(cover.uv,((0,0),(1,0),(1,1),(0,1))):
+            gl.glTexCoord2f(u,v); gl.glVertex2f(a,b)
+        gl.glEnd(); gl.glDisable(gl.GL_TEXTURE_2D)
+        gl.glEnable(gl.GL_BLEND); gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glColor4f(0.02,0.05,0.08,0.0 if self.mode=='tracking' else 0.30)
+        gl.glBegin(gl.GL_QUADS)
+        for pt in ((0,0),(1,0),(1,1),(0,1)): gl.glVertex2f(*pt)
+        gl.glEnd(); gl.glDisable(gl.GL_BLEND)
+
+    def _update_solid_finger_buttons(self,dt,hands,view=None,snapshot=None):
+        w,h=self.size
+        active_btn=None; active_rect=None; is_pinch=False; cursor_pt=None
+        if view is not None and snapshot is not None and hands:
+            vx,vy,vw,vh=view
+            source_aspect=snapshot.image.shape[1]/snapshot.image.shape[0]
+            cover=CameraCover(source_aspect,vw/max(1,vh))
+            hands_to_use=[cover.hand(h) for h in hands]
+            use_vw,use_vh=vw,vh
+            use_vx,use_vy=vx,vy
+        else:
+            hands_to_use=hands
+            use_vw,use_vh=float(w),float(h)
+            use_vx,use_vy=0.0,0.0
+        any_pinch=False
+        finger_cache=getattr(self,'_solid_finger_pts',{})
+        new_cache={}
+        alpha=1.0-math.exp(-math.tau*18.0*max(0.0,dt)) if dt>0.0 else 1.0
+        current_target=getattr(self,'_solid_btn_target',None)
+        current_rect=next((r for r,a in reversed(self.buttons) if a==current_target),None) if current_target else None
+
+        for hand in hands_to_use:
+            if not getattr(hand,'landmarks',None) or len(hand.landmarks)!=21: continue
+            tip=hand.landmarks[8]; thumb=hand.landmarks[4]
+            raw_tx=use_vx+(1.0-tip.x if self.settings['mirror'] else tip.x)*use_vw
+            raw_ty=use_vy+tip.y*use_vh
+            raw_hx=use_vx+(1.0-thumb.x if self.settings['mirror'] else thumb.x)*use_vw
+            raw_hy=use_vy+thumb.y*use_vh
+            gen=getattr(hand,'generation',0)
+            k8=(hand.slot,gen,8); k4=(hand.slot,gen,4)
+            p8=finger_cache.get(k8,(raw_tx,raw_ty))
+            p4=finger_cache.get(k4,(raw_hx,raw_hy))
+            tx=p8[0]+(raw_tx-p8[0])*alpha; ty=p8[1]+(raw_ty-p8[1])*alpha
+            hx=p4[0]+(raw_hx-p4[0])*alpha; hy=p4[1]+(raw_hy-p4[1])*alpha
+            new_cache[k8]=(tx,ty); new_cache[k4]=(hx,hy)
+            pinch_dist=math.hypot(tx-hx,ty-hy)
+            if pinch_dist<48.0: any_pinch=True
+
+            # Stabilize pointer against finger-pull when closing a pinch over a button
+            anchor_key=(hand.slot,gen,'anchor')
+            if pinch_dist<64.0 and current_rect is not None and anchor_key in finger_cache:
+                ax,ay=finger_cache[anchor_key]
+                if math.hypot(tx-ax,ty-ay)<42.0:
+                    tx=ax*0.72+tx*0.28; ty=ay*0.72+ty*0.28
+                    new_cache[anchor_key]=(ax,ay)
+                else:
+                    new_cache[anchor_key]=(tx,ty)
+            else:
+                new_cache[anchor_key]=(tx,ty)
+
+            pt=(tx,ty)
+            for rect,action in reversed(self.buttons):
+                if rect.collidepoint(pt):
+                    active_btn=action; active_rect=rect; cursor_pt=pt
+                    if pinch_dist<48.0: is_pinch=True
+                    break
+            # Magnetic hysteresis: keep current button if within a 10px/6px comfort border
+            if active_btn is None and current_rect is not None and current_rect.inflate(14,10).collidepoint(pt):
+                active_btn=current_target; active_rect=current_rect; cursor_pt=pt
+                if pinch_dist<48.0: is_pinch=True
+            if active_btn: break
+
+        is_open=getattr(self,'geometry_dropdown_open',False)
+        panel_zone=pygame.Rect(12,(view[1] if view else 80)+4,230,284 if is_open else 160)
+        in_panel=any(panel_zone.collidepoint(pt) for k,pt in new_cache.items() if len(k)==3 and k[2]==8)
+        if cursor_pt is None and in_panel:
+            cursor_pt=next((pt for k,pt in new_cache.items() if len(k)==3 and k[2]==8),None)
+        self._solid_finger_pts=new_cache
+        self._solid_cursor_pt=cursor_pt
+        self._solid_ui_busy=bool(active_btn is not None or in_panel or getattr(self,'_solid_disarmed_btn',None) is not None)
+
+        if not any_pinch:
+            self._solid_pinch_latched=False
+
+        # Anti-cancel / Re-entry requirement:
+        disarmed_btn=getattr(self,'_solid_disarmed_btn',None)
+        if disarmed_btn is not None:
+            disarmed_rect=getattr(self,'_solid_disarmed_rect',None)
+            finger_inside=(active_btn==disarmed_btn) or (disarmed_rect is not None and cursor_pt is not None and disarmed_rect.inflate(8,6).collidepoint(cursor_pt))
+            if not finger_inside:
+                self._solid_disarmed_btn=None
+                self._solid_disarmed_rect=None
+            else:
+                self._solid_btn_target=None
+                self._solid_btn_dwell=0.0
+                self._solid_btn_rect=None
+                return
+
+        if active_btn is not None:
+            if active_btn==current_target:
+                self._solid_btn_dwell=getattr(self,'_solid_btn_dwell',0.0)+dt
+                self._solid_btn_rect=active_rect
+                self._solid_switch_btn=None; self._solid_switch_dwell=0.0
+            else:
+                # Smooth transition between adjacent buttons without 1-frame flicker
+                if current_target is not None and getattr(self,'_solid_btn_dwell',0.0)>0.06:
+                    if getattr(self,'_solid_switch_btn',None)==active_btn:
+                        self._solid_switch_dwell=getattr(self,'_solid_switch_dwell',0.0)+dt
+                    else:
+                        self._solid_switch_btn=active_btn; self._solid_switch_dwell=dt
+                    if self._solid_switch_dwell>=0.045 or is_pinch:
+                        self._solid_btn_target=active_btn; self._solid_btn_dwell=self._solid_switch_dwell
+                        self._solid_btn_rect=active_rect
+                        self._solid_switch_btn=None; self._solid_switch_dwell=0.0
+                else:
+                    self._solid_btn_target=active_btn; self._solid_btn_dwell=dt
+                    self._solid_btn_rect=active_rect
+                    self._solid_switch_btn=None; self._solid_switch_dwell=0.0
+            can_pinch=is_pinch and not getattr(self,'_solid_pinch_latched',False)
+            if can_pinch or self._solid_btn_dwell>=0.65:
+                act=self._solid_btn_target
+                rect=active_rect
+                self._solid_btn_target=None; self._solid_btn_dwell=0.0; self._solid_btn_rect=None
+                if can_pinch: self._solid_pinch_latched=True
+                self._solid_disarmed_btn=act
+                self._solid_disarmed_rect=rect
+                self._trigger_solid_action(act)
+        else:
+            # Smooth dwell decay instead of instant zero reset on brief hand tremor
+            dwell=getattr(self,'_solid_btn_dwell',0.0)-dt*2.2
+            if dwell>0.0 and current_target is not None:
+                self._solid_btn_dwell=dwell
+                self._solid_btn_rect=current_rect
+            else:
+                self._solid_btn_target=None; self._solid_btn_dwell=0.0; self._solid_btn_rect=None
+
+    def _draw_solid_button_feedback(self):
+        target=getattr(self,'_solid_btn_target',None)
+        dwell=getattr(self,'_solid_btn_dwell',0.0)
+        rect=getattr(self,'_solid_btn_rect',None)
+        cursor_pt=getattr(self,'_solid_cursor_pt',None)
+        if (target is None or dwell<=0.0 or rect is None) and cursor_pt is None:
+            return
+        w,h=self.size
+        gl.glViewport(0,0,w,h)
+        gl.glDisable(gl.GL_DEPTH_TEST); gl.glDisable(gl.GL_LIGHTING)
+        gl.glEnable(gl.GL_BLEND); gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glMatrixMode(gl.GL_PROJECTION); gl.glPushMatrix(); gl.glLoadIdentity()
+        gl.glOrtho(0,w,h,0,-1,1)
+        gl.glMatrixMode(gl.GL_MODELVIEW); gl.glPushMatrix(); gl.glLoadIdentity()
+        if target is not None and dwell>0.0 and rect is not None:
+            frac=min(1.0,dwell/0.65)
+            x0=rect.x+6.0; x1=x0+(rect.w-12.0)*frac
+            y0=rect.bottom-4.5; y1=rect.bottom-1.5
+            gl.glColor4f(*(c/255 for c in GOLD),0.95)
+            gl.glBegin(gl.GL_QUADS)
+            gl.glVertex2f(x0,y0); gl.glVertex2f(x1,y0); gl.glVertex2f(x1,y1); gl.glVertex2f(x0,y1)
+            gl.glEnd()
+        if cursor_pt is not None:
+            cx,cy=cursor_pt
+            gl.glColor4f(*(c/255 for c in ACCENT),0.85)
+            gl.glLineWidth(2.0); gl.glBegin(gl.GL_LINE_LOOP)
+            for i in range(32):
+                a=math.tau*i/32.0
+                gl.glVertex2f(cx+10.0*math.cos(a),cy+10.0*math.sin(a))
+            gl.glEnd()
+            if dwell>0.0:
+                frac=min(1.0,dwell/0.65)
+                gl.glColor4f(*(c/255 for c in GOLD),0.95)
+                gl.glLineWidth(3.0); gl.glBegin(gl.GL_LINE_STRIP)
+                steps=max(2,int(frac*36)+1)
+                for i in range(steps):
+                    a=-math.pi/2+math.tau*(i/36.0)
+                    gl.glVertex2f(cx+13.5*math.cos(a),cy+13.5*math.sin(a))
+                gl.glEnd()
+        gl.glLineWidth(1.0)
+        gl.glMatrixMode(gl.GL_PROJECTION); gl.glPopMatrix()
+        gl.glMatrixMode(gl.GL_MODELVIEW); gl.glPopMatrix()
+        gl.glDisable(gl.GL_BLEND)
+
+    def _trigger_solid_action(self,action):
+        if action=='geom_dropdown':
+            self.geometry_dropdown_open=not getattr(self,'geometry_dropdown_open',False)
+        elif action and action.startswith('kind:'):
+            self.kind=action.split(':')[1]; self.geometry_dropdown_open=False
+        elif action=='scale_mode': self.cycle_scale_mode()
+        elif action=='reset': self.reset()
+
+    def _draw_solid_hand_keypoints(self,view,snapshot,hands,dt=0.0):
+        if not hands or snapshot is None:
+            self._solid_screen_kp={}
+            return
+        vx,vy,vw,vh=view
+        source_aspect=snapshot.image.shape[1]/snapshot.image.shape[0]
+        cover=CameraCover(source_aspect,vw/max(1,vh))
+        kp_cache=getattr(self,'_solid_screen_kp',{})
+        new_kp={}
+        alpha=1.0-math.exp(-math.tau*22.0*max(0.0,dt)) if dt>0.0 else 1.0
+        gl.glDisable(gl.GL_DEPTH_TEST)
+        gl.glDisable(gl.GL_LIGHTING)
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glMatrixMode(gl.GL_PROJECTION); gl.glPushMatrix(); gl.glLoadIdentity()
+        gl.glOrtho(0,vw,vh,0,-1,1)
+        gl.glMatrixMode(gl.GL_MODELVIEW); gl.glPushMatrix(); gl.glLoadIdentity()
+        for hand in hands:
+            if not getattr(hand,'landmarks',None) or len(hand.landmarks)!=21: continue
+            covered=cover.hand(hand)
+            gen=getattr(hand,'generation',0)
+            coords={}
+            for l in covered.landmarks:
+                lx=1.0-l.x if self.settings['mirror'] else l.x
+                tx=lx*vw
+                ty=l.y*vh
+                key=(hand.slot,gen,l.index)
+                prev=kp_cache.get(key)
+                if prev is None:
+                    sx,sy=tx,ty
+                else:
+                    sx=prev[0]+(tx-prev[0])*alpha
+                    sy=prev[1]+(ty-prev[1])*alpha
+                new_kp[key]=(sx,sy)
+                coords[l.index]=(sx,sy)
+        self._solid_screen_kp=new_kp
+        for hand in hands:
+            if not getattr(hand,'landmarks',None) or len(hand.landmarks)!=21: continue
+            gen=getattr(hand,'generation',0)
+            coords={i:new_kp[(hand.slot,gen,i)] for i in range(21) if (hand.slot,gen,i) in new_kp}
+            if len(coords)!=21: continue
+            grip=self.grab.grips.get(hand.slot)
+            is_held=grip and grip.held
+            base_col=(1.0,0.78,0.22) if is_held else ((0.20,0.80,1.0) if hand.slot==0 else (1.0,0.60,0.20))
+            # Bones skeleton lines
+            gl.glLineWidth(3.0)
+            gl.glColor4f(*base_col,0.82)
+            gl.glBegin(gl.GL_LINES)
+            for chain in ((0,1,2,3,4),(0,5,6,7,8),(5,9,10,11,12),(9,13,14,15,16),(13,17,18,19,20),(0,17)):
+                for a,b in zip(chain[:-1],chain[1:]):
+                    gl.glVertex2f(*coords[a]); gl.glVertex2f(*coords[b])
+            gl.glEnd()
+            # Joint nodes (non-tips)
+            gl.glPointSize(7.0)
+            gl.glColor4f(0.92,0.96,1.0,0.95)
+            gl.glBegin(gl.GL_POINTS)
+            for idx,pt in coords.items():
+                if idx not in (4,8,12,16,20): gl.glVertex2f(*pt)
+            gl.glEnd()
+            # Fingertips outer glow
+            gl.glPointSize(12.0)
+            gl.glColor4f(*base_col,1.0)
+            gl.glBegin(gl.GL_POINTS)
+            for tip_idx in (4,8,12,16,20): gl.glVertex2f(*coords[tip_idx])
+            gl.glEnd()
+            # Fingertips inner high-tech core
+            gl.glPointSize(5.0)
+            gl.glColor4f(1.0,1.0,1.0,1.0)
+            gl.glBegin(gl.GL_POINTS)
+            for tip_idx in (4,8,12,16,20): gl.glVertex2f(*coords[tip_idx])
+            gl.glEnd()
+            # Pinch connection & indicator between thumb (4) and index (8)
+            p4=np.array(coords[4]); p8=np.array(coords[8])
+            p_dist=float(np.linalg.norm(p4-p8))
+            if p_dist<52.0:
+                gl.glLineWidth(3.5)
+                gl.glColor4f(1.0,0.88,0.25,0.95)
+                gl.glBegin(gl.GL_LINES)
+                gl.glVertex2f(*p4); gl.glVertex2f(*p8)
+                gl.glEnd()
+                mid=(p4+p8)*0.5
+                gl.glPointSize(14.0)
+                gl.glColor4f(1.0,0.85,0.20,0.95)
+                gl.glBegin(gl.GL_POINTS)
+                gl.glVertex2f(*mid)
+                gl.glEnd()
+                gl.glPointSize(6.0)
+                gl.glColor4f(1.0,1.0,1.0,1.0)
+                gl.glBegin(gl.GL_POINTS)
+                gl.glVertex2f(*mid)
+                gl.glEnd()
+        gl.glMatrixMode(gl.GL_PROJECTION); gl.glPopMatrix()
+        gl.glMatrixMode(gl.GL_MODELVIEW); gl.glPopMatrix()
+        gl.glDisable(gl.GL_BLEND)
+        gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glEnable(gl.GL_LIGHTING)
 
     def _solid_instructions(self):
         mode=self.grab.scale_mode
