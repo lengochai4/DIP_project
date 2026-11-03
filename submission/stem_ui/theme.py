@@ -67,8 +67,8 @@ def fit_desktop_window(size,desktop,margin):
                  for wanted,screen,gap in zip(size,desktop,margin))
 
 
-def scene_rect(size, camera,mode='solid'):
-    w,h = size
-    sidebar = min(300, w//4) if camera else 0
+def scene_rect(size, camera, mode='solid'):
+    w, h = size
+    sidebar = min(300, w//4) if (camera and mode not in ('solid', 'chemistry', 'physics', 'tracking')) else 0
     y = header_height(w) + (116 if w<1200 and mode=='solid' else 68)
     return (20, y, w-40-sidebar-(16 if sidebar else 0), h-y-68)
