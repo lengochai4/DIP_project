@@ -869,15 +869,6 @@ class SubmissionRenderer:
         for label,bw,action,on in top_controls:
             self._button(overlay,label,(x,cy,bw,38),action,on); x+=bw+6
         if self.mode=='solid':
-<<<<<<< HEAD
-            mx,my=(26,sy+46) if w<1200 else (518,sy)
-            self._button(overlay,NAMES[KINDS.index(self.kind)],(mx,my,130,36),'menu')
-            pygame.draw.polygon(overlay,MUTED,((mx+115,my+15),(mx+123,my+15),(mx+119,my+20)))
-            label={'uniform':'Hai tay: đổi cỡ','stretch':'Hai tay: kéo dãn','distance':'Một tay: đổi cỡ','depth':'Một tay: tiến/lùi'}[self.grab.scale_mode]
-            self._button(overlay,label,(168,my,152,36) if w<1200 else (660,sy,152,36),'scale_mode',self.grab.scale_mode!='uniform')
-        if w>=800 or self.mode in ('solid','physics'):
-            self._button(overlay,'Về giữa cảnh' if self.mode=='chemistry' else 'Đặt lại ban đầu' if self.mode in ('solid','physics') else 'Đặt lại góc nhìn',(w-168,sy+46 if w<800 else sy,148,36),'reset')
-=======
             panel_x=20; panel_y=vy+12; panel_w=210
             is_open=getattr(self,'geometry_dropdown_open',False)
             panel_h=268 if is_open else 145
@@ -898,7 +889,6 @@ class SubmissionRenderer:
             scale_label={'uniform':'Đổi cỡ vật','stretch':'Kéo dãn vật','distance':'Đổi cỡ 1 tay','depth':'Tiến/lùi 1 tay'}[self.grab.scale_mode]
             self._button(overlay,scale_label,(panel_x+10,opt_y,panel_w-20,28),'scale_mode',self.grab.scale_mode!='uniform')
             self._button(overlay,'Đặt lại vật thể',(panel_x+10,opt_y+32,panel_w-20,28),'reset')
->>>>>>> feat/test_UI_GK
         # Scene frame is only an outline, leaving the camera unobstructed.
         pygame.draw.rect(overlay,(53,105,124,190),view,1,border_radius=18)
         pygame.draw.line(overlay,ACCENT,(vx+20,vy),(vx+92,vy),2)
@@ -954,30 +944,6 @@ class SubmissionRenderer:
             elif vh>=240:
                 self._wrap(overlay,'Đưa một hoặc hai tay vào khung. Tránh che đầu ngón và chồng hai lòng bàn tay.',(px+18,py+chmax+108),pw-36,15)
             overlay.set_clip(previous_clip)
-<<<<<<< HEAD
-        if self.help_visible and self.mode!='chemistry' and not (self.camera_visible and vw<820):
-            if self.mode=='physics':
-                panel_r=getattr(self.physics,'panel_rect',None)
-                hx=(panel_r.right+14) if (panel_r and not getattr(self.physics,'collapsed',False)) else (vx+18)
-                max_right=(w-20-min(300,w//4)-14) if self.camera_visible else (vx+vw-18)
-                hw=min(380,max(260,max_right-hx))
-                card_h=248; hy=vy+14
-                self._card(overlay,(hx,hy,hw,card_h),235,True)
-                self._text(overlay,'HƯỚNG DẪN MÔ PHỎNG VẬT LÝ',(hx+16,hy+14),13,ACCENT)
-                y=hy+36
-                for line in self._physics_instructions():
-                    y=self._wrap(overlay,line,(hx+16,y),hw-32,12,INK)
-                self._text(overlay,'H: ẩn hướng dẫn  •  SPACE: Chạy/Dừng  •  R: Đặt lại ban đầu',(hx+16,hy+card_h-20),12,MUTED)
-            else:
-                hw=min(342,vw-36); hx=vx+18; hy=vy+54
-                self._card(overlay,(hx,hy,hw,184),231,True)
-                self._text(overlay,'THAO TÁC BẰNG TAY',(hx+16,hy+15),13,ACCENT)
-                instructions=('\n'.join(self._solid_instructions()) if self.mode=='solid' else
-                    'Duỗi: tạo đỉnh; gập: bỏ đỉnh.\nDùng các ngón của một hoặc hai tay.\nGần đồng phẳng: hình tạo thành mặt.\nKéo chuột để nhìn từ góc khác.')
-                y=hy+45
-                for line in instructions.split('\n'): y=self._wrap(overlay,line,(hx+16,y),hw-32,15,INK)
-                self._text(overlay,'H: ẩn hướng dẫn  •  F11: phóng to',(hx+16,hy+157),12,MUTED)
-=======
         if self.help_visible and self.mode not in ('chemistry','physics','tracking') and not (self.camera_visible and vw<820 and self.mode not in ('solid', 'chemistry', 'physics', 'tracking')):
             hw=min(342,vw-36); hx=vx+18; hy=vy+54
             self._card(overlay,(hx,hy,hw,184),231,True)
@@ -987,7 +953,6 @@ class SubmissionRenderer:
             y=hy+45
             for line in instructions.split('\n'): y=self._wrap(overlay,line,(hx+16,y),hw-32,15,INK)
             self._text(overlay,'H: ẩn hướng dẫn  •  F11: phóng to',(hx+16,hy+157),12,MUTED)
->>>>>>> feat/test_UI_GK
         if self.menu and self.mode=='solid':
             for i,name in enumerate(NAMES): self._button(overlay,name,(26 if w<1200 else 518,sy+(90 if w<1200 else 44)+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
         footer=pygame.Rect(20,h-55,w-40,45)
@@ -1009,15 +974,8 @@ class SubmissionRenderer:
             elif len(claims)>1: label='Đang giữ bằng hai tay • Tách / khép để đổi cỡ • Mở ngón để buông'
             elif claims: label='Đang cầm • Chụm tay còn lại trong vùng trống để xoay / đổi cỡ'
             elif scene.electrons: label+=(' • Chọn Cầm cả khối để dùng hai tay đổi cỡ' if scene.edit else ' • Cầm nguyên tử, chụm tay còn lại để đổi cỡ cả lớp e')
-<<<<<<< HEAD
-        elif self.mode=='physics':
-            m=self.physics.model
-            run_state='Đang chạy' if m.running else 'Tạm dừng'
-            label=f"Vật lý: {m.spec['title']} ({run_state}, t={m.time:.2f}s) • {m.message or 'Chụm điểm vàng để tác dụng lực • SPACE: Chạy/Dừng • R: Đặt lại ban đầu'}"
-=======
         elif self.mode=='physics': label=self.physics.model.message
         elif self.mode=='tracking': label='Đưa bàn tay lên trước camera để hiển thị 21 điểm mốc nhận diện (Hand Landmarks)'
->>>>>>> feat/test_UI_GK
         else: label='Kéo chuột để xem góc khác  •  Cuộn để gần / xa  •  R để đặt lại'
         if error: label=error
         if replay: label='Phát lại  •  '+label
