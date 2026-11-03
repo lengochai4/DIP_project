@@ -207,3 +207,62 @@ def test_small_dynamic_sprite_reuses_texture_until_size_or_context_changes(monke
     sprites.draw('preview',pygame.Surface((80,60),pygame.SRCALPHA),(0,0),version=3)
     assert calls[-2:]==[('delete',(17,)),('allocate',(80,60))]
     sprites.close(); assert not sprites.items and not sprites.versions
+
+
+def test_solid_mode_no_overlapping_feedback_and_divider():
+    pygame.font.init()
+    r = SubmissionRenderer(SETTINGS)
+    r.mode = 'solid'
+    r.overlay_surface = pygame.Surface(r.size, pygame.SRCALPHA)
+    r.fonts = {s: pygame.font.Font(None, s) for s in (11, 12, 13, 14, 15, 17, 20)}
+    texts = []
+    orig_text = r._text
+    r._text = lambda surf, text, pos, sz, col: texts.append((text, pos)) or orig_text(surf, text, pos, sz, col)
+    view = (20, 68, 1240, 712)
+    r._draw_ui(None, 'On', False, None, '', 0, False, 'webcam', view, (), [], False, [])
+    # Verify 'Đưa tay vào camera để bắt đầu' is NOT in texts
+    assert not any('Đưa tay vào camera' in t[0] for t in texts)
+
+    # When dropdown is open, verify options are added
+    r.geometry_dropdown_open = True
+    r._draw_ui(None, 'On', False, None, '', 0, False, 'webcam', view, (), [], False, [])
+    button_actions = [a for _, a in r.buttons]
+    assert 'geom_dropdown' in button_actions
+    assert 'kind:cube' in button_actions
+    assert 'scale_mode' in button_actions
+    assert 'reset' in button_actions
+    r.close()
+
+
+def test_solid_finger_dropdown_reentry_requirement():
+    from test_point_pinch import sample
+    pygame.font.init()
+    r = SubmissionRenderer(SETTINGS)
+    r.mode = 'solid'
+    r.overlay_surface = pygame.Surface(r.size, pygame.SRCALPHA)
+    r.fonts = {s: pygame.font.Font(None, s) for s in (11, 12, 13, 14, 15, 17, 20)}
+    view = (20, 68, 1240, 712)
+    r._draw_ui(None, 'On', False, None, '', 0, False, 'webcam', view, (), [], False, [])
+    dropdown_rect, _ = next((rect, a) for rect, a in r.buttons if a == 'geom_dropdown')
+
+    # Fake hand pointer directly on geom_dropdown
+    h = sample(1.0, nx=0.05, ny=0.15)
+    r.buttons = [(dropdown_rect, 'geom_dropdown'), (pygame.Rect(20, 300, 100, 50), 'other')]
+
+    # Dwell on dropdown button to open it
+    r._solid_btn_target = 'geom_dropdown'
+    r._solid_btn_dwell = 0.64
+    r._update_solid_finger_buttons(0.02, (h,), view=None, snapshot=None)
+    assert r.geometry_dropdown_open is True
+    assert getattr(r, '_solid_disarmed_btn', None) == 'geom_dropdown'
+
+    # Continuing to hover on dropdown button without exiting does NOT toggle it closed!
+    for _ in range(10):
+        r._update_solid_finger_buttons(0.1, (h,), view=None, snapshot=None)
+    assert r.geometry_dropdown_open is True
+
+    # Move hand out to other button
+    h_out = sample(1.0, nx=0.05, ny=0.40)
+    r._update_solid_finger_buttons(0.05, (h_out,), view=None, snapshot=None)
+    assert getattr(r, '_solid_disarmed_btn', None) is None  # re-armed!
+    r.close()
