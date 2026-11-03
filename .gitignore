@@ -9,6 +9,8 @@ build/
 
 # Virtual environments
 .venv/
+.venv-research/
+.venv-ui/
 venv/
 
 
@@ -29,6 +31,11 @@ models/*.task
 # Runtime logs
 runs/
 logs/
+output/
+reports/core-final/assets/
+reports/core-final/provenance.json
+reports/temporary/assets/
+reports/temporary/provenance.json
 
 # Secrets/local config
 .env
