@@ -80,7 +80,7 @@ one_hand_scale_enabled: true
 grab_min_span: 0.10
 mirror: true
 camera_ar_fov_deg: 44.0
-chemistry_max_atoms: 32
+chemistry_max_atoms: 80
 chemistry_scene_limit: 8.0
 chemistry_history_limit: 40
 chemistry_response_hz: 9.0
