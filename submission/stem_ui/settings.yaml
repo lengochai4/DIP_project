@@ -412,15 +412,15 @@ chemistry_templates:
     source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Carbon%20disulfide"
 # Presentation defaults for faster response; not the F2 research profile.
 filter_overrides:
-  derivative_cutoff_hz: 6.0
+  derivative_cutoff_hz: 12.0
   adaptive:
     base_cutoff_hz: 1.8
     beta_min: 0.0
-    beta_base: 12.0
-    beta_max: 45.0
-    velocity_gain: 35.0
+    beta_base: 18.0
+    beta_max: 140.0
+    velocity_gain: 90.0
     velocity_max: 10.0
     final_cutoff_min_hz: 1.5
-    final_cutoff_max_hz: 45.0
+    final_cutoff_max_hz: 140.0
     final_cutoff_min_hz: 0.8
     final_cutoff_max_hz: 15.0
