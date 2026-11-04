@@ -1150,17 +1150,30 @@ class PhysicsView:
         for key,point in self.input.pointers.items():
             p=np.array(point)*self.content[2:]; previous=self.cursor_points.get(key,p)
             state=self.input.tap.states.get(key)
-            p=p if key in self.input.claims or (state and state.locked) else previous+(p-previous)*(1-math.exp(-math.tau*self.cfg['cursor_response_hz']*dt))
+            resp_hz=max(45.,float(self.cfg['cursor_response_hz']))
+            step_alpha=min(1.,(1-math.exp(-math.tau*resp_hz*max(0.,dt)))+float(np.linalg.norm(p-previous))/38.)
+            p=p if key in self.input.claims or (state and state.locked) else previous+(p-previous)*step_alpha
             active[key]=p
             claim=self.input.claims.get(key)
-            color=MUTED if claim and claim.paused else GOLD if claim or (state and state.phase in ('armed','press','latched')) else ACCENT
-            gl.glColor3f(*(c/255 for c in color))
-            gl.glLineWidth(2); gl.glBegin(gl.GL_LINE_LOOP)
-            for a in np.linspace(0,math.tau,33): gl.glVertex2f(p[0]+10*math.cos(a),p[1]+10*math.sin(a))
+            is_gold=bool(claim or (state and state.phase in ('armed','press','latched')))
+            color=MUTED if claim and claim.paused else (255,218,68) if is_gold else (52,242,255)
+            gl.glEnable(gl.GL_BLEND); gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA)
+            gl.glColor4f(*(c/255 for c in color),0.28); gl.glBegin(gl.GL_TRIANGLE_FAN); gl.glVertex2f(p[0],p[1])
+            for a in np.linspace(0,math.tau,25): gl.glVertex2f(p[0]+7.0*math.cos(a),p[1]+7.0*math.sin(a))
+            gl.glEnd()
+            gl.glColor4f(*(c/255 for c in color),1.0)
+            gl.glLineWidth(2.2); gl.glBegin(gl.GL_LINE_LOOP)
+            for a in np.linspace(0,math.tau,25): gl.glVertex2f(p[0]+5.2*math.cos(a),p[1]+5.2*math.sin(a))
+            gl.glEnd()
+            gl.glBegin(gl.GL_TRIANGLE_FAN); gl.glVertex2f(p[0],p[1])
+            for a in np.linspace(0,math.tau,17): gl.glVertex2f(p[0]+2.5*math.cos(a),p[1]+2.5*math.sin(a))
+            gl.glEnd()
+            gl.glColor4f(1.,1.,1.,0.98); gl.glBegin(gl.GL_TRIANGLE_FAN); gl.glVertex2f(p[0],p[1])
+            for a in np.linspace(0,math.tau,13): gl.glVertex2f(p[0]+1.3*math.cos(a),p[1]+1.3*math.sin(a))
             gl.glEnd()
             dwell=self.input.dwell.states.get(key); progress=state.progress if state and state.phase=='press' else dwell.progress if dwell else 0.
             if progress:
-                gl.glColor3f(*(c/255 for c in GOLD)); gl.glLineWidth(3); gl.glBegin(gl.GL_LINE_STRIP)
-                for a in np.linspace(-math.pi/2,-math.pi/2+math.tau*progress,33): gl.glVertex2f(p[0]+14*math.cos(a),p[1]+14*math.sin(a))
+                gl.glColor4f(1.,0.84,0.32,0.98); gl.glLineWidth(2.8); gl.glBegin(gl.GL_LINE_STRIP)
+                for a in np.linspace(-math.pi/2,-math.pi/2+math.tau*progress,33): gl.glVertex2f(p[0]+8.2*math.cos(a),p[1]+8.2*math.sin(a))
                 gl.glEnd()
         self.cursor_points=active

@@ -1,6 +1,8 @@
 window_maximized: true
 window: [1360, 860]
 window_desktop_margin: [32, 80]
+camera_width: 1280
+camera_height: 720
 render_msaa_samples: 4
 windows_dpi_awareness: permonitorv2
 ui_card_supersample: 2
@@ -93,7 +95,7 @@ chemistry_join_distance: 0.68
 chemistry_break_distance: 1.12
 chemistry_panel_fps: 30
 chemistry_electron_speed: 0.35
-chemistry_cursor_response_hz: 18.0
+chemistry_cursor_response_hz: 45.0
 chemistry_dwell_s: 1.0
 chemistry_dwell_max_gap_s: 0.25
 chemistry_dwell_rearm_distance: 0.035
@@ -410,12 +412,15 @@ chemistry_templates:
     source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Carbon%20disulfide"
 # Presentation defaults for faster response; not the F2 research profile.
 filter_overrides:
+  derivative_cutoff_hz: 12.0
   adaptive:
-    base_cutoff_hz: 0.8
+    base_cutoff_hz: 1.8
     beta_min: 0.0
-    beta_base: 0.0
-    beta_max: 3.5
-    velocity_gain: 0.8
+    beta_base: 18.0
+    beta_max: 140.0
+    velocity_gain: 90.0
     velocity_max: 10.0
+    final_cutoff_min_hz: 1.5
+    final_cutoff_max_hz: 140.0
     final_cutoff_min_hz: 0.8
     final_cutoff_max_hz: 15.0

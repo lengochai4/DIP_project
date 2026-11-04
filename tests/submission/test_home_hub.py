@@ -238,3 +238,24 @@ def test_solid_finger_button_smooth_hysteresis_and_busy_lock():
     for _ in range(7):
         r._update_solid_finger_buttons(0.05, (make_hand(100.0, 136.0),))
     assert r.geometry_dropdown_open is True
+
+
+def test_widescreen_camera_fov_and_isotropic_spatial_mapping():
+    from submission.stem_ui.camera_space import CameraCover
+    from submission.stem_ui.theme import header_height, scene_rect
+
+    full_settings = yaml.safe_load(open('submission/stem_ui/settings.yaml', encoding='utf-8'))
+    assert full_settings['camera_width'] == 1280
+    assert full_settings['camera_height'] == 720
+
+    size = (1360, 860)
+    vx, vy, vw, vh = scene_rect(size, True, 'solid')
+    assert vy == header_height(size[0]) + 12
+
+    source_w, source_h = 1280, 720
+    cover = CameraCover(source_w / source_h, vw / vh)
+    px_per_cam_x = vw / (cover.width * source_w)
+    px_per_cam_y = vh / (cover.height * source_h)
+    assert pytest.approx(px_per_cam_x, rel=1e-6) == px_per_cam_y
+    assert cover.width == pytest.approx(1.0)
+    assert cover.height > 0.90
