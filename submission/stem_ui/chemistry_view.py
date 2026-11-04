@@ -372,27 +372,39 @@ class CameraChemistryView:
         generations={hand.slot:hand.generation for hand in snapshot.hands} if fresh else {}
         targets={(key,generations[key]):self.space.point(nx,ny,.6)
                  for key,(nx,ny) in self.input.pointers.items() if key in generations}
-        alpha=1-math.exp(-math.tau*self.settings['chemistry_cursor_response_hz']*max(0,dt))
+        base_alpha=1-math.exp(-math.tau*self.settings['chemistry_cursor_response_hz']*max(0,dt))
         self.cursor_points={key:(p if key[0] in self.input.tap.states and self.input.tap.states[key[0]].locked
-            else self.cursor_points.get(key,p)+(p-self.cursor_points.get(key,p))*alpha) for key,p in targets.items()}
-        gl.glDisable(gl.GL_LIGHTING); gl.glLineWidth(2)
+            else self.cursor_points.get(key,p)+(p-self.cursor_points.get(key,p))*min(1.,base_alpha+float(np.linalg.norm(p-self.cursor_points.get(key,p)))*6.5)) for key,p in targets.items()}
+        gl.glDisable(gl.GL_LIGHTING); gl.glEnable(gl.GL_BLEND); gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA)
         for (key,generation),p in self.cursor_points.items():
             tap=self.input.tap.states.get(key)
             pressed=key in self.input.claims or (tap and tap.phase in ('armed','press','latched'))
-            gl.glColor3f(*(np.array(GOLD if pressed else ACCENT)/255))
+            rgb=(1.0,0.84,0.32) if pressed else (0.28,0.95,1.0)
             state=self.input.dwell.states.get(key); progress=state.progress if state else 0.
             if tap and tap.phase=='press':
                 progress=max(progress,tap.progress if hasattr(tap,'progress') else float(np.clip((tap.depth-tap.baseline)/self.settings['chemistry_push_travel_ratio'],0,1)))
-            gl.glBegin(gl.GL_LINE_LOOP)
-            for i in range(48):
-                t=math.tau*i/48; gl.glVertex3fv(p+np.array((math.cos(t),math.sin(t),0))*.075)
+            gl.glColor4f(0.03,0.08,0.14,0.78); gl.glBegin(gl.GL_TRIANGLE_FAN); gl.glVertex3fv(p)
+            for i in range(33):
+                t=math.tau*i/32; gl.glVertex3fv(p+np.array((math.cos(t),math.sin(t),0))*.026)
+            gl.glEnd()
+            gl.glColor4f(*rgb,0.98); gl.glLineWidth(2.4); gl.glBegin(gl.GL_LINE_LOOP)
+            for i in range(32):
+                t=math.tau*i/32; gl.glVertex3fv(p+np.array((math.cos(t),math.sin(t),0))*.022)
             gl.glEnd()
             if progress:
-                gl.glColor3f(*(np.array(GOLD)/255)); gl.glLineWidth(4); gl.glBegin(gl.GL_LINE_STRIP)
-                for i in range(int(progress*64)+1):
-                    t=math.pi/2-math.tau*i/64; gl.glVertex3fv(p+np.array((math.cos(t),math.sin(t),0))*.093)
-                gl.glEnd(); gl.glLineWidth(2)
-            gl.glEnable(gl.GL_LIGHTING); self._sphere(p,.019); gl.glDisable(gl.GL_LIGHTING)
+                gl.glColor4f(1.0,0.84,0.32,0.98); gl.glLineWidth(3.2); gl.glBegin(gl.GL_LINE_STRIP)
+                for i in range(int(progress*48)+1):
+                    t=math.pi/2-math.tau*i/48; gl.glVertex3fv(p+np.array((math.cos(t),math.sin(t),0))*.032)
+                gl.glEnd()
+            gl.glColor4f(*rgb,0.95); gl.glBegin(gl.GL_TRIANGLE_FAN); gl.glVertex3fv(p)
+            for i in range(25):
+                t=math.tau*i/24; gl.glVertex3fv(p+np.array((math.cos(t),math.sin(t),0))*.010)
+            gl.glEnd()
+            gl.glColor4f(1.0,1.0,1.0,0.98); gl.glBegin(gl.GL_TRIANGLE_FAN); gl.glVertex3fv(p)
+            for i in range(17):
+                t=math.tau*i/16; gl.glVertex3fv(p+np.array((math.cos(t),math.sin(t),0))*.005)
+            gl.glEnd()
+        gl.glLineWidth(2); gl.glDisable(gl.GL_BLEND)
         gl.glDisable(gl.GL_SCISSOR_TEST)
 
     def _update_labels(self):

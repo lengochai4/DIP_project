@@ -151,7 +151,7 @@ class CaptureWorker:
                         def open(camera):
                             for backend in ('default','dshow'):
                                 camera.inner = OpenCVCameraSource(run_id=self.run_id,camera_index=self.camera_index,
-                                    width=cfg['camera']['width'],height=cfg['camera']['height'],
+                                    width=int(self.settings.get('camera_width',cfg['camera']['width'])),height=int(self.settings.get('camera_height',cfg['camera']['height'])),
                                     requested_fps=cfg['camera']['requested_fps'],backend=backend)
                                 try:
                                     camera.inner.open(); return
@@ -219,10 +219,12 @@ class CaptureWorker:
                     continue
                 last_ms = timestamp_ms
                 compute_start=time.perf_counter()
-                h,w = packet.image.shape[:2]
+                raw_h,raw_w = packet.image.shape[:2]
+                work_packet = replace(packet,image=cv2.resize(packet.image,(640,max(1,round(raw_h*640/raw_w))),interpolation=cv2.INTER_LINEAR)) if raw_w>640 else packet
+                h,w = work_packet.image.shape[:2]
                 roi = manager.update(frame_width=w,frame_height=h,hand_bbox=bbox)
-                illumination = decision.update(analyzer.measure(packet,roi))
-                processed = preprocessor.process_frame(packet,roi,illumination)
+                illumination = decision.update(analyzer.measure(work_packet,roi))
+                processed = preprocessor.process_frame(work_packet,roi,illumination)
                 preprocess_end=time.perf_counter()
                 rgb = np.ascontiguousarray(cv2.cvtColor(processed.frame.image,cv2.COLOR_BGR2RGB))
                 result = landmarker.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB,data=rgb),timestamp_ms)

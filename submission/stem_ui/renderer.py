@@ -945,7 +945,7 @@ class SubmissionRenderer:
                 self._wrap(overlay,'Đưa một hoặc hai tay vào khung. Tránh che đầu ngón và chồng hai lòng bàn tay.',(px+18,py+chmax+108),pw-36,15)
             overlay.set_clip(previous_clip)
         if self.help_visible and self.mode not in ('chemistry','physics','tracking') and not (self.camera_visible and vw<820 and self.mode not in ('solid', 'chemistry', 'physics', 'tracking')):
-            hw=min(342,vw-36); hx=vx+18; hy=vy+54
+            hw=min(342,vw-36); hx=vx+(222 if self.mode=='solid' else 18); hy=vy+(12 if self.mode=='solid' else 54)
             self._card(overlay,(hx,hy,hw,184),231,True)
             self._text(overlay,'THAO TÁC BẰNG TAY',(hx+16,hy+15),13,ACCENT)
             instructions=('\n'.join(self._solid_instructions()) if self.mode=='solid' else
@@ -954,7 +954,7 @@ class SubmissionRenderer:
             for line in instructions.split('\n'): y=self._wrap(overlay,line,(hx+16,y),hw-32,15,INK)
             self._text(overlay,'H: ẩn hướng dẫn  •  F11: phóng to',(hx+16,hy+157),12,MUTED)
         if self.menu and self.mode=='solid':
-            for i,name in enumerate(NAMES): self._button(overlay,name,(26 if w<1200 else 518,sy+(90 if w<1200 else 44)+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
+            for i,name in enumerate(NAMES): self._button(overlay,name,(26 if w<1200 else 518,vy+(90 if w<1200 else 44)+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
         footer=pygame.Rect(20,h-55,w-40,45)
         self._card(overlay,footer,248)
         if self.mode not in ('chemistry','physics'):
@@ -1090,8 +1090,10 @@ class SubmissionRenderer:
             k8=(hand.slot,gen,8); k4=(hand.slot,gen,4)
             p8=finger_cache.get(k8,(raw_tx,raw_ty))
             p4=finger_cache.get(k4,(raw_hx,raw_hy))
-            tx=p8[0]+(raw_tx-p8[0])*alpha; ty=p8[1]+(raw_ty-p8[1])*alpha
-            hx=p4[0]+(raw_hx-p4[0])*alpha; hy=p4[1]+(raw_hy-p4[1])*alpha
+            a8=min(1.0,alpha+math.hypot(raw_tx-p8[0],raw_ty-p8[1])/38.0)
+            a4=min(1.0,alpha+math.hypot(raw_hx-p4[0],raw_hy-p4[1])/38.0)
+            tx=p8[0]+(raw_tx-p8[0])*a8; ty=p8[1]+(raw_ty-p8[1])*a8
+            hx=p4[0]+(raw_hx-p4[0])*a4; hy=p4[1]+(raw_hy-p4[1])*a4
             new_cache[k8]=(tx,ty); new_cache[k4]=(hx,hy)
             pinch_dist=math.hypot(tx-hx,ty-hy)
             if pinch_dist<48.0: any_pinch=True
@@ -1267,8 +1269,9 @@ class SubmissionRenderer:
                 if prev is None:
                     sx,sy=tx,ty
                 else:
-                    sx=prev[0]+(tx-prev[0])*alpha
-                    sy=prev[1]+(ty-prev[1])*alpha
+                    step_a=min(1.0,alpha+math.hypot(tx-prev[0],ty-prev[1])/35.0)
+                    sx=prev[0]+(tx-prev[0])*step_a
+                    sy=prev[1]+(ty-prev[1])*step_a
                 new_kp[key]=(sx,sy)
                 coords[l.index]=(sx,sy)
         self._solid_screen_kp=new_kp
