@@ -116,11 +116,18 @@ pytest
 
 ---
 
-## 7. Authors & Contributors
+## 7. Deploy Website
+url website: https://dipr-education-touchless-interaction.vercel.app/
+
+
+## 8. Authors & Contributors
+**Teacher**
+- **Assoc.Prof.Hoang Van Dung**
 
 **Project Group Members:**
 - **Nguyễn Đăk Lộc** — Student ID: `24110107`
 - **Trần Gia Kiệt** — Student ID: `24110103`
 - **Lê Ngọc Hải** — Student ID: `24110089`
+
 
 *Instructor & Academic Department: Faculty of Information Technology / Digital Image Processing Capstone.*
