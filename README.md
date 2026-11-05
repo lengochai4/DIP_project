@@ -110,7 +110,8 @@ DIP_project/
 ├── models/README.md          # Nguồn/checksum model; binary tải lúc cài
 ├── docs/                     # Sáu đặc tả chuẩn và trạng thái dự án
 ├── reports/core-final/       # Nguồn báo cáo Core
-└── HUONG_DAN_CHAY.md          # Cài/chạy và xử lý lỗi
+├── HUONG_DAN_CHAY.md          # Cài/chạy và xử lý lỗi
+└── CHEMISTRY_EXPERIMENTS.md   # Specialized Chemistry AR Lab & 10 Reactions Specification
 ```
 
 **Giữ nguyên source khi nộp**, không xóa `experiments/` hay các thư mục vì nghĩ UI
