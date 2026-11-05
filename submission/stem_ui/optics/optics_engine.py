@@ -424,3 +424,4 @@ def compute_prism_dispersion(apex_deg: float = 60.0,
         has_tir_colors=has_tir, prism_vertices=prism_vertices,
         summary=summary
     )
+

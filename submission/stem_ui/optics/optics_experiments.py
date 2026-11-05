@@ -146,3 +146,4 @@ class OpticsLabSession:
                 size=180.0 * scale_factor
             )
         raise ValueError(f"Unknown lab: {self.current_lab}")
+
