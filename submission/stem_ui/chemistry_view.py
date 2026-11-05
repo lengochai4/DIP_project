@@ -114,14 +114,14 @@ class CameraChemistryView:
                 position=tuple(round(v*scale) for v in pos)
                 native.blit(glyph,glyph.get_rect(center=position) if centered else position)
             return panel,native
-        def button(label,rect,action,selected=False,color=None):
+        def button(label,rect,action,selected=False,color=None,font_size=None):
             x,y,bw,bh=rect
             surface.blit(glass((bw,bh),238,14,action in hover or selected,self.settings['ui_card_supersample']),(x,y))
             if color: pygame.draw.rect(surface,color,rect,2,border_radius=14)
             pygame.draw.rect(surface,ACCENT if action in hover or selected else (115,158,179,190),rect,2,border_radius=14)
             if action in hover:
                 pygame.draw.line(surface,GOLD,(x+16,y+bh-2),(x+bw-16,y+bh-2),3)
-            font=42 if action.startswith('element:') else 30
+            font=font_size if font_size is not None else (42 if action.startswith('element:') else 30)
             while font>16 and self._font(font).size(label)[0]>bw-20: font-=2
             labels.append((label,(x+bw//2,y+bh//2),font,INK,True))
             panel.targets.append((tuple(rect),action))
@@ -184,8 +184,13 @@ class CameraChemistryView:
             for ci,(cid,cname) in enumerate(cat_list):
                 cx=32+ci*109
                 button(cname,(cx,135,103,46),'compound_cat:'+cid,selected=(cat==cid))
-            for i,(key,t) in enumerate(items[current*7:(current+1)*7]):
-                button(t['label'],(32,192+i*66,w-64,58),'template:'+key)
+            visible_compounds=items[current*7:(current+1)*7]
+            cmp_font=24
+            for _,t in visible_compounds:
+                while cmp_font>15 and self._font(cmp_font).size(t['label'])[0]>(w-64)-24:
+                    cmp_font-=1
+            for i,(key,t) in enumerate(visible_compounds):
+                button(t['label'],(32,192+i*66,w-64,58),'template:'+key,font_size=cmp_font)
             button('Trang trước',(32,693,150,52),'compounds_prev')
             button('Nguyên tố',(192,693,150,52),'elements')
             button('Phản ứng',(352,693,160,52),'reactions')
@@ -207,9 +212,15 @@ class CameraChemistryView:
             control.reaction_page=current
             text(f'10 Phản ứng tương tác • Trang {current+1}/{pages}',(32,93),26,ACCENT)
             active_r=scene.reactions.get(scene.current_reaction)
-            for i,r in enumerate(items[current*5:(current+1)*5]):
+            visible_items=items[current*5:(current+1)*5]
+            btn_font=22
+            for r in visible_items:
+                lbl=f"{r['name']} • {r['equation_display']}"
+                while btn_font>15 and self._font(btn_font).size(lbl)[0]>(w-64)-24:
+                    btn_font-=1
+            for i,r in enumerate(visible_items):
                 is_selected=(scene.current_reaction==r['id'])
-                button(f"{r['name']} • {r['equation_display']}",(32,135+i*62,w-64,54),'reaction:'+r['id'],selected=is_selected)
+                button(f"{r['name']} • {r['equation_display']}",(32,135+i*62,w-64,54),'reaction:'+r['id'],selected=is_selected,font_size=btn_font)
             if active_r:
                 dy=458
                 pygame.draw.rect(surface,(18,34,48,220),(32,dy,w-64,152),border_radius=14)

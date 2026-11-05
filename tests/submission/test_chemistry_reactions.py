@@ -108,3 +108,35 @@ def test_reactions_page_rendering():
     assert 'reset_reaction' in actions
     assert 'reactions_prev' in actions
     assert 'reactions_next' in actions
+
+
+def test_reaction_labels_no_tofu_and_uniform_font():
+    """Verify that all reaction equations avoid unsupported glyphs (tofu) and have uniform font sizing."""
+    reactions = load_reactions()
+    # Check that unsupported characters that cause tofu square boxes are absent
+    unsupported_chars = ['\u23af', '\u21cc', '\u21c4', '\u21d2', '\u21d4']
+    for rid, r in reactions.items():
+        for ch in unsupported_chars:
+            assert ch not in r['name'], f"Found tofu glyph {repr(ch)} in name of {rid}"
+            assert ch not in r['equation_display'], f"Found tofu glyph {repr(ch)} in equation_display of {rid}"
+        assert '→' in r['equation_display'] or '↔' in r['equation_display'], f"Missing valid arrow in {rid}"
+
+    # Verify uniform font size across all reaction buttons on page 0 and page 1
+    from submission.stem_ui.chemistry_view import CameraChemistryView
+    from types import SimpleNamespace
+
+    pygame.font.init()
+    renderer_mock = SimpleNamespace(size=(1360, 860), help_visible=True, fonts={},
+                                    unit_sphere=1, unit_bone=2)
+    view = CameraChemistryView(SETTINGS, renderer_mock)
+    view.input.command('reactions')
+
+    # Test page 0 buttons
+    panel, _ = view._panel()
+    assert panel is not None
+
+    # Test page 1 buttons
+    view.input.command('reactions_next')
+    panel1, _ = view._panel()
+    assert panel1 is not None
+

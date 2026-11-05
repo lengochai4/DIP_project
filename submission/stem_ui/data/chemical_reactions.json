@@ -1,9 +1,9 @@
 {
   "r01_h2_o2": {
     "id": "r01_h2_o2",
-    "name": "Đốt cháy khí Hiđro",
+    "name": "Đốt cháy Hiđro",
     "equation": "2H2 + O2 -> 2H2O",
-    "equation_display": "2H₂ + O₂ ⎯(t°)→ 2H₂O",
+    "equation_display": "2H₂ + O₂ → 2H₂O (t°)",
     "type": "Oxi hóa - khử / Tổng hợp nước",
     "description": "Hiđro cháy trong oxi với ngọn lửa xanh nhạt tỏa nhiệt lượng cực lớn, sản phẩm là hơi nước ngưng tụ.",
     "phenomenon": "Ngọn lửa màu xanh nhạt, tỏa nhiều nhiệt, có các giọt nước li ti bám trên thành bình.",
@@ -23,9 +23,9 @@
   },
   "r02_ch4_o2": {
     "id": "r02_ch4_o2",
-    "name": "Đốt cháy khí Metan",
+    "name": "Đốt cháy Metan",
     "equation": "CH4 + 2O2 -> CO2 + 2H2O",
-    "equation_display": "CH₄ + 2O₂ ⎯(t°)→ CO₂ + 2H₂O",
+    "equation_display": "CH₄ + 2O₂ → CO₂ + 2H₂O (t°)",
     "type": "Oxi hóa - khử (Cháy hiđrocacbon)",
     "description": "Metan là thành phần chính của khí thiên nhiên và biogas, phản ứng cháy tỏa nhiều nhiệt dùng làm nhiên liệu.",
     "phenomenon": "Khí cháy tạo ngọn lửa sáng, sinh ra khí cacbonic làm đục nước vôi trong và hơi nước.",
@@ -48,7 +48,7 @@
     "id": "r03_hcl_naoh",
     "name": "Trung hòa Axit - Bazơ",
     "equation": "HCl + NaOH -> NaCl + H2O",
-    "equation_display": "HCl + NaOH ⎯→ NaCl + H₂O",
+    "equation_display": "HCl + NaOH → NaCl + H₂O",
     "type": "Trung hòa (Axit + Bazơ)",
     "description": "Axit clohiđric tác dụng với natri hiđroxit tạo thành muối ăn natri clorua và nước.",
     "phenomenon": "Phản ứng tỏa nhiệt nhẹ, làm dung dịch phenolphtalein từ đỏ hồng chuyển sang không màu.",
@@ -69,7 +69,7 @@
     "id": "r04_cao_h2o",
     "name": "Tôi vôi sống",
     "equation": "CaO + H2O -> Ca(OH)2",
-    "equation_display": "CaO + H₂O ⎯→ Ca(OH)₂",
+    "equation_display": "CaO + H₂O → Ca(OH)₂",
     "type": "Hóa hợp (Oxit bazơ + Nước)",
     "description": "Canxi oxit (vôi sống) tác dụng mãnh liệt với nước tạo thành canxi hiđroxit (vôi tôi).",
     "phenomenon": "Tỏa nhiệt rất mạnh làm nước sôi bốc hơi, cục vôi nhão nở ra thành chất bột trắng quánh.",
@@ -87,9 +87,9 @@
   },
   "r05_co2_caoh2": {
     "id": "r05_co2_caoh2",
-    "name": "Nhận biết CO2 bằng nước vôi trong",
+    "name": "Nhận biết khí CO₂",
     "equation": "CO2 + Ca(OH)2 -> CaCO3 + H2O",
-    "equation_display": "CO₂ + Ca(OH)₂ ⎯→ CaCO₃↓ + H₂O",
+    "equation_display": "CO₂ + Ca(OH)₂ → CaCO₃↓ + H₂O",
     "type": "Trao đổi / Nhận biết chất khí",
     "description": "Sục khí CO2 vào dung dịch nước vôi trong Ca(OH)2 tạo kết tủa canxi cacbonat không tan.",
     "phenomenon": "Dung dịch nước vôi trong ban đầu dần dần chuyển sang vẩn đục màu trắng sữa đặc trưng.",
@@ -108,9 +108,9 @@
   },
   "r06_caco3_decomp": {
     "id": "r06_caco3_decomp",
-    "name": "Nhiệt phân nung đá vôi",
+    "name": "Nhiệt phân đá vôi",
     "equation": "CaCO3 -> CaO + CO2",
-    "equation_display": "CaCO₃ ⎯(t°=900°C)→ CaO + CO₂↑",
+    "equation_display": "CaCO₃ → CaO + CO₂↑ (900°C)",
     "type": "Phân hủy (Nhiệt phân)",
     "description": "Nung đá vôi CaCO3 ở nhiệt độ cao 900-1000°C để sản xuất vôi sống trong công nghiệp vật liệu xây dựng.",
     "phenomenon": "Khối đá vôi phân hủy thành chất rắn trắng xốp hơn (CaO), sinh ra luồng khí CO2 thoát ra.",
@@ -128,9 +128,9 @@
   },
   "r07_cacl2_na2co3": {
     "id": "r07_cacl2_na2co3",
-    "name": "Tạo kết tủa Canxi cacbonat",
+    "name": "Tạo kết tủa CaCO₃",
     "equation": "CaCl2 + Na2CO3 -> CaCO3 + 2NaCl",
-    "equation_display": "CaCl₂ + Na₂CO₃ ⎯→ CaCO₃↓ + 2NaCl",
+    "equation_display": "CaCl₂ + Na₂CO₃ → CaCO₃↓ + 2NaCl",
     "type": "Trao đổi ion tạo kết tủa",
     "description": "Trộn 2 dung dịch muối hòa tan trao đổi ion tạo thành kết tủa canxi cacbonat màu trắng lắng xuống.",
     "phenomenon": "Xuất hiện ngay lập tức kết tủa dạng bột trắng CaCO3 không tan lắng xuống đáy ống nghiệm.",
@@ -150,9 +150,9 @@
   },
   "r08_n2_h2": {
     "id": "r08_n2_h2",
-    "name": "Tổng hợp Amoniac (Haber-Bosch)",
+    "name": "Tổng hợp Amoniac",
     "equation": "N2 + 3H2 -> 2NH3",
-    "equation_display": "N₂ + 3H₂ ⇌ 2NH₃ (Fe, 450°C, 200atm)",
+    "equation_display": "N₂ + 3H₂ ↔ 2NH₃ (t°, xt)",
     "type": "Tổng hợp khí thuận nghịch",
     "description": "Quy trình công nghiệp Haber-Bosch chuyển hóa nitơ trong khí quyển thành amoniac để sản xuất phân đạm.",
     "phenomenon": "Hỗn hợp khí phản ứng tạo thành khí amoniac có mùi khai đặc trưng, làm xanh giấy quỳ tím ẩm.",
@@ -173,9 +173,9 @@
   },
   "r09_so3_h2o": {
     "id": "r09_so3_h2o",
-    "name": "Sản xuất Axit Sunfuric",
+    "name": "Sản xuất H₂SO₄",
     "equation": "SO3 + H2O -> H2SO4",
-    "equation_display": "SO₃ + H₂O ⎯→ H₂SO₄",
+    "equation_display": "SO₃ + H₂O → H₂SO₄",
     "type": "Hóa hợp / Sản xuất công nghiệp",
     "description": "Lưu huỳnh trioxit tác dụng với nước trong giai đoạn cuối của quy trình tiếp xúc sản xuất H2SO4.",
     "phenomenon": "Phản ứng tỏa nhiệt rất mạnh, tạo ra dung dịch axit sunfuric sánh như dầu, tính axit cực mạnh.",
@@ -193,9 +193,9 @@
   },
   "r10_esterification": {
     "id": "r10_esterification",
-    "name": "Phản ứng Este hóa (Tạo Etyl axetat)",
+    "name": "Phản ứng Este hóa",
     "equation": "CH3COOH + C2H5OH -> CH3COOC2H5 + H2O",
-    "equation_display": "CH₃COOH + C₂H₅OH ⇌ CH₃COOC₂H₅ + H₂O (H₂SO₄ đ, t°)",
+    "equation_display": "CH₃COOH + C₂H₅OH ↔ CH₃COOC₂H₅ + H₂O (t°)",
     "type": "Este hóa (Hóa học hữu cơ)",
     "description": "Axit axetic (giấm) phản ứng thuận nghịch với rượu etylic tạo thành este etyl axetat và nước.",
     "phenomenon": "Hỗn hợp sau phản ứng tách thành 2 lớp, lớp trên có mùi thơm hoa quả chín dễ chịu (mùi chuối/táo).",
@@ -213,4 +213,3 @@
     }
   }
 }
-
