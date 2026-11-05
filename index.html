@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIP Touchless STEM — Tương tác 3D Không chạm qua Camera RGB</title>
+  <meta name="description" content="Hệ thống tương tác 3D và phòng thí nghiệm STEM không chạm thời gian thực sử dụng tiền xử lý ảnh thích ứng và bộ lọc tín hiệu 1-Euro qua webcam RGB thông thường.">
+  
+  <!-- Google Fonts & Font Awesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Three.js for interactive 3D Hero -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #070d14;
+      --bg-card: rgba(16, 28, 42, 0.72);
+      --bg-card-hover: rgba(22, 38, 58, 0.88);
+      --border-cyan: rgba(95, 221, 245, 0.28);
+      --border-cyan-glow: rgba(95, 221, 245, 0.75);
+      --cyan: #5fddf5;
+      --cyan-bright: #00e5ff;
+      --gold: #f4ca7e;
+      --green: #48bb78;
+      --text-main: #edf2f7;
+      --text-muted: #94a3b8;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(95, 221, 245, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 70%, rgba(244, 202, 126, 0.05) 0%, transparent 45%);
+    }
+
+    /* ====== HEADER / NAVBAR ====== */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(7, 13, 20, 0.82);
+      border-bottom: 1px solid var(--border-cyan);
+    }
+
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, rgba(95, 221, 245, 0.2), rgba(0, 229, 255, 0.05));
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .nav-links a:hover {
+      color: var(--cyan);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #00b4d8, #0077b6);
+      color: #fff;
+      border: 1px solid var(--cyan);
+      box-shadow: 0 0 18px rgba(0, 229, 255, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #00d4ff, #0096c7);
+      box-shadow: 0 0 26px rgba(0, 229, 255, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      transform: translateY(-2px);
+    }
+
+    /* ====== HERO SECTION ====== */
+    .hero-section {
+      min-height: 90vh;
+      display: flex;
+      align-items: center;
+      position: relative;
+      padding: 130px 24px 60px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 40px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .hero-content h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 3.1rem;
+      line-height: 1.16;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: -1px;
+    }
+
+    .hero-content h1 span {
+      background: linear-gradient(135deg, #ffffff 15%, var(--cyan) 75%, var(--gold) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.12rem;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+      max-width: 560px;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 28px;
+      margin-top: 36px;
+      padding-top: 28px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .stat-item h3 {
+      font-size: 1.8rem;
+      color: var(--cyan);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+    }
+
+    .stat-item p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .hero-canvas-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-cyan);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      position: relative;
+      height: 440px;
+    }
+
+    #threejs-hero-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    #threejs-hero-canvas:active {
+      cursor: grabbing;
+    }
+
+    .canvas-overlay-tag {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(7, 13, 20, 0.75);
+      backdrop-filter: blur(8px);
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(95, 221, 245, 0.2);
+      font-size: 0.82rem;
+      color: var(--cyan);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ====== SECTION STYLES ====== */
+    section {
+      padding: 90px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 720px;
+      margin: 0 auto 56px;
+    }
+
+    .section-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(95, 221, 245, 0.1);
+      border: 1px solid var(--border-cyan);
+      border-radius: 20px;
+      color: var(--cyan);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.3rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    /* ====== PIPELINE DIAGRAM ====== */
+    .pipeline-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      position: relative;
+    }
+
+    .pipeline-step {
+      background: var(--bg-card);
+      border: 1px solid var(--border-cyan);
+      border-radius: var(--radius-md);
+      padding: 24px 18px;
+      text-align: center;
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .pipeline-step:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--cyan-bright);
+      box-shadow: 0 10px 30px rgba(0, 229, 255, 0.15);
+      transform: translateY(-4px);
+    }
+
+    .step-num {
+      width: 34px;
+      height: 34px;
+      line-height: 34px;
+      border-radius: 50%;
+      background: rgba(95, 221, 245, 0.15);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-weight: 700;
+      font-size: 0.88rem;
+      margin: 0 auto 14px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .pipeline-step h4 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .pipeline-step p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    /* ====== 4 STEM LABS GRID ====== */
+    .labs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 24px;
+    }
+
+    .lab-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-lg);
+      padding: 32px 24px;
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .lab-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .lab-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-cyan);
+      transform: translateY(-6px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .lab-card:hover::before {
+      opacity: 1;
+    }
+
+    .lab-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      background: rgba(95, 221, 245, 0.12);
+      border: 1px solid var(--border-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      color: var(--cyan);
+      margin-bottom: 22px;
+    }
+
+    .lab-card h3 {
+      font-size: 1.35rem;
+      margin-bottom: 12px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .lab-card p {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      flex-grow: 1;
+      margin-bottom: 20px;
+    }
+
+    .lab-features {
+      list-style: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 16px;
+    }
+
+    .lab-features li {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .lab-features li i {
+      color: var(--cyan);
+      font-size: 0.75rem;
+    }
+
+    /* ====== AUTHORS CARD ====== */
+    .authors-section {
+      background: linear-gradient(180deg, rgba(16, 28, 42, 0.4) 0%, rgba(7, 13, 20, 0.9) 100%);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .authors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    .author-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      transition: var(--transition);
+    }
+
+    .author-card:hover {
+      border-color: var(--gold);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(244, 202, 126, 0.1);
+    }
+
+    .author-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(95, 221, 245, 0.25), rgba(244, 202, 126, 0.2));
+      border: 2px solid var(--cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: #fff;
+    }
+
+    .author-info h4 {
+      font-size: 1.18rem;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .author-info .mssv {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--gold);
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .author-info .role {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* ====== DOWNLOAD / RUN GUIDE ====== */
+    .download-card {
+      background: linear-gradient(135deg, rgba(16, 28, 42, 0.95), rgba(11, 20, 32, 0.98));
+      border: 1px solid var(--cyan);
+      border-radius: var(--radius-lg);
+      padding: 48px 36px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 229, 255, 0.12);
+    }
+
+    .download-card h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.2rem;
+      margin-bottom: 16px;
+    }
+
+    .download-actions {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin: 32px 0 24px;
+      flex-wrap: wrap;
+    }
+
+    .code-preview {
+      background: #03070b;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      text-align: left;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      color: #7dd3fc;
+      max-width: 620px;
+      margin: 0 auto;
+      overflow-x: auto;
+    }
+
+    /* ====== FOOTER ====== */
+    footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 36px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    footer a {
+      color: var(--cyan);
+      text-decoration: none;
+    }
+
+    /* ====== RESPONSIVE ====== */
+    @media (max-width: 900px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero-content h1 {
+        font-size: 2.4rem;
+      }
+      .nav-links {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="brand-logo">
+        <i class="fa-solid fa-hand-sparkles" style="color: var(--cyan);"></i>
+        <span>DIP STEM</span>
+        <span class="brand-badge">Touchless 3D</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#pipeline">Thuật toán</a></li>
+        <li><a href="#labs">Phòng Lab STEM</a></li>
+        <li><a href="#authors">Tác giả</a></li>
+        <li><a href="#guide">Hướng dẫn chạy</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="#guide" class="btn btn-primary">
+          <i class="fa-solid fa-play"></i> Chạy Ứng Dụng
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO SECTION -->
+  <main>
+    <section class="hero-section">
+      <div class="hero-grid">
+        <div class="hero-content">
+          <span class="section-badge">Đồ án tốt nghiệp Xử lý ảnh số (DIP)</span>
+          <h1>Tương Tác 3D Không Chạm <span>STEM Real-Time</span> Qua Camera RGB</h1>
+          <p class="hero-subtitle">
+            Hệ thống nhận diện bàn tay và điều khiển mô hình thực tế ảo (AR) bằng webcam giá rẻ. Tích hợp tiền xử lý thích ứng <strong>CLAHE</strong> và bộ lọc cử chỉ <strong>1-Euro Filter</strong> chống rung giật mượt mà.
+          </p>
+          <div class="hero-actions" style="display: flex; gap: 14px; flex-wrap: wrap;">
+            <a href="#labs" class="btn btn-primary" style="padding: 12px 24px; font-size: 0.95rem;">
+              <i class="fa-solid fa-cubes"></i> Khám Phá 4 Phòng Lab
+            </a>
+            <a href="#guide" class="btn btn-secondary" style="padding: 12px 24px; font-size: 0.95rem;">
+              <i class="fa-solid fa-download"></i> Tải Về & Khởi Chạy
+            </a>
+          </div>
+          <div class="hero-stats">
+            <div class="stat-item">
+              <h3>100%</h3>
+              <p>1.703 Automated Tests</p>
+            </div>
+            <div class="stat-item">
+              <h3>30+ FPS</h3>
+              <p>Thời Gian Thực RGB</p>
+            </div>
+            <div class="stat-item">
+              <h3>4 Labs</h3>
+              <p>Khối 3D, Hóa, Khớp tay, Vật lý</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D INTERACTIVE HERO CANVAS -->
+        <div class="hero-canvas-card">
+          <canvas id="threejs-hero-canvas"></canvas>
+          <div class="canvas-overlay-tag">
+            <span><i class="fa-solid fa-arrows-spin"></i> Kéo chuột để xoay mô hình 3D</span>
+            <span style="color: var(--gold);">OpenGL Simulation</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PIPELINE / ALGORITHM -->
+    <section id="pipeline">
+      <div class="section-header">
+        <span class="section-badge">Architecture & Pipeline</span>
+        <h2 class="section-title">Quy Trình Xử Lý Ảnh Số Chuẩn Hóa</h2>
+        <p class="section-desc">Từ luồng video camera đơn sắc thông thường đến tương tác không chạm với độ trễ thấp và độ chính xác dưới pixel.</p>
+      </div>
+
+      <div class="pipeline-container">
+        <div class="pipeline-step">
+          <div class="step-num">01</div>
+          <i class="fa-solid fa-video" style="font-size: 1.6rem; color: var(--cyan); margin-bottom: 12px;"></i>
+          <h4>Thu Ảnh RGB</h4>
+          <p>Thu khung hình 640×480 @ 30 FPS từ Webcam USB hoặc DroidCam qua Wi-Fi nội bộ.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <div class="step-num">02</div>
+          <i class="fa-solid fa-sliders" style="font-size: 1.6rem; color: var(--cyan); margin-bottom: 12px;"></i>
+          <h4>Vùng ROI & Ánh Sáng</h4>
+          <p>Đánh giá độ rọi HSV và cân bằng độ tương phản thích ứng cục bộ (Adaptive CLAHE).</p>
+        </div>
+
+        <div class="pipeline-step">
+          <div class="step-num">03</div>
+          <i class="fa-solid fa-hand" style="font-size: 1.6rem; color: var(--cyan); margin-bottom: 12px;"></i>
+          <h4>MediaPipe Tracking</h4>
+          <p>Trích xuất 21 điểm mốc xương tay 3D với kiểm định hợp lệ và khử nhiễu biên.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <div class="step-num">04</div>
+          <i class="fa-solid fa-wave-square" style="font-size: 1.6rem; color: var(--cyan); margin-bottom: 12px;"></i>
+          <h4>Lọc 1-Euro Filter</h4>
+          <p>Khử hoàn toàn rung lắc (jitter) khi tay đứng yên mà không gây trễ khi tay di chuyển nhanh.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <div class="step-num">05</div>
+          <i class="fa-solid fa-cube" style="font-size: 1.6rem; color: var(--cyan); margin-bottom: 12px;"></i>
+          <h4>Tương Tác 3D STEM</h4>
+          <p>Ánh xạ cử chỉ chụm (Pinch), giữ (Dwell), nắm (Grip) vào mô phỏng vật lý & phân tử hóa học.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 STEM LABORATORIES -->
+    <section id="labs">
+      <div class="section-header">
+        <span class="section-badge">Interactive Modules</span>
+        <h2 class="section-title">4 Phân Khu Phòng Thí Nghiệm STEM</h2>
+        <p class="section-desc">Giao diện kính tối màu (Cyberpunk Glassmorphic) tích hợp phần cứng đồ họa OpenGL chuyên sâu.</p>
+      </div>
+
+      <div class="labs-grid">
+        <!-- Lab 1 -->
+        <div class="lab-card">
+          <div class="lab-icon"><i class="fa-solid fa-shapes"></i></div>
+          <h3>Khối Không Gian 3D</h3>
+          <p>Mô phỏng hình học không gian trực quan; tạo đỉnh, cạnh và mặt phẳng động nối liền các đầu ngón tay.</p>
+          <ul class="lab-features">
+            <li><i class="fa-solid fa-check"></i> Xoay, dịch chuyển và phóng to/thu nhỏ đa hướng</li>
+            <li><i class="fa-solid fa-check"></i> Cảm biến đồng phẳng tạo đa giác mặt</li>
+            <li><i class="fa-solid fa-check"></i> Bảng chọn 4 khối kinh điển (Lập phương, Tứ diện...)</li>
+          </ul>
+        </div>
+
+        <!-- Lab 2 -->
+        <div class="lab-card">
+          <div class="lab-icon"><i class="fa-solid fa-flask-vial"></i></div>
+          <h3>Phòng Thí Nghiệm Hóa Học</h3>
+          <p>Bảng tuần hoàn 118 nguyên tố, 72 phân tử và mô phỏng 10 phản ứng hóa học tương tác thời gian thực.</p>
+          <ul class="lab-features">
+            <li><i class="fa-solid fa-check"></i> Dữ liệu nguyên tố chuẩn hóa từ PubChem</li>
+            <li><i class="fa-solid fa-check"></i> Hoạt họa electron chuyển động theo quỹ đạo Bohr</li>
+            <li><i class="fa-solid fa-check"></i> Chụm tay ghép/tách liên kết hóa trị</li>
+          </ul>
+        </div>
+
+        <!-- Lab 3 -->
+        <div class="lab-card">
+          <div class="lab-icon"><i class="fa-solid fa-hand-dots"></i></div>
+          <h3>Bắt Điểm Cử Chỉ & Khớp Tay</h3>
+          <p>Hiển thị trực quan 21 điểm xương ngón tay với màu sắc phân biệt hai bàn tay trái/phải rõ ràng.</p>
+          <ul class="lab-features">
+            <li><i class="fa-solid fa-check"></i> Phân tích góc uốn từng khớp ngón tay</li>
+            <li><i class="fa-solid fa-check"></i> Cử chỉ chụm Pinch chính xác & giữ yên Dwell</li>
+            <li><i class="fa-solid fa-check"></i> Giám sát sai số và độ ổn định dưới pixel</li>
+          </ul>
+        </div>
+
+        <!-- Lab 4 -->
+        <div class="lab-card">
+          <div class="lab-icon"><i class="fa-solid fa-atom"></i></div>
+          <h3>Phòng Thí Nghiệm Vật Lý</h3>
+          <p>8 thí nghiệm cơ học cổ điển với bộ giải giải tích theo hệ chuẩn SI (OpenStax Mechanics).</p>
+          <ul class="lab-features">
+            <li><i class="fa-solid fa-check"></i> Con lắc phi tuyến & dao động điều hòa lò xo</li>
+            <li><i class="fa-solid fa-check"></i> Cân bằng mômen đòn bẩy & ròng rọc cơ học</li>
+            <li><i class="fa-solid fa-check"></i> Chuyển động ném xiên & va chạm đàn hồi 1D</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- AUTHORS SECTION -->
+    <section id="authors" class="authors-section">
+      <div class="section-header">
+        <span class="section-badge">Project Contributors</span>
+        <h2 class="section-title">Nhóm Sinh Viên Thực Hiện</h2>
+        <p class="section-desc">Đồ án môn học Xử lý Ảnh số (Digital Image Processing) — Khoa Công nghệ Thông tin</p>
+      </div>
+
+      <div class="authors-grid">
+        <!-- Author 1 -->
+        <div class="author-card">
+          <div class="author-avatar"><i class="fa-solid fa-user-astronaut"></i></div>
+          <div class="author-info">
+            <h4>Nguyễn Đăk Lộc</h4>
+            <div class="mssv">MSSV: 24110107</div>
+            <div class="role">Thành viên nhóm nghiên cứu & phát triển</div>
+          </div>
+        </div>
+
+        <!-- Author 2 -->
+        <div class="author-card">
+          <div class="author-avatar"><i class="fa-solid fa-user-tie"></i></div>
+          <div class="author-info">
+            <h4>Trần Gia Kiệt</h4>
+            <div class="mssv">MSSV: 24110103</div>
+            <div class="role">Thành viên nhóm nghiên cứu & phát triển</div>
+          </div>
+        </div>
+
+        <!-- Author 3 -->
+        <div class="author-card">
+          <div class="author-avatar"><i class="fa-solid fa-user-gear"></i></div>
+          <div class="author-info">
+            <h4>Lê Ngọc Hải</h4>
+            <div class="mssv">MSSV: 24110089</div>
+            <div class="role">Thành viên nhóm nghiên cứu & phát triển</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUICK EXECUTION GUIDE -->
+    <section id="guide">
+      <div class="download-card">
+        <span class="section-badge">Quick Start Guide</span>
+        <h2>Khởi Chạy Ứng Dụng Trên Máy Tính</h2>
+        <p style="color: var(--text-muted); max-width: 620px; margin: 0 auto 24px;">
+          Ứng dụng Desktop hỗ trợ chạy mượt mà trên hệ điều hành Windows 10/11 64-bit với bất kỳ webcam hoặc điện thoại nào.
+        </p>
+
+        <div class="code-preview">
+          # 1. Cài đặt tự động một lần (Nhấp đúp Cai_dat_UI.bat hoặc chạy):<br>
+          <span style="color: #38bdf8;">python -X utf8 -m submission.setup_ui</span><br><br>
+          # 2. Khởi chạy ứng dụng (Nhấp đúp Chay_UI.bat hoặc chạy):<br>
+          <span style="color: #4ade80;">.\.venv-ui\Scripts\python.exe -X utf8 -m submission.stem_ui.app</span>
+        </div>
+
+        <div class="download-actions">
+          <a href="https://github.com/lengochai4/DIP_project" target="_blank" class="btn btn-primary" style="padding: 12px 28px; font-size: 0.95rem;">
+            <i class="fa-brands fa-github"></i> Xem Kho Lưu Trữ GitHub
+          </a>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          <i class="fa-solid fa-circle-check" style="color: var(--green);"></i> Đã đối chiếu mã kiểm thử tự động đạt 1.703/1.703 test qua hoàn toàn.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <strong>DIP Touchless STEM</strong> &copy; 2026. Báo cáo đồ án môn học Xử lý ảnh số.
+      </div>
+      <div>
+        Nhóm tác giả: <strong>Nguyễn Đăk Lộc (24110107) | Trần Gia Kiệt (24110103) | Lê Ngọc Hải (24110089)</strong>
+      </div>
+    </div>
+  </footer>
+
+  <!-- THREE.JS INTERACTIVE 3D POLYHEDRON SCRIPT -->
+  <script>
+    (function init3DHero() {
+      const canvas = document.getElementById('threejs-hero-canvas');
+      if (!canvas || typeof THREE === 'undefined') return;
+
+      const container = canvas.parentElement;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+      camera.position.z = 5.2;
+
+      const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      // Lightings
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      scene.add(ambientLight);
+
+      const dirLight1 = new THREE.DirectionalLight(0x5fddf5, 1.4);
+      dirLight1.position.set(5, 6, 4);
+      scene.add(dirLight1);
+
+      const dirLight2 = new THREE.DirectionalLight(0xf4ca7e, 1.0);
+      dirLight2.position.set(-5, -4, -3);
+      scene.add(dirLight2);
+
+      // Create an intricate 3D STEM Molecule / Icosahedron
+      const group = new THREE.Group();
+
+      // Outer wireframe
+      const outerGeo = new THREE.IcosahedronGeometry(1.7, 1);
+      const wireMat = new THREE.MeshBasicMaterial({
+        color: 0x5fddf5,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.35
+      });
+      const wireMesh = new THREE.Mesh(outerGeo, wireMat);
+      group.add(wireMesh);
+
+      // Core Solid
+      const coreGeo = new THREE.OctahedronGeometry(0.9, 0);
+      const coreMat = new THREE.MeshStandardMaterial({
+        color: 0x00e5ff,
+        metalness: 0.4,
+        roughness: 0.2,
+        emissive: 0x032233
+      });
+      const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+      group.add(coreMesh);
+
+      // Orbiting atoms/nodes
+      const nodeGeo = new THREE.SphereGeometry(0.12, 16, 16);
+      const nodeMat = new THREE.MeshStandardMaterial({
+        color: 0xf4ca7e,
+        metalness: 0.6,
+        roughness: 0.3,
+        emissive: 0x332205
+      });
+
+      const nodeCount = 12;
+      const nodes = [];
+      for (let i = 0; i < nodeCount; i++) {
+        const phi = Math.acos(-1 + (2 * i) / nodeCount);
+        const theta = Math.sqrt(nodeCount * Math.PI) * phi;
+        const x = 1.7 * Math.cos(theta) * Math.sin(phi);
+        const y = 1.7 * Math.sin(theta) * Math.sin(phi);
+        const z = 1.7 * Math.cos(phi);
+
+        const sphere = new THREE.Mesh(nodeGeo, nodeMat);
+        sphere.position.set(x, y, z);
+        group.add(sphere);
+        nodes.push(sphere);
+      }
+
+      scene.add(group);
+
+      // Mouse Drag Controls
+      let isDragging = false;
+      let prevMousePos = { x: 0, y: 0 };
+
+      canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        prevMousePos = { x: e.clientX, y: e.clientY };
+      });
+
+      window.addEventListener('mouseup', () => { isDragging = false; });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - prevMousePos.x;
+        const deltaY = e.clientY - prevMousePos.y;
+        group.rotation.y += deltaX * 0.008;
+        group.rotation.x += deltaY * 0.008;
+        prevMousePos = { x: e.clientX, y: e.clientY };
+      });
+
+      // Touch controls for mobile
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isDragging = true;
+          prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+      });
+
+      window.addEventListener('touchend', () => { isDragging = false; });
+
+      window.addEventListener('touchmove', (e) => {
+        if (!isDragging || e.touches.length !== 1) return;
+        const deltaX = e.touches[0].clientX - prevMousePos.x;
+        const deltaY = e.touches[0].clientY - prevMousePos.y;
+        group.rotation.y += deltaX * 0.008;
+        group.rotation.x += deltaY * 0.008;
+        prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      });
+
+      // Window resize
+      window.addEventListener('resize', () => {
+        const newW = container.clientWidth;
+        const newH = container.clientHeight;
+        camera.aspect = newW / newH;
+        camera.updateProjectionMatrix();
+        renderer.setSize(newW, newH);
+      });
+
+      // Render loop
+      function animate() {
+        requestAnimationFrame(animate);
+        if (!isDragging) {
+          group.rotation.y += 0.004;
+          group.rotation.x += 0.002;
+        }
+        renderer.render(scene, camera);
+      }
+      animate();
+    })();
+  </script>
+</body>
+</html>
