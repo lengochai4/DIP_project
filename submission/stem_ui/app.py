@@ -12,7 +12,7 @@ def main():
     parser=argparse.ArgumentParser(description='DIP Touchless STEM — UI nộp đồ án')
     parser.add_argument('--replay',type=Path)
     parser.add_argument('--camera',type=int,default=0)
-    parser.add_argument('--mode',choices=('solid','tips','chemistry','physics','tracking'),default='solid')
+    parser.add_argument('--mode',choices=('solid','tips','chemistry','physics','tracking','optics'),default='solid')
     parser.add_argument('--smoke-frames',type=int,default=0)
     parser.add_argument('--screenshot',type=Path)
     parser.add_argument('--fullscreen',action='store_true',default=True,help='Mở toàn màn hình')
@@ -32,6 +32,7 @@ def main():
     if args.fullscreen: renderer.fullscreen=True
     if args.mode=='chemistry': renderer.enter_chemistry()
     elif args.mode=='physics': renderer.enter_physics()
+    elif args.mode=='optics': renderer.enter_optics()
     worker=None; active=False; error=None; webcam_index=args.camera
     current_source=('webcam',webcam_index); pending_source=None
     frame_count=0; seen=set(); max_hands=max_tips=0; start=time.monotonic()

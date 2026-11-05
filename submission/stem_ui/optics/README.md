@@ -85,11 +85,50 @@ Ngoài ra, tại thư mục gốc của dự án có script khởi chạy trực
 
 ---
 
-## 3. Hướng dẫn khởi chạy & Tương tác
+## 3. Hướng dẫn khởi chạy & Tương tác trong Chương trình chính
 
-### Cách chạy nhanh bằng lệnh Terminal
+Phân hệ Quang học đã được **tích hợp sâu trực tiếp vào phân hệ Vật lý (Physics)** của chương trình chính (`submission.stem_ui.app`), hỗ trợ đầy đủ **Webcam AR (Thực tế tăng cường)** và **Tương tác không chạm bằng cử chỉ bàn tay (Touchless Hand Tracking)** thay thế hoàn toàn chuột!
 
-Từ thư mục gốc dự án, chạy:
+### A. Tích hợp trong phân hệ Vật lý (Physics Module Integration)
+1. **Chuyển đổi qua lại giữa Cơ học & Quang học ngay trong Vật lý**:
+   - Khi đang ở phân hệ Vật lý (`VẬT LÝ • KHÁM PHÁ`), nhấp vào nút tên bài lab (ví dụ `Lực và Gia tốc v`):
+     - Ở thanh điều hướng thư viện có nút **`[ Quang học › ]`**.
+     - Nhấp vào để xem ngay danh sách 3 bài thí nghiệm Quang học:
+       - `1. Khúc xạ & Phản xạ TP`
+       - `2. Thấu kính mỏng (HT / PK)`
+       - `3. Tán sắc qua Lăng kính`
+     - Chọn bất kỳ bài nào để vào thẳng bài thí nghiệm đó!
+   - Khi đang ở phân hệ Quang học, tại góc trên tiêu đề có sẵn nút **`[ ‹ Cơ học (8 bài) ]`** để lập tức quay về 8 bài cơ học cổ điển.
+2. **Nút Home Hub ảo (5 cánh tròn)**:
+   - Đưa tay hoặc rê chuột vào vòng tròn góc trên bên phải để bung menu 5 cánh: *Hình học 3D, Khung xương tay, Hóa học, Vật lý, Quang học*. Dừng (dwell) 0.6s hoặc click vào cánh **`QUANG HỌC`**.
+3. **Phím tắt nhanh**:
+   - Nhấn **`O`** để mở Quang học, nhấn **`V`** để mở Vật lý (Cơ học).
+   - Nhấn **`TAB`** để xoay vòng các môn (*Hình học $\rightarrow$ Hóa học $\rightarrow$ Quang học $\rightarrow$ Vật lý*).
+   - Nhấn các phím số **`1`**, **`2`**, **`3`** để đổi nhanh giữa 3 bài quang học.
+
+---
+
+### B. Bật Webcam AR & Tương tác Bàn tay Không chạm (Touchless Interaction)
+
+1. **Bật Camera nền thực tế tăng cường (Webcam AR Mode)**:
+   - Nhấn phím **`C`** hoặc nhấp nút **`Camera`** / **`Bật camera`** trên thanh tiêu đề trên cùng.
+   - Hình ảnh webcam phòng học của bạn sẽ hiển thị trực tiếp làm nền, tạo không gian thực tế tăng cường sống động.
+   - Khung thí nghiệm và bảng điều khiển được thiết kế kính mờ cao cấp (Glassmorphism), cho phép chùm tia laser, thấu kính và lăng kính nổi bật rực rỡ trên không gian thực tế.
+
+2. **Cử chỉ bàn tay điều khiển không chạm (Touchless Gestures)**:
+   - **Tâm trỏ Laser (Reticle Pointer)**: Bám theo đầu ngón tay trỏ (Fingertip index 8) với vòng tròn ánh sáng phát quang màu xanh lơ `ACCENT`.
+   - **Cử chỉ chụm (Air Pinch — ngón cái chạm ngón trỏ)**:
+     - Khi chụm ngón tay, tâm trỏ chuyển sang màu vàng kim `GOLD` rực rỡ và phát xung xác nhận tương tác.
+     - **Bấm nút điều khiển**: Chụm ngón tay để nhấp các nút `[− Giảm]`, `[+ Tăng]`, đổi vật liệu lăng kính, chọn các mẫu chuẩn (Presets) hoặc chuyển sang bài khác.
+   - **Thao tác kéo trực tiếp trên khung thí nghiệm (Direct Stage Manipulation)**:
+     - **Khúc xạ ánh sáng**: Chụm ngón tay và di chuyển ở nửa trên mặt nước/thủy tinh $\rightarrow$ **tia laser xoay theo góc di chuyển của bàn tay**, lập tức thấy tia khúc xạ và phản xạ toàn phần biến đổi liên tục!
+     - **Thấu kính mỏng**: Chụm ngón tay vào mũi tên vật sáng $AB$, kéo sang trái/phải để **thay đổi khoảng cách $d$**, kéo lên/xuống để **thay đổi chiều cao $h$** $\rightarrow$ xem ảnh thật/ảo $A'B'$ lật ngược, thu nhỏ hoặc phóng đại trực tiếp trong không gian!
+     - **Lăng kính**: Chụm ngón tay di chuyển chùm sáng trắng tới $\rightarrow$ dải cầu vồng 7 màu tán sắc quét qua quét lại trên màn hứng!
+   - **Khung xương tay phát quang (Hand Skeleton)**: Hệ thống tự động vẽ khung xương bàn tay và điểm nối giữa các ngón, giúp người dùng định vị trực quan vị trí tay trong không gian.
+
+---
+
+### C. Chạy bộ Test độc lập (Standalone Runner)
 
 ```bash
 # Mở ở chế độ cửa sổ mặc định (1280x800)
@@ -98,17 +137,17 @@ python run_optics.py
 # Mở ở chế độ Toàn màn hình (Fullscreen)
 python run_optics.py --fullscreen
 
-# Mở trực tiếp bài Thấu kính
+# Mở trực tiếp bài Thấu kính / Lăng kính
 python run_optics.py --lab lens
-
-# Mở trực tiếp bài Lăng kính
 python run_optics.py --lab prism
 ```
+*(Hoặc click đúp file `Chay_Optics.bat` trên Windows)*.
 
 ### Phím tắt điều khiển:
 * **`1`**: Mở bài 1 — Khúc xạ & Phản xạ toàn phần.
 * **`2`**: Mở bài 2 — Thấu kính mỏng hội tụ & phân kì.
 * **`3`**: Mở bài 3 — Tán sắc qua lăng kính.
+* **`O`**: Chuyển ngay sang phân hệ Quang học (khi đang ở bất kỳ chế độ nào).
 * **`F` / `F11`**: Bật / Tắt chế độ toàn màn hình.
 * **`Q` / `ESC`**: Thoát chương trình.
 

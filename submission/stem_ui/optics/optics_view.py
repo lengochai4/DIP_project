@@ -51,6 +51,12 @@ class OpticsVisualizer:
         self.fonts = {}
         self.hover_btn = None
         self.active_slider = None
+        self.last_stage_rect = None
+        self.last_panel_rect = None
+        self.last_scale = 1.0
+        self.last_res = None
+        self.tab_targets = []
+        self.btn_targets = []
 
     def _font(self, size: int) -> pygame.font.Font:
         if size not in self.fonts:
@@ -58,27 +64,40 @@ class OpticsVisualizer:
             self.fonts[size] = pygame.font.Font(str(path) if path.is_file() else None, size)
         return self.fonts[size]
 
-    def draw(self, surface: pygame.Surface, mouse_pos: Tuple[int, int]):
+    def draw(self, surface: pygame.Surface, mouse_pos: Tuple[int, int], camera_active: bool = False):
         """Render full optics canvas and controls onto surface."""
         w, h = surface.get_size()
-        surface.fill(BG_COLOR)
+        if camera_active:
+            surface.fill((0, 0, 0, 0))
+        else:
+            surface.fill(BG_COLOR)
 
-        # 1. Header with Tabs
-        self._draw_header(surface, w, mouse_pos)
+        # 1. Header with Tabs & Switch to Mechanics
+        self._draw_header(surface, w, mouse_pos, camera_active=camera_active)
 
         # 2. Split Stage (Left) and Control Panel (Right)
-        panel_w = 380
+        panel_w = min(380, max(280, int(w * 0.28)))
         stage_w = w - panel_w - 32
-        stage_rect = pygame.Rect(16, 85, stage_w, h - 100)
-        panel_rect = pygame.Rect(w - panel_w - 16, 85, panel_w, h - 100)
+        stage_rect = pygame.Rect(16, 75, stage_w, h - 90)
+        panel_rect = pygame.Rect(w - panel_w - 16, 75, panel_w, h - 90)
+        self.last_stage_rect = stage_rect
+        self.last_panel_rect = panel_rect
 
         # Draw Stage Area
-        pygame.draw.rect(surface, STAGE_BG, stage_rect, border_radius=14)
+        if camera_active:
+            stage_surf = pygame.Surface(stage_rect.size, pygame.SRCALPHA)
+            stage_surf.fill((10, 18, 28, 165))
+            surface.blit(stage_surf, stage_rect.topleft)
+        else:
+            pygame.draw.rect(surface, STAGE_BG, stage_rect, border_radius=14)
         pygame.draw.rect(surface, PANEL_BORDER, stage_rect, 1, border_radius=14)
 
         # Render Active Experiment onto Stage
         stage_center = (stage_rect.centerx, stage_rect.centery)
-        res = self.session.evaluate(center=stage_center, scale_factor=stage_rect.height / 600.0)
+        scale_val = stage_rect.height / 600.0
+        self.last_scale = scale_val
+        res = self.session.evaluate(center=stage_center, scale_factor=scale_val)
+        self.last_res = res
 
         if self.session.current_lab == 'refraction' and isinstance(res, RefractionResult):
             self._render_refraction(surface, stage_rect, res)
@@ -88,38 +107,56 @@ class OpticsVisualizer:
             self._render_prism(surface, stage_rect, res)
 
         # 3. Control Panel on Right
-        self._draw_controls(surface, panel_rect, res, mouse_pos)
+        self._draw_controls(surface, panel_rect, res, mouse_pos, camera_active=camera_active)
 
-    def _draw_header(self, surface: pygame.Surface, w: int, mouse_pos: Tuple[int, int]):
+    def _draw_header(self, surface: pygame.Surface, w: int, mouse_pos: Tuple[int, int], camera_active: bool = False):
+        self.tab_targets = []
+        if camera_active:
+            hbar = pygame.Rect(16, 10, w - 32, 54)
+            hsurf = pygame.Surface(hbar.size, pygame.SRCALPHA)
+            hsurf.fill((14, 25, 38, 200))
+            surface.blit(hsurf, hbar.topleft)
+            pygame.draw.rect(surface, PANEL_BORDER, hbar, 1, border_radius=12)
+
         # Title
-        f_title = self._font(24)
-        t_surf = f_title.render("THÍ NGHIỆM QUANG HỌC STEM", True, ACCENT)
-        surface.blit(t_surf, (20, 20))
+        f_title = self._font(20 if w < 1200 else 22)
+        t_surf = f_title.render("VẬT LÝ • QUANG HỌC", True, ACCENT)
+        surface.blit(t_surf, (26, 22))
 
-        # 3 Tabs
+        # Button to switch to Mechanics (Cơ học)
+        bx = t_surf.get_width() + 45
+        btn_mech = pygame.Rect(bx, 16, 136, 40)
+        is_hov_mech = btn_mech.collidepoint(mouse_pos)
+        pygame.draw.rect(surface, (35, 65, 90) if is_hov_mech else (20, 38, 56), btn_mech, border_radius=10)
+        pygame.draw.rect(surface, GOLD if is_hov_mech else PANEL_BORDER, btn_mech, 1, border_radius=10)
+        lbl_mech = self._font(14).render("‹ Cơ học (8 bài)", True, GOLD if is_hov_mech else INK)
+        surface.blit(lbl_mech, lbl_mech.get_rect(center=btn_mech.center))
+        self.tab_targets.append((btn_mech, 'switch_mechanics'))
+
+        # 3 Experiment Tabs
         tabs = [
-            ('refraction', '1. Khúc xạ & Phản xạ toàn phần'),
-            ('lens', '2. Thấu kính mỏng (Hội tụ / Phân kì)'),
+            ('refraction', '1. Khúc xạ & Phản xạ TP'),
+            ('lens', '2. Thấu kính mỏng'),
             ('prism', '3. Tán sắc qua Lăng kính'),
         ]
-        tx = 360
-        self.tab_targets = []
+        tx = bx + 148
+        f_tab = self._font(14 if w < 1200 else 15)
         for tid, tname in tabs:
             is_active = (self.session.current_lab == tid)
-            tw = self._font(17).size(tname)[0] + 28
-            rect = pygame.Rect(tx, 16, tw, 42)
+            tw = f_tab.size(tname)[0] + 24
+            rect = pygame.Rect(tx, 16, tw, 40)
             self.tab_targets.append((rect, tid))
 
             is_hov = rect.collidepoint(mouse_pos)
-            col_bg = (30, 60, 85) if is_active else ((22, 42, 60) if is_hov else (16, 30, 44))
+            col_bg = (30, 65, 95) if is_active else ((22, 42, 60) if is_hov else (16, 30, 44))
             border_col = ACCENT if is_active else ((100, 160, 190) if is_hov else PANEL_BORDER)
 
             pygame.draw.rect(surface, col_bg, rect, border_radius=10)
             pygame.draw.rect(surface, border_col, rect, 2 if is_active else 1, border_radius=10)
             lbl_col = GOLD if is_active else (INK if is_hov else MUTED)
-            lbl_surf = self._font(17).render(tname, True, lbl_col)
+            lbl_surf = f_tab.render(tname, True, lbl_col)
             surface.blit(lbl_surf, lbl_surf.get_rect(center=rect.center))
-            tx += tw + 14
+            tx += tw + 10
 
     def _render_refraction(self, surface: pygame.Surface, stage_rect: pygame.Rect, res: RefractionResult):
         cx, cy = stage_rect.centerx, stage_rect.centery
@@ -248,8 +285,13 @@ class OpticsVisualizer:
         pygame.draw.line(surface, (200, 220, 240), (screen_x, stage_rect.top + 60), (screen_x, stage_rect.bottom - 60), 4)
         surface.blit(self._font(16).render("Màn hứng", True, MUTED), (screen_x - 30, stage_rect.top + 35))
 
-    def _draw_controls(self, surface: pygame.Surface, rect: pygame.Rect, res: Any, mouse_pos: Tuple[int, int]):
-        pygame.draw.rect(surface, PANEL_BG, rect, border_radius=14)
+    def _draw_controls(self, surface: pygame.Surface, rect: pygame.Rect, res: Any, mouse_pos: Tuple[int, int], camera_active: bool = False):
+        if camera_active:
+            panel_surf = pygame.Surface(rect.size, pygame.SRCALPHA)
+            panel_surf.fill((16, 28, 42, 215))
+            surface.blit(panel_surf, rect.topleft)
+        else:
+            pygame.draw.rect(surface, PANEL_BG, rect, border_radius=14)
         pygame.draw.rect(surface, PANEL_BORDER, rect, 1, border_radius=14)
 
         x, y = rect.x + 20, rect.y + 20
@@ -340,18 +382,22 @@ class OpticsVisualizer:
         for li, l_str in enumerate(lines[:3]):
             surface.blit(f_sub.render(l_str, True, INK), (x + 12, y + 34 + li * 22))
 
-    def handle_click(self, pos: Tuple[int, int]):
-        """Process mouse clicks on tabs and control buttons."""
+    def handle_click(self, pos: Tuple[int, int]) -> Optional[str]:
+        """Process mouse clicks or touchless pinch clicks on tabs and control buttons."""
         # Check tabs
         for rect, tid in getattr(self, 'tab_targets', []):
             if rect.collidepoint(pos):
+                if tid == 'switch_mechanics':
+                    return 'mechanics'
                 self.session.select_lab(tid)
-                return
+                return tid
 
         # Check buttons
         for rect, act in getattr(self, 'btn_targets', []):
             if rect.collidepoint(pos):
-                if act.startswith('adj:'):
+                if act == 'switch_mechanics':
+                    return 'mechanics'
+                elif act.startswith('adj:'):
                     _, pname, direction = act.split(':')
                     cur_val = self.session.get_param(pname)
                     # Step amounts
@@ -376,12 +422,56 @@ class OpticsVisualizer:
                         lo, hi = bounds[pname]
                         new_val = max(lo, min(hi, new_val))
                     self.session.set_param(pname, new_val)
+                    return f"param:{pname}"
                 elif act.startswith('preset:'):
                     preset_key = act.split(':', 1)[1]
                     self.session.apply_preset(preset_key)
+                    return f"preset:{preset_key}"
                 elif act == 'cycle_material':
                     cur_mat = self.session.get_param('material')
                     mats = ['flint_glass', 'crown_glass', 'water', 'diamond']
                     next_idx = (mats.index(cur_mat) + 1) % len(mats) if cur_mat in mats else 0
                     self.session.set_param('material', mats[next_idx])
-                return
+                    return "material"
+        return None
+
+    def handle_drag(self, pos: Tuple[int, int], is_pinch: bool = True):
+        """Allows direct touchless hand manipulation of the laser ray, lens object, or prism."""
+        if not is_pinch:
+            return
+        stage_rect = getattr(self, 'last_stage_rect', None)
+        if stage_rect is None or not stage_rect.collidepoint(pos):
+            return
+
+        cx, cy = stage_rect.centerx, stage_rect.centery
+        scale = max(0.2, getattr(self, 'last_scale', 1.0))
+        cur_lab = self.session.current_lab
+
+        if cur_lab == 'refraction':
+            # Dragging incident ray angle in the upper-left quadrant
+            if pos[1] < cy:
+                dx = cx - pos[0]
+                dy = cy - pos[1]
+                if dy > 6:
+                    deg = math.degrees(math.atan2(dx, dy))
+                    deg = max(0.0, min(85.0, deg))
+                    self.session.set_param('incident_angle', round(deg, 1))
+
+        elif cur_lab == 'lens':
+            # Dragging object AB position and height in front of the lens
+            if pos[0] < cx - 8:
+                d = (cx - pos[0]) / (scale * 8.0)
+                d = max(4.0, min(55.0, d))
+                self.session.set_param('object_distance', round(d, 1))
+            if pos[1] < cy:
+                h = (cy - pos[1]) / (scale * 12.0)
+                h = max(1.0, min(8.0, h))
+                self.session.set_param('object_height', round(h, 1))
+
+        elif cur_lab == 'prism':
+            # Dragging incident angle into prism face
+            if pos[0] < cx:
+                dy = cy - pos[1]
+                ang = 45.0 + dy * 0.15
+                ang = max(30.0, min(70.0, ang))
+                self.session.set_param('incident_angle', round(ang, 1))

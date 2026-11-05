@@ -16,6 +16,7 @@ from .manipulation import GrabController
 from .camera_space import CameraCover
 from .chemistry_view import CameraChemistryView
 from .physics_view import PhysicsView
+from .optics.optics_view import OpticsVisualizer
 from .solid_palette import SolidPalette, tip_summary
 from .screen_sprites import ScreenSprites
 from .home_hub import VirtualHomeHub
@@ -73,6 +74,7 @@ class SubmissionRenderer:
         self.droidcam_port=str(settings.get('droidcam_wifi_port',4747))
         self.chemistry=CameraChemistryView(settings,self)
         self.physics=PhysicsView(settings,self)
+        self.optics=OpticsVisualizer()
         self.home_hub=VirtualHomeHub(settings)
         self.geometry_dropdown_open=False
         self.solid_camera_texture=None
@@ -227,6 +229,10 @@ class SubmissionRenderer:
             return
         if self.mode=='chemistry':
             self.chemistry.input.command('frame'); self.chemistry.input.command('compact'); return
+        if self.mode=='optics':
+            pre_list=list(self.optics.session.PRESETS.get(self.optics.session.current_lab,{}).keys())
+            if pre_list: self.optics.session.apply_preset(pre_list[0])
+            return
         self.yaw=32.; self.pitch=20.; self.zoom=1.
         self.object_yaw=self.object_pitch=0.; self.object_scale=1.
         self.grab.reset()
@@ -307,6 +313,14 @@ class SubmissionRenderer:
                     self.enter_chemistry()
                 elif key == pygame.K_v:
                     self.enter_physics()
+                elif key == pygame.K_o:
+                    self.enter_optics()
+                elif self.mode=='optics' and key==pygame.K_1:
+                    self.optics.session.select_lab('refraction')
+                elif self.mode=='optics' and key==pygame.K_2:
+                    self.optics.session.select_lab('lens')
+                elif self.mode=='optics' and key==pygame.K_3:
+                    self.optics.session.select_lab('prism')
                 elif self.mode=='chemistry' and key==pygame.K_b:
                     self.chemistry.input.command('toggle_panel')
                 elif self.mode=='chemistry' and key in (pygame.K_e,pygame.K_o,pygame.K_t,pygame.K_z,pygame.K_y,pygame.K_BACKSPACE,pygame.K_l,pygame.K_j):
@@ -314,7 +328,8 @@ class SubmissionRenderer:
                         pygame.K_y:'redo',pygame.K_BACKSPACE:'delete',pygame.K_l:'save',pygame.K_j:'load'}[key])
                 elif key == pygame.K_TAB:
                     if self.mode=='solid': self.enter_chemistry()
-                    elif self.mode=='chemistry': self.enter_physics()
+                    elif self.mode=='chemistry': self.enter_optics()
+                    elif self.mode=='optics': self.enter_physics()
                     else: self.enter_basic('solid')
                 elif pygame.K_1 <= key <= pygame.K_4:
                     self.enter_basic('solid'); self.kind=KINDS[key-pygame.K_1]
@@ -330,6 +345,7 @@ class SubmissionRenderer:
                     if home_action in ('solid', 'tracking'): self.enter_basic(home_action)
                     elif home_action=='chemistry': self.enter_chemistry()
                     elif home_action=='physics': self.enter_physics()
+                    elif home_action=='optics': self.enter_optics()
                     continue
                 if self.home_hub.expanded:
                     continue
@@ -357,6 +373,8 @@ class SubmissionRenderer:
                         self.enter_chemistry(); self.geometry_dropdown_open=False
                     elif action=='physics':
                         self.enter_physics(); self.geometry_dropdown_open=False
+                    elif action=='optics':
+                        self.enter_optics(); self.geometry_dropdown_open=False
                     elif action=='camera':
                         self.camera_visible=not self.camera_visible
                     elif action=='droidcam':
@@ -381,6 +399,9 @@ class SubmissionRenderer:
                     self.geometry_dropdown_open=False
                     if self.mode=='chemistry': self.chemistry.mouse('down',event.pos)
                     elif self.mode=='physics': self.physics.mouse('down',event.pos)
+                    elif self.mode=='optics':
+                        act=self.optics.handle_click(event.pos)
+                        if act=='mechanics': self.enter_physics()
                     else: self.dragging=True
             elif event.type == pygame.MOUSEBUTTONUP:
                 self.dragging=False
@@ -390,6 +411,8 @@ class SubmissionRenderer:
                 self.chemistry.mouse('move',event.pos)
             elif event.type == pygame.MOUSEMOTION and self.mode=='physics' and not self.droidcam_dialog:
                 self.physics.mouse('move',event.pos)
+            elif event.type == pygame.MOUSEMOTION and self.mode=='optics' and not self.droidcam_dialog:
+                if pygame.mouse.get_pressed()[0]: self.optics.handle_drag(event.pos,is_pinch=True)
             elif event.type == pygame.MOUSEMOTION and self.dragging:
                 self.yaw+=event.rel[0]*.3; self.pitch=float(np.clip(self.pitch+event.rel[1]*.3,-65,65))
         return actions
@@ -415,8 +438,15 @@ class SubmissionRenderer:
 
     def enter_physics(self):
         self._suspend_solid()
-        self.mode='physics'; self.camera_visible=False; self.menu=False
+        self.mode='physics'; self.camera_visible=True; self.menu=False
         self.grab.release(); self.chemistry.input.release(); self.physics.suspend()
+
+    def enter_optics(self, lab=None):
+        self._suspend_solid()
+        self.mode='optics'; self.camera_visible=True; self.menu=False
+        self.grab.release(); self.chemistry.input.release(); self.physics.suspend()
+        if lab and hasattr(self, 'optics'):
+            self.optics.session.select_lab(lab)
 
     def cycle_scale_mode(self):
         modes=('uniform','stretch','distance','depth')
@@ -475,6 +505,8 @@ class SubmissionRenderer:
             return self._draw_chemistry(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,draw_dt,draw_started)
         if self.mode=='physics':
             return self._draw_physics(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,draw_dt,draw_started)
+        if self.mode=='optics':
+            return self._draw_optics(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,draw_dt,draw_started)
         context=(self.mode,run_id,view,snapshot.image.shape[:2] if snapshot is not None else None)
         if context!=self.solid_context:
             self._suspend_solid(); self.solid_context=context; self.last_identity=None
@@ -832,6 +864,85 @@ class SubmissionRenderer:
         pygame.display.flip(); self.clock.tick(self.settings['render_fps'])
         return len(hands),0
 
+    def _draw_optics(self,snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,now,dt,started):
+        w,h=self.size
+        vx,vy,vw,vh=view
+        gl.glViewport(0,0,w,h)
+        gl.glClearColor(*(c/255 for c in BG),1)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
+        fresh=snapshot is not None and active and not self.droidcam_dialog and now-snapshot.delivered_at<=self.settings['stale_after_s']
+        hands=snapshot.hands if fresh else ()
+
+        is_cam_ar=bool(snapshot is not None and self.camera_visible and active)
+        if is_cam_ar:
+            gl.glEnable(gl.GL_SCISSOR_TEST); gl.glScissor(vx,h-vy-vh,vw,vh)
+            gl.glViewport(vx,h-vy-vh,vw,vh)
+            gl.glDisable(gl.GL_DEPTH_TEST); gl.glDisable(gl.GL_LIGHTING)
+            gl.glMatrixMode(gl.GL_PROJECTION); gl.glLoadIdentity(); gl.glOrtho(0,1,1,0,-1,1)
+            gl.glMatrixMode(gl.GL_MODELVIEW); gl.glLoadIdentity()
+            self._draw_solid_camera_backdrop(snapshot,run_id,vw,vh)
+            if hands:
+                self._draw_solid_hand_keypoints(view,snapshot,hands,dt)
+            gl.glDisable(gl.GL_SCISSOR_TEST)
+
+        mouse_pos=pygame.mouse.get_pos()
+        hand_pt=None
+        is_pinch=False
+        if hands and fresh:
+            lead_hand=hands[0]
+            if hasattr(lead_hand,'landmarks') and len(lead_hand.landmarks)>=21:
+                tip8=lead_hand.landmarks[8]
+                tip4=lead_hand.landmarks[4]
+                lx=1.0-tip8.x if self.settings.get('mirror',True) else tip8.x
+                ly=tip8.y
+                hx=round(vx+lx*vw)
+                hy=round(vy+ly*vh)
+                hand_pt=(hx,hy)
+                mouse_pos=hand_pt
+
+                tx=1.0-tip4.x if self.settings.get('mirror',True) else tip4.x
+                ty=tip4.y
+                aspect_factor=vw/max(1,vh)
+                pinch_dist=math.hypot((lx-tx)*aspect_factor,ly-ty)
+                is_pinch=pinch_dist<0.052
+
+                if is_pinch:
+                    if not getattr(self,'_optics_pinch_active',False):
+                        clicked_action=self.optics.handle_click(hand_pt)
+                        if clicked_action=='mechanics':
+                            self.enter_physics()
+                            return len(hands),0
+                    self.optics.handle_drag(hand_pt,is_pinch=True)
+                    self._optics_pinch_active=True
+                else:
+                    self._optics_pinch_active=False
+
+        surface=pygame.Surface(self.size,pygame.SRCALPHA if is_cam_ar else 0)
+        self.optics.draw(surface,mouse_pos,camera_active=is_cam_ar)
+        if hand_pt:
+            cursor_col=GOLD if is_pinch else ACCENT
+            pygame.draw.circle(surface,cursor_col,hand_pt,11,2)
+            pygame.draw.circle(surface,(255,255,255),hand_pt,4 if is_pinch else 2)
+            if is_pinch:
+                pygame.draw.circle(surface,(*GOLD[:3],90),hand_pt,18,1)
+                lbl=self._label('Đang cầm / điều chỉnh',12,GOLD)
+                surface.blit(lbl,(hand_pt[0]+16,hand_pt[1]-10))
+
+        key=('optics',self.size,self.fullscreen,self.camera_visible,self.help_visible,active,error,status,
+            self.optics.session.current_lab,source_kind,self.droidcam_dialog,self.droidcam_host,self.droidcam_port,self.droidcam_field,
+            snapshot.frame_id if snapshot and self.camera_visible else None,
+            self.home_hub.expanded,tuple(self.home_hub.pos) if self.home_hub.pos is not None else None,self.home_hub.dwell_target,round(self.home_hub.dwell_time,2) if self.home_hub.dwell_target else None)
+        if key!=self.last_overlay_key:
+            overlay=self._draw_ui(snapshot,status,active,error,run_id,camera_index,replay,source_kind,view,hands,[],fresh,[])
+            self.last_overlay_key=key
+        else: overlay=None
+        if overlay: surface.blit(overlay,(0,0))
+        self._overlay(surface)
+        if self.capture_path: self._capture_back(self.capture_path); self.capture_path=None
+        self.last_draw_cpu_ms=(time.perf_counter()-started)*1000
+        pygame.display.flip(); self.clock.tick(self.settings['render_fps'])
+        return len(hands),0
+
     def _author_badge_labels(self,badge,fs):
         """Keep the author heading and every name inside the badge at small sizes."""
         lines=AUTHORS.split(' | ')
@@ -968,7 +1079,7 @@ class SubmissionRenderer:
             for i,name in enumerate(NAMES): self._button(overlay,name,(26 if w<1200 else 518,vy+(90 if w<1200 else 44)+i*42,180,38),'kind:'+KINDS[i],self.kind==KINDS[i])
         footer=pygame.Rect(20,h-55,w-40,45)
         self._card(overlay,footer,248)
-        if self.mode not in ('chemistry','physics'):
+        if self.mode not in ('chemistry','physics','optics'):
             pygame.draw.circle(overlay,ACCENT if active else MUTED,(39,h-33),4)
             readiness=(('Camera đã mở' if fresh else 'Đang nhận hình…') if active and snapshot is not None else status)+('  •  '+str(len(hands))+' tay' if hands else '')
             self._text(overlay,readiness,(52,h-43),13,INK)
@@ -986,11 +1097,14 @@ class SubmissionRenderer:
             elif claims: label='Đang cầm • Chụm tay còn lại trong vùng trống để xoay / đổi cỡ'
             elif scene.electrons: label+=(' • Chọn Cầm cả khối để dùng hai tay đổi cỡ' if scene.edit else ' • Cầm nguyên tử, chụm tay còn lại để đổi cỡ cả lớp e')
         elif self.mode=='physics': label=self.physics.model.message
+        elif self.mode=='optics':
+            eval_res=self.optics.session.evaluate()
+            label=eval_res.summary if hasattr(eval_res,'summary') else 'Thí nghiệm Quang học STEM'
         elif self.mode=='tracking': label='Đưa bàn tay lên trước camera để hiển thị 21 điểm mốc nhận diện (Hand Landmarks)'
         else: label='Kéo chuột để xem góc khác  •  Cuộn để gần / xa  •  R để đặt lại'
         if error: label=error
         if replay: label='Phát lại  •  '+label
-        if self.mode in ('chemistry','physics'):
+        if self.mode in ('chemistry','physics','optics'):
             max_label_width=max(1,footer.width-28)
             label_font=next((size for size in (20,17,15,13,12)
                 if self.fonts[size].size(label)[0]<=max_label_width),12)
@@ -1034,6 +1148,7 @@ class SubmissionRenderer:
             if home_action in ('solid', 'tracking'): self.enter_basic(home_action)
             elif home_action=='chemistry': self.enter_chemistry()
             elif home_action=='physics': self.enter_physics()
+            elif home_action=='optics': self.enter_optics()
 
     def _draw_solid_camera_backdrop(self,snapshot,run_id,vw,vh):
         if not hasattr(self,'solid_camera_texture') or self.solid_camera_texture is None:

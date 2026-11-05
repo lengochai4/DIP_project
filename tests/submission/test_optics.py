@@ -164,3 +164,123 @@ def test_optics_visualizer_rendering():
     session.select_lab('prism')
     vis.draw(surf, (100, 100))
 
+
+def test_optics_home_hub_and_renderer_integration():
+    """Verify that Optics is fully integrated into VirtualHomeHub and SubmissionRenderer."""
+    from submission.stem_ui.home_hub import VirtualHomeHub
+    settings = {'stale_after_s': 0.5, 'mirror': True}
+    hub = VirtualHomeHub(settings)
+
+    # Check that 'optics' is one of the sectors
+    sector_ids = [s['id'] for s in hub.sectors]
+    assert 'optics' in sector_ids
+    assert 'solid' in sector_ids
+    assert 'chemistry' in sector_ids
+    assert 'physics' in sector_ids
+    assert 'tracking' in sector_ids
+
+    # Check hovering on optics sector (angle around 120 deg)
+    screen_size = (1000, 700)
+    header_h = 60
+    hub.pos = hub.default_pos(screen_size, header_h)
+    hub.expanded = True
+
+    optics_ptr = (hub.pos[0] + 80.0 * math.cos(math.radians(120)),
+                  hub.pos[1] + 80.0 * math.sin(math.radians(120)))
+    triggered = []
+    for _ in range(15):
+        act = hub.update(0.06, screen_size, header_h, mouse_pos=optics_ptr, mouse_down=False)
+        if act:
+            triggered.append(act)
+    assert 'optics' in triggered
+
+
+def test_physics_view_optics_category_and_integration():
+    """Verify Optics labs are directly discoverable and selectable from PhysicsView."""
+    from types import SimpleNamespace
+    from test_stem_ui import SETTINGS
+    from submission.stem_ui.camera_space import CameraSpace
+    from submission.stem_ui.physics_view import PhysicsView
+
+    pygame.font.init()
+    switched = []
+    host = SimpleNamespace(
+        help_visible=True,
+        screenshot=lambda path: None,
+        enter_optics=lambda lab: switched.append(lab),
+    )
+    v = PhysicsView(SETTINGS, host)
+    v.content = (20, 100, 960, 600)
+    v.space = CameraSpace(960 / 600)
+    v.layout()
+    v.setup_projection()
+
+    # Default category is mechanics
+    assert v.library_category == 'mechanics'
+
+    # Switch category to optics
+    v.command('category:optics')
+    assert v.library_category == 'optics'
+    v.library = True
+    v._paint_panel()
+
+    # Verify optics lab targets are present
+    optics_targets = [act for r, act in v.targets if act.startswith('optics:')]
+    assert 'optics:refraction' in optics_targets
+    assert 'optics:lens' in optics_targets
+    assert 'optics:prism' in optics_targets
+
+    # Select optics:lens
+    v.command('optics:lens')
+    assert switched == ['lens']
+
+    # Switch back to mechanics
+    v.command('category:mechanics')
+    assert v.library_category == 'mechanics'
+    v.library = True
+    v._paint_panel()
+    mech_targets = [act for r, act in v.targets if act.startswith('lab:')]
+    assert len(mech_targets) > 0
+
+
+def test_optics_visualizer_camera_ar_and_touchless_drag():
+    """Verify camera AR backdrop rendering and touchless drag interaction in OpticsVisualizer."""
+    pygame.font.init()
+    surf = pygame.Surface((1280, 800), pygame.SRCALPHA)
+    session = OpticsLabSession(initial_lab='refraction')
+    vis = OpticsVisualizer(session=session)
+
+    # 1. Draw with camera_active=True (AR mode)
+    vis.draw(surf, (100, 100), camera_active=True)
+    assert vis.last_stage_rect is not None
+    assert vis.last_panel_rect is not None
+
+    # 2. Test touchless drag for Refraction (rotating incident angle)
+    sr = vis.last_stage_rect
+    cx, cy = sr.centerx, sr.centery
+    # Point in upper-left quadrant
+    drag_pt = (cx - 100, cy - 100)
+    vis.handle_drag(drag_pt, is_pinch=True)
+    # Incident angle should be around 45 degrees
+    assert 40.0 <= session.get_param('incident_angle') <= 50.0
+
+    # 3. Test touchless drag for Thin Lens (moving object distance & height)
+    session.select_lab('lens')
+    vis.draw(surf, (100, 100), camera_active=True)
+    lens_pt = (cx - 150, cy - 80)
+    vis.handle_drag(lens_pt, is_pinch=True)
+    assert session.get_param('object_distance') > 5.0
+    assert session.get_param('object_height') > 1.0
+
+    # 4. Test touchless drag for Prism (rotating beam angle)
+    session.select_lab('prism')
+    vis.draw(surf, (100, 100), camera_active=True)
+    prism_pt = (cx - 80, cy + 50)
+    vis.handle_drag(prism_pt, is_pinch=True)
+    assert 30.0 <= session.get_param('incident_angle') <= 75.0
+
+    # 5. Test switch to mechanics button click
+    click_res = vis.handle_click(vis.tab_targets[0][0].center)
+    assert click_res == 'mechanics'
+
+
