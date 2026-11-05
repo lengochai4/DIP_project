@@ -1,8 +1,7 @@
 # Final submission and application package
 
 This guide covers the final presentation application and its source package.
-The frozen scientific report is [FINAL_REPORT.md](../FINAL_REPORT.md); selected
-G7 evidence and provenance are in [evidence/README.md](evidence/README.md).
+Selected G7 evidence and provenance are in [evidence/README.md](evidence/README.md).
 The post-G7 UI does not replace those results or create a new evaluation.
 
 ## Setup and run
@@ -43,21 +42,18 @@ python -m extensions.stem3d.demo
 ```
 
 That smoke is not the submission application or physical tracking validation.
-See the [application walkthrough](DEMO_GUIDE.md) for keyboard fallback and screenshots.
 
 ## Source package contents
 
 | Path | Purpose |
 | --- | --- |
-| `README.md`, `pyproject.toml`, `AGENTS.md` | Entry instructions, dependencies and project rules |
+| `README.md`, `pyproject.toml` | Entry instructions and dependencies |
 | `src/dip_touchless/` | DIP Core |
 | `extensions/stem3d/` | Final application, scenes, renderer, read-only evidence UI |
 | `config/` | Runtime and experiment configuration |
 | `tests/` | Automated validation |
-| `docs/00` through `docs/06` | Canonical specifications and supplemental UI direction |
-| `FINAL_REPORT.md` | Frozen G7 report |
-| `submission/` | This guide, application walkthrough/checklist and selected frozen evidence |
-| `experiments/`, `analysis/` | Reproducible experiment/analysis tooling; frozen final plans under `experiments/final/` |
+| `submission/` | This guide and selected frozen evidence |
+| `experiments/`, `analysis/` | Reproducible experiment/analysis tooling |
 | `models/README.md` | External model download and checksum instructions |
 
 Deliver the repository source archive. A wheel alone installs the Core under

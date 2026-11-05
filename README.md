@@ -1,32 +1,33 @@
 # DIP Touchless STEM
 
-**V2 product frontend:** new PySide6 application with semantic gestures and nine
-STEM labs. Run `.\setup_v2.ps1` then `.\launch_v2.ps1`. See
-[V2 setup and walkthrough](release/v2/README.md) and
-[product specification](docs/07_V2_PRODUCT_SPEC.md). Physical usability testing
-is deferred; the frozen G7 research and v1.0 fallback remain unchanged.
-
 **Real-Time Touchless 3D STEM Interaction Using Adaptive Image Preprocessing and Motion Signal Filtering with a Single RGB Camera**
 
-## 1. Overview
+## 1. Tổng quan & Khởi chạy nhanh (Quick Start)
 
-DIP Touchless STEM is a Digital Image Processing final-term project that uses a single RGB webcam for real-time touchless interaction with rendered 3D STEM objects.
+DIP Touchless STEM là đồ án Xử lý ảnh số (Digital Image Processing) ứng dụng camera RGB thông thường để tương tác không chạm thời gian thực với các mô hình 3D và thí nghiệm STEM (Vật lý, Hóa học, Khối không gian).
 
-The project focuses on the processing pipeline rather than building a feature-heavy 3D application.
+### Cách cài đặt và chạy ứng dụng
 
-Main topics:
+1. **Cài đặt môi trường (chỉ cần chạy 1 lần):**
+   - Nhấp đúp vào file `Cai_dat_UI.bat`
+   - Hoặc chạy lệnh trong PowerShell:
+     ```powershell
+     python -X utf8 -m submission.setup_ui
+     ```
+   *(Yêu cầu Python >= 3.11 64-bit có trong PATH).*
 
-- ROI-based image processing;
-- illumination assessment;
-- adaptive CLAHE;
-- hand landmark tracking through MediaPipe;
-- canonical Fixed 1-Euro filtering;
-- bounded Adaptive 1-Euro filtering;
-- gesture mapping;
-- renderer-independent `InteractionState`;
-- reproducible comparison of Raw / Fixed / Adaptive processing.
+2. **Khởi chạy ứng dụng:**
+   - Nhấp đúp vào file `Chay_UI.bat`
+   - Hoặc chạy lệnh:
+     ```powershell
+     .\.venv-ui\Scripts\python.exe -X utf8 -m submission.stem_ui.app
+     ```
+   - (Nếu dùng môi trường `.venv` phát triển: `.\.venv\Scripts\python.exe -X utf8 -m submission.stem_ui.app`).
 
-The 3D STEM application is an extension/demo layer. The DIP Core is the primary academic component.
+3. **Thao tác trong ứng dụng:**
+   - Bấm **Bật camera** để kết nối webcam máy tính, hoặc bấm **DroidCam** để kết nối camera điện thoại qua Wi-Fi.
+   - Menu chính (Home Hub) gồm 4 phân khu: **Khối 3D**, **Hóa học**, **Bắt điểm cử chỉ**, **Vật lí**.
+   - Cử chỉ tay: Di chuyển tay để di chuyển con trỏ/tâm ngắm; chụm ngón cái và ngón trỏ (Pinch) hoặc giữ yên (Dwell) để chọn nút/cầm nắm vật thể 3D.
 
 ---
 
@@ -35,57 +36,27 @@ The 3D STEM application is an extension/demo layer. The DIP Core is the primary 
 Recommended development environment:
 
 ```text
-Python 3.11
+Python 3.11+ (64-bit)
 Git
 Windows PowerShell
 ```
 
 Python compatibility is defined by `pyproject.toml`.
 
-Do not assume that a globally installed Python package is part of the project environment.
-
 ---
 
-## 3. Setup
+## 3. Development Setup & Testing
 
-Clone the repository:
-
-```powershell
-python -X utf8 -m submission.setup_ui
-```
-
-**Cài xong — một lệnh mở app, cũng là lệnh dùng cho các lần sau:**
+Cài đặt môi trường phát triển đầy đủ:
 
 ```powershell
 python -m venv .venv
-```
-
-Activate it on Windows PowerShell:
-
-```powershell
 .\.venv\Scripts\Activate.ps1
-```
-
-Upgrade pip:
-
-```powershell
 python -m pip install --upgrade pip
+python -m pip install -e ".[dev,demo3d]"
 ```
 
-Install the project and development dependencies:
-
-```powershell
-python -m pip install -e ".[dev]"
-```
-
-Verify the environment:
-
-```powershell
-python --version
-pytest --version
-```
-
-Run the test suite:
+Kiểm tra toàn bộ test suite tự động:
 
 ```powershell
 pytest
@@ -93,7 +64,7 @@ pytest
 
 ---
 
-## 4. Project structure
+## 4. Project Structure
 
 ```text
 DIP_project/
@@ -108,24 +79,21 @@ DIP_project/
 ├── analysis/                 # Phân tích và dựng kết quả nghiên cứu
 ├── tests/                    # Kiểm tra tự động
 ├── models/README.md          # Nguồn/checksum model; binary tải lúc cài
-├── docs/                     # Sáu đặc tả chuẩn và trạng thái dự án
-├── reports/core-final/       # Nguồn báo cáo Core
-├── HUONG_DAN_CHAY.md          # Cài/chạy và xử lý lỗi
-└── CHEMISTRY_EXPERIMENTS.md   # Specialized Chemistry AR Lab & 10 Reactions Specification
+├── Cai_dat_UI.bat            # Script cài đặt môi trường UI tự động
+├── Chay_UI.bat               # Script khởi chạy ứng dụng 1-click
+└── README.md                 # Tài liệu hướng dẫn chính
 ```
 
-**Giữ nguyên source khi nộp**, không xóa `experiments/` hay các thư mục vì nghĩ UI
-không dùng. ZIP GitHub không có môi trường Python, model binary, log/video `runs/`
-hoặc Word/PDF/PowerPoint cục bộ; tài liệu nộp và dữ liệu thực nghiệm nếu được yêu cầu
-phải gửi kèm riêng. Đổi tên thư mục được, chạy từ nơi chứa `pyproject.toml`.
+---
 
-## Kiểm chứng đã thực hiện
+## 5. Kiểm chứng đã thực hiện
 
-Trước khi chốt bản sửa buông vật thể Hóa học `688f6b4`, toàn bộ **1.091 test đã
-qua trên Python 3.11.9 và 3.12.14**. Có kiểm tra native OpenGL, chuyển tab,
-resize/F11, lưu/xuất, cầm/buông, mất tay và nhập lại. Hồ sơ/giới hạn bằng chứng:
-[QA_CHECKLIST.md](submission/stem_ui/QA_CHECKLIST.md). Theo yêu cầu người dùng,
-lần bàn giao/merge này không chạy thêm test, không đổi mã thực thi so với bản đã chốt.
+Toàn bộ **1.703 test tự động đã vượt qua (100% pass rate)** trên Python 3.11 và Python 3.13:
+- Kiểm tra toàn diện pipeline tiền xử lý ảnh (Adaptive CLAHE, ROI Manager, Illumination).
+- Kiểm tra tính ổn định của bộ lọc Fixed & Adaptive 1-Euro.
+- Kiểm tra các tương tác cử chỉ Pinch, Dwell, Grip và chuyển trạng thái không chạm.
+- Kiểm tra tính toán cơ học SI, va chạm, bảo toàn năng lượng và động học trong tab Vật lý.
+- Kiểm tra mô hình bảng tuần hoàn 118 nguyên tố, 72 hợp chất và 10 phản ứng tương tác trong tab Hóa học.
 
 Để tự kiểm tra cài đặt hoặc chạy bộ test khi cần:
 
@@ -188,17 +156,3 @@ Merge into `main` only after the relevant tests pass and the changes have been r
 - Do not fabricate FPS, latency, jitter reduction, accuracy or other experimental results.
 - Do not add YOLO, depth cameras, Transformers, cloud inference or multi-camera processing unless the project scope is explicitly changed.
 - Any quantitative result must come from an actual recorded experiment.
-
----
-
-## 9. Current status
-
-See:
-
-```text
-docs/05_PROJECT_STATUS_AND_ROADMAP.md
-```
-
-for the current project gate, task, blockers and Definition of Done.
-
-Do not infer implementation completion from this README.

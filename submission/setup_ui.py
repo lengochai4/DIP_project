@@ -125,7 +125,7 @@ def main() -> int:
         return 0
     except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
         print(f"\nCài đặt chưa hoàn tất: {exc}", file=sys.stderr)
-        print("Xem HUONG_DAN_CHAY.md; kiểm tra Python >=3.11 64-bit, Internet và thông báo phía trên.", file=sys.stderr)
+        print("Xem README.md; kiểm tra Python >=3.11 64-bit, Internet và thông báo phía trên.", file=sys.stderr)
         print("Nếu .venv-ui khác phiên bản Python đang chọn, dùng đúng Python cũ hoặc đổi tên .venv-ui trước khi cài lại.", file=sys.stderr)
         return 1
 

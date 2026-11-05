@@ -1,6 +1,6 @@
 # UI nộp đồ án — phần ứng dụng riêng
 
-Máy mới: xem **[HUONG_DAN_CHAY.md](../../HUONG_DAN_CHAY.md)**. Cài một lần bằng
+Máy mới: xem **[README.md](../../README.md)**. Cài một lần bằng
 `python -X utf8 -m submission.setup_ui` với Python >=3.11 64-bit, sau đó chạy:
 
 ```powershell
@@ -166,7 +166,7 @@ JSON có cấu hình đầu, lịch sử lực, giả thiết, nguồn và đị
 Model revision 3 giữ các sửa vector/nhãn đo của revision 2, sửa dữ liệu cuối
 khi đổi lực, điều kiện dừng thật và giới hạn vector phóng. Thiết lập revision
 1/2 đã biết vẫn mở được thành điều kiện ban đầu; không phục
-hồi chuyển động cũ. Chi tiết rà soát: [PHYSICS_AUDIT.md](PHYSICS_AUDIT.md).
+hồi chuyển động cũ.
 UI schema 19 ghi nhận chính sách tương tác và đường tắt; công thức/catalog SI, Core
 và hành vi các tab khác giữ nguyên. Các ngưỡng tương tác là cấu hình kỹ thuật,
 không phải kết quả kiểm định độ chính xác của webcam.
@@ -175,8 +175,7 @@ Các số đo là **SI trong mô phỏng**; kích thước hình trên camera kh
 chiều dài/lực thật. Lực kéo có thể chỉnh giữa lượt; đổi các thông số vật lý
 khác bắt đầu một lượt mới. Va chạm là một chiều, đòn bẩy là bài tĩnh,
 ròng rọc nâng chậm lý tưởng; đây không phải bộ mô phỏng cơ khí tổng quát.
-Mô hình/phạm vi và nguồn OpenStax nằm trong `physics_labs.yaml` và mục 26
-của `docs/03_ALGORITHM_AND_EXPERIMENTS.md`. Core và số liệu báo cáo giữ nguyên.
+Mô hình/phạm vi và nguồn OpenStax nằm trong `physics_labs.yaml`. Core và số liệu báo cáo giữ nguyên.
 
 Luồng mã: `physics_labs.yaml` → `physics.py` (SI, không phụ thuộc đồ họa) →
 `physics_input.py` (chọn/giữ có chủ sở hữu) → `physics_view.py` (camera/GL/

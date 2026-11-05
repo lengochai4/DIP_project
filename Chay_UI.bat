@@ -4,7 +4,7 @@ set "DIP_UI_PYTHON=%~dp0.venv-ui\Scripts\python.exe"
 if not exist "%DIP_UI_PYTHON%" set "DIP_UI_PYTHON=%~dp0.venv-research\Scripts\python.exe"
 if not exist "%DIP_UI_PYTHON%" set "DIP_UI_PYTHON=%~dp0.venv\Scripts\python.exe"
 if not exist "%DIP_UI_PYTHON%" (
-    echo Python environment missing. Run Cai_dat_UI.bat first. See HUONG_DAN_CHAY.md.
+    echo Python environment missing. Run Cai_dat_UI.bat first. See README.md.
     pause
     exit /b 1
 )
