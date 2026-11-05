@@ -232,8 +232,8 @@ class CameraChemistryView:
                 state_col=(100,220,130) if scene.reaction_state=='products' else (255,190,60)
                 text(f"Trạng thái: {state_lbl}",(48,dy+106),20,state_col)
                 bw=(w-80)//2
-                button('⚡ TIẾN HÀNH PHẢN ỨNG',(32,625,bw,56),'trigger_reaction',selected=(scene.reaction_state=='products'))
-                button('↺ ĐẶT LẠI BAN ĐẦU',(48+bw,625,bw,56),'reset_reaction')
+                button('TIẾN HÀNH PHẢN ỨNG',(32,625,bw,56),'trigger_reaction',selected=(scene.reaction_state=='products'))
+                button('ĐẶT LẠI BAN ĐẦU',(48+bw,625,bw,56),'reset_reaction')
             else:
                 text('Chạm vào một phản ứng ở trên để chuẩn bị phân tử',(32,540),24,MUTED)
             button('Trang trước',(32,693,170,52),'reactions_prev')
