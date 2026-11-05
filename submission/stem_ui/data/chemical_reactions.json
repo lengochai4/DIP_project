@@ -1,0 +1,216 @@
+{
+  "r01_h2_o2": {
+    "id": "r01_h2_o2",
+    "name": "Đốt cháy khí Hiđro",
+    "equation": "2H2 + O2 -> 2H2O",
+    "equation_display": "2H₂ + O₂ ⎯(t°)→ 2H₂O",
+    "type": "Oxi hóa - khử / Tổng hợp nước",
+    "description": "Hiđro cháy trong oxi với ngọn lửa xanh nhạt tỏa nhiệt lượng cực lớn, sản phẩm là hơi nước ngưng tụ.",
+    "phenomenon": "Ngọn lửa màu xanh nhạt, tỏa nhiều nhiệt, có các giọt nước li ti bám trên thành bình.",
+    "reactants_label": "2 phân tử H₂ + 1 phân tử O₂",
+    "products_label": "2 phân tử Nước (H₂O)",
+    "scene_layout": {
+      "reactants": [
+        {"key": "H2", "offset": [-0.55, 0.28, 0.0]},
+        {"key": "H2", "offset": [-0.55, -0.28, 0.0]},
+        {"key": "O2", "offset": [0.45, 0.0, 0.0]}
+      ],
+      "products": [
+        {"key": "H2O", "offset": [-0.4, 0.0, 0.0]},
+        {"key": "H2O", "offset": [0.4, 0.0, 0.0]}
+      ]
+    }
+  },
+  "r02_ch4_o2": {
+    "id": "r02_ch4_o2",
+    "name": "Đốt cháy khí Metan",
+    "equation": "CH4 + 2O2 -> CO2 + 2H2O",
+    "equation_display": "CH₄ + 2O₂ ⎯(t°)→ CO₂ + 2H₂O",
+    "type": "Oxi hóa - khử (Cháy hiđrocacbon)",
+    "description": "Metan là thành phần chính của khí thiên nhiên và biogas, phản ứng cháy tỏa nhiều nhiệt dùng làm nhiên liệu.",
+    "phenomenon": "Khí cháy tạo ngọn lửa sáng, sinh ra khí cacbonic làm đục nước vôi trong và hơi nước.",
+    "reactants_label": "1 phân tử CH₄ + 2 phân tử O₂",
+    "products_label": "1 phân tử CO₂ + 2 phân tử H₂O",
+    "scene_layout": {
+      "reactants": [
+        {"key": "CH4", "offset": [-0.55, 0.0, 0.0]},
+        {"key": "O2", "offset": [0.45, 0.3, 0.0]},
+        {"key": "O2", "offset": [0.45, -0.3, 0.0]}
+      ],
+      "products": [
+        {"key": "CO2", "offset": [-0.5, 0.0, 0.0]},
+        {"key": "H2O", "offset": [0.35, 0.25, 0.0]},
+        {"key": "H2O", "offset": [0.35, -0.25, 0.0]}
+      ]
+    }
+  },
+  "r03_hcl_naoh": {
+    "id": "r03_hcl_naoh",
+    "name": "Trung hòa Axit - Bazơ",
+    "equation": "HCl + NaOH -> NaCl + H2O",
+    "equation_display": "HCl + NaOH ⎯→ NaCl + H₂O",
+    "type": "Trung hòa (Axit + Bazơ)",
+    "description": "Axit clohiđric tác dụng với natri hiđroxit tạo thành muối ăn natri clorua và nước.",
+    "phenomenon": "Phản ứng tỏa nhiệt nhẹ, làm dung dịch phenolphtalein từ đỏ hồng chuyển sang không màu.",
+    "reactants_label": "1 phân tử HCl + 1 phân tử NaOH",
+    "products_label": "1 phân tử Muối ăn (NaCl) + 1 phân tử H₂O",
+    "scene_layout": {
+      "reactants": [
+        {"key": "HCl", "offset": [-0.45, 0.0, 0.0]},
+        {"key": "NaOH", "offset": [0.45, 0.0, 0.0]}
+      ],
+      "products": [
+        {"key": "NaCl", "offset": [-0.4, 0.0, 0.0]},
+        {"key": "H2O", "offset": [0.4, 0.0, 0.0]}
+      ]
+    }
+  },
+  "r04_cao_h2o": {
+    "id": "r04_cao_h2o",
+    "name": "Tôi vôi sống",
+    "equation": "CaO + H2O -> Ca(OH)2",
+    "equation_display": "CaO + H₂O ⎯→ Ca(OH)₂",
+    "type": "Hóa hợp (Oxit bazơ + Nước)",
+    "description": "Canxi oxit (vôi sống) tác dụng mãnh liệt với nước tạo thành canxi hiđroxit (vôi tôi).",
+    "phenomenon": "Tỏa nhiệt rất mạnh làm nước sôi bốc hơi, cục vôi nhão nở ra thành chất bột trắng quánh.",
+    "reactants_label": "1 phân tử CaO + 1 phân tử H₂O",
+    "products_label": "1 phân tử Vôi tôi Ca(OH)₂",
+    "scene_layout": {
+      "reactants": [
+        {"key": "CaO", "offset": [-0.45, 0.0, 0.0]},
+        {"key": "H2O", "offset": [0.45, 0.0, 0.0]}
+      ],
+      "products": [
+        {"key": "Ca(OH)2", "offset": [0.0, 0.0, 0.0]}
+      ]
+    }
+  },
+  "r05_co2_caoh2": {
+    "id": "r05_co2_caoh2",
+    "name": "Nhận biết CO2 bằng nước vôi trong",
+    "equation": "CO2 + Ca(OH)2 -> CaCO3 + H2O",
+    "equation_display": "CO₂ + Ca(OH)₂ ⎯→ CaCO₃↓ + H₂O",
+    "type": "Trao đổi / Nhận biết chất khí",
+    "description": "Sục khí CO2 vào dung dịch nước vôi trong Ca(OH)2 tạo kết tủa canxi cacbonat không tan.",
+    "phenomenon": "Dung dịch nước vôi trong ban đầu dần dần chuyển sang vẩn đục màu trắng sữa đặc trưng.",
+    "reactants_label": "1 phân tử CO₂ + 1 phân tử Ca(OH)₂",
+    "products_label": "1 phân tử Kết tủa CaCO₃↓ + 1 phân tử H₂O",
+    "scene_layout": {
+      "reactants": [
+        {"key": "CO2", "offset": [-0.48, 0.0, 0.0]},
+        {"key": "Ca(OH)2", "offset": [0.48, 0.0, 0.0]}
+      ],
+      "products": [
+        {"key": "CaCO3", "offset": [-0.4, 0.0, 0.0]},
+        {"key": "H2O", "offset": [0.4, 0.0, 0.0]}
+      ]
+    }
+  },
+  "r06_caco3_decomp": {
+    "id": "r06_caco3_decomp",
+    "name": "Nhiệt phân nung đá vôi",
+    "equation": "CaCO3 -> CaO + CO2",
+    "equation_display": "CaCO₃ ⎯(t°=900°C)→ CaO + CO₂↑",
+    "type": "Phân hủy (Nhiệt phân)",
+    "description": "Nung đá vôi CaCO3 ở nhiệt độ cao 900-1000°C để sản xuất vôi sống trong công nghiệp vật liệu xây dựng.",
+    "phenomenon": "Khối đá vôi phân hủy thành chất rắn trắng xốp hơn (CaO), sinh ra luồng khí CO2 thoát ra.",
+    "reactants_label": "1 phân tử Đá vôi CaCO₃",
+    "products_label": "1 phân tử Vôi sống CaO + 1 phân tử Khí CO₂↑",
+    "scene_layout": {
+      "reactants": [
+        {"key": "CaCO3", "offset": [0.0, 0.0, 0.0]}
+      ],
+      "products": [
+        {"key": "CaO", "offset": [-0.45, 0.0, 0.0]},
+        {"key": "CO2", "offset": [0.45, 0.0, 0.0]}
+      ]
+    }
+  },
+  "r07_cacl2_na2co3": {
+    "id": "r07_cacl2_na2co3",
+    "name": "Tạo kết tủa Canxi cacbonat",
+    "equation": "CaCl2 + Na2CO3 -> CaCO3 + 2NaCl",
+    "equation_display": "CaCl₂ + Na₂CO₃ ⎯→ CaCO₃↓ + 2NaCl",
+    "type": "Trao đổi ion tạo kết tủa",
+    "description": "Trộn 2 dung dịch muối hòa tan trao đổi ion tạo thành kết tủa canxi cacbonat màu trắng lắng xuống.",
+    "phenomenon": "Xuất hiện ngay lập tức kết tủa dạng bột trắng CaCO3 không tan lắng xuống đáy ống nghiệm.",
+    "reactants_label": "1 phân tử CaCl₂ + 1 phân tử Na₂CO₃",
+    "products_label": "1 phân tử CaCO₃↓ + 2 phân tử Muối ăn NaCl",
+    "scene_layout": {
+      "reactants": [
+        {"key": "CaCl2", "offset": [-0.5, 0.0, 0.0]},
+        {"key": "Na2CO3", "offset": [0.5, 0.0, 0.0]}
+      ],
+      "products": [
+        {"key": "CaCO3", "offset": [-0.45, 0.0, 0.0]},
+        {"key": "NaCl", "offset": [0.45, 0.22, 0.0]},
+        {"key": "NaCl", "offset": [0.45, -0.22, 0.0]}
+      ]
+    }
+  },
+  "r08_n2_h2": {
+    "id": "r08_n2_h2",
+    "name": "Tổng hợp Amoniac (Haber-Bosch)",
+    "equation": "N2 + 3H2 -> 2NH3",
+    "equation_display": "N₂ + 3H₂ ⇌ 2NH₃ (Fe, 450°C, 200atm)",
+    "type": "Tổng hợp khí thuận nghịch",
+    "description": "Quy trình công nghiệp Haber-Bosch chuyển hóa nitơ trong khí quyển thành amoniac để sản xuất phân đạm.",
+    "phenomenon": "Hỗn hợp khí phản ứng tạo thành khí amoniac có mùi khai đặc trưng, làm xanh giấy quỳ tím ẩm.",
+    "reactants_label": "1 phân tử N₂ + 3 phân tử H₂",
+    "products_label": "2 phân tử Khí Amoniac (NH₃)",
+    "scene_layout": {
+      "reactants": [
+        {"key": "N2", "offset": [-0.55, 0.0, 0.0]},
+        {"key": "H2", "offset": [0.45, 0.35, 0.0]},
+        {"key": "H2", "offset": [0.45, 0.0, 0.0]},
+        {"key": "H2", "offset": [0.45, -0.35, 0.0]}
+      ],
+      "products": [
+        {"key": "NH3", "offset": [-0.38, 0.0, 0.0]},
+        {"key": "NH3", "offset": [0.38, 0.0, 0.0]}
+      ]
+    }
+  },
+  "r09_so3_h2o": {
+    "id": "r09_so3_h2o",
+    "name": "Sản xuất Axit Sunfuric",
+    "equation": "SO3 + H2O -> H2SO4",
+    "equation_display": "SO₃ + H₂O ⎯→ H₂SO₄",
+    "type": "Hóa hợp / Sản xuất công nghiệp",
+    "description": "Lưu huỳnh trioxit tác dụng với nước trong giai đoạn cuối của quy trình tiếp xúc sản xuất H2SO4.",
+    "phenomenon": "Phản ứng tỏa nhiệt rất mạnh, tạo ra dung dịch axit sunfuric sánh như dầu, tính axit cực mạnh.",
+    "reactants_label": "1 phân tử SO₃ + 1 phân tử H₂O",
+    "products_label": "1 phân tử Axit Sunfuric (H₂SO₄)",
+    "scene_layout": {
+      "reactants": [
+        {"key": "SO3", "offset": [-0.48, 0.0, 0.0]},
+        {"key": "H2O", "offset": [0.48, 0.0, 0.0]}
+      ],
+      "products": [
+        {"key": "H2SO4", "offset": [0.0, 0.0, 0.0]}
+      ]
+    }
+  },
+  "r10_esterification": {
+    "id": "r10_esterification",
+    "name": "Phản ứng Este hóa (Tạo Etyl axetat)",
+    "equation": "CH3COOH + C2H5OH -> CH3COOC2H5 + H2O",
+    "equation_display": "CH₃COOH + C₂H₅OH ⇌ CH₃COOC₂H₅ + H₂O (H₂SO₄ đ, t°)",
+    "type": "Este hóa (Hóa học hữu cơ)",
+    "description": "Axit axetic (giấm) phản ứng thuận nghịch với rượu etylic tạo thành este etyl axetat và nước.",
+    "phenomenon": "Hỗn hợp sau phản ứng tách thành 2 lớp, lớp trên có mùi thơm hoa quả chín dễ chịu (mùi chuối/táo).",
+    "reactants_label": "1 phân tử Axit axetic + 1 phân tử Rượu etylic",
+    "products_label": "1 phân tử Este Etyl axetat + 1 phân tử H₂O",
+    "scene_layout": {
+      "reactants": [
+        {"key": "CH3COOH", "offset": [-0.55, 0.0, 0.0]},
+        {"key": "C2H5OH", "offset": [0.55, 0.0, 0.0]}
+      ],
+      "products": [
+        {"key": "CH3COOC2H5", "offset": [-0.45, 0.0, 0.0]},
+        {"key": "H2O", "offset": [0.55, 0.0, 0.0]}
+      ]
+    }
+  }
+}
+

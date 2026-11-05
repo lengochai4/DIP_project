@@ -10,11 +10,18 @@ import numpy as np
 
 DATA=Path(__file__).with_name('data')/'pubchem-periodic-table.json'
 COMPOUNDS_DATA=Path(__file__).with_name('data')/'chemical_compounds.json'
+REACTIONS_DATA=Path(__file__).with_name('data')/'chemical_reactions.json'
 
 
 def load_compounds():
     if not COMPOUNDS_DATA.is_file(): return {}
     try: return json.loads(COMPOUNDS_DATA.read_text(encoding='utf-8'))
+    except Exception: return {}
+
+
+def load_reactions():
+    if not REACTIONS_DATA.is_file(): return {}
+    try: return json.loads(REACTIONS_DATA.read_text(encoding='utf-8'))
     except Exception: return {}
 
 
@@ -97,6 +104,9 @@ class ChemistryScene:
             if len(seen)!=len(symbols): raise ValueError(f'Disconnected template: {key}')
             self._templates.append((t['label'],symbols,graph))
         self.compounds=load_compounds()
+        self.reactions=load_reactions()
+        self.current_reaction=None
+        self.reaction_state='none' 
         for key,t in self.compounds.items():
             symbols=tuple(t['symbols'])
             if not symbols or any(s not in self.elements for s in symbols): continue
@@ -304,6 +314,74 @@ class ChemistryScene:
             self.atoms[i]=Atom(i,s,v,v.copy()); ids.append(i)
         for a,b,n in t['bonds']: self.bonds[tuple(sorted((ids[a],ids[b])))]=n
         self.selected=ids[0]; self.revision+=1; self.message='Đã thêm '+t['label']+'; hình học minh họa'
+
+    def load_reaction(self,reaction_id):
+        r=self.reactions.get(reaction_id)
+        if not r:
+            self.message=f'Không tìm thấy phản ứng {reaction_id}'; return False
+        self.finish_edit()
+        self.remember()
+        self.atoms.clear()
+        self.bonds.clear()
+        self.current_reaction=reaction_id
+        self.reaction_state='reactants'
+        center_x=0.8
+        for spec in r['scene_layout']['reactants']:
+            key=spec['key']
+            t=self.settings['chemistry_templates'].get(key) or self.compounds.get(key)
+            if not t: continue
+            offset=list(spec.get('offset',[0.,0.,0.]))
+            origin=[center_x+offset[0], offset[1], offset[2]]
+            ids=[]
+            for s,p in zip(t['symbols'],t['positions']):
+                i=self.next_id; self.next_id+=1
+                v=[origin[0]+p[0], origin[1]+p[1], origin[2]+p[2]]
+                import numpy as np
+                pos=np.array(v,dtype=float)
+                self.atoms[i]=Atom(i,s,pos,pos.copy())
+                ids.append(i)
+            for a,b,n in t['bonds']:
+                self.bonds[tuple(sorted((ids[a],ids[b])))]=n
+        if self.atoms: self.selected=min(self.atoms)
+        self.revision+=1
+        self.message=f"{r['equation_display']} • Bấm 'Tiến hành phản ứng' để mô phỏng"
+        return True
+
+    def trigger_reaction(self):
+        if not self.current_reaction or self.current_reaction not in self.reactions:
+            self.message='Chưa chọn phản ứng nào để tiến hành'; return False
+        r=self.reactions[self.current_reaction]
+        self.finish_edit()
+        self.remember()
+        self.atoms.clear()
+        self.bonds.clear()
+        self.reaction_state='products'
+        center_x=0.8
+        for spec in r['scene_layout']['products']:
+            key=spec['key']
+            t=self.settings['chemistry_templates'].get(key) or self.compounds.get(key)
+            if not t: continue
+            offset=list(spec.get('offset',[0.,0.,0.]))
+            origin=[center_x+offset[0], offset[1], offset[2]]
+            ids=[]
+            for s,p in zip(t['symbols'],t['positions']):
+                i=self.next_id; self.next_id+=1
+                v=[origin[0]+p[0], origin[1]+p[1], origin[2]+p[2]]
+                import numpy as np
+                pos=np.array(v,dtype=float)
+                self.atoms[i]=Atom(i,s,pos,pos.copy())
+                ids.append(i)
+            for a,b,n in t['bonds']:
+                self.bonds[tuple(sorted((ids[a],ids[b])))]=n
+        if self.atoms: self.selected=min(self.atoms)
+        self.revision+=1
+        self.message=f"Phản ứng xong: {r['equation_display']} • {r['phenomenon']}"
+        return True
+
+    def reset_reaction(self):
+        if self.current_reaction:
+            return self.load_reaction(self.current_reaction)
+        return False
 
     def save(self,path):
         path=Path(path); path.parent.mkdir(parents=True,exist_ok=True)

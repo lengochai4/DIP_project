@@ -37,6 +37,7 @@ class ChemistryInput:
         self.previous_time=None
         self.template_page=0
         self.compound_page=0; self.compound_category='all'
+        self.reaction_page=0
         self.grab_settings={**settings,'grip_press_ratio':settings['chemistry_grip_press_ratio'],
             'pose_response_hz':settings['chemistry_move_response_hz'],
             'rotation_response_hz':settings['chemistry_rotate_response_hz'],
@@ -104,7 +105,7 @@ class ChemistryInput:
             self.layout.reset(); self.panel_target=None
             if self.page=='compact': self.page=self.expanded_page
             return
-        if action in ('home','elements','table','templates','compounds','compact'):
+        if action in ('home','elements','table','templates','compounds','reactions','compact'):
             for key in list(self.claims):
                 if self.claims[key].kind.startswith('panel_'): self.end(key)
             if action=='compact' and self.page!='compact':
@@ -126,6 +127,20 @@ class ChemistryInput:
             items=self.filtered_compounds()
             count=max(1,(len(items)+6)//7)
             self.compound_page=int(np.clip(self.compound_page+(1 if action=='compounds_next' else -1),0,max(0,count-1)))
+            return
+        if action in ('reactions_prev','reactions_next'):
+            count=max(1,(len(scene.reactions)+4)//5)
+            self.reaction_page=int(np.clip(self.reaction_page+(1 if action=='reactions_next' else -1),0,max(0,count-1)))
+            return
+        if action.startswith('reaction:'):
+            rid=action.split(':',1)[1]
+            scene.load_reaction(rid)
+            return
+        if action=='trigger_reaction':
+            scene.trigger_reaction()
+            return
+        if action=='reset_reaction':
+            scene.reset_reaction()
             return
         scene.freeze(tuple(scene.atoms)); scene.finish_edit()
         self.claims.clear(); self.groups.clear()

@@ -142,9 +142,10 @@ class CameraChemistryView:
         pygame.draw.line(surface,(161,213,232,150),(32,78),(w-32,78),2)
         if control.page=='home':
             text(f"Giữ {self.settings['chemistry_dwell_s']:g}s hoặc chụm để chọn" if self.settings['chemistry_quick_select']=='point_pinch' else f"Giữ {self.settings['chemistry_dwell_s']:g}s hoặc đẩy trỏ để chọn",(32,99),29)
-            button('BẢNG NGUYÊN TỐ',(32,150,w-64,88),'elements')
-            button('72 CÔNG THỨC HÓA HỌC',(32,250,w-64,88),'compounds')
-            button('MẪU PHÂN TỬ 3D CƠ BẢN',(32,350,w-64,88),'templates')
+            button('BẢNG NGUYÊN TỐ',(32,140,w-64,68),'elements')
+            button('72 CÔNG THỨC HÓA HỌC',(32,218,w-64,68),'compounds')
+            button('10 PHẢN ỨNG HÓA HỌC TƯƠNG TÁC',(32,296,w-64,68),'reactions')
+            button('MẪU PHÂN TỬ 3D CƠ BẢN',(32,374,w-64,68),'templates')
             if self.renderer.help_visible:
                 text('THAO TÁC BẰNG TAY',(32,475),24,ACCENT)
                 text('Chụm sát cái–trỏ trên nguyên tử để cầm',(32,522),26)
@@ -158,9 +159,10 @@ class CameraChemistryView:
             text('Nguyên tố thường dùng',(32,93),31)
             for i,symbol in enumerate(self.settings['chemistry_common_elements']):
                 button(symbol,(32+(i%4)*166,150+(i//4)*142,150,122),'element:'+symbol)
-            button('Bảng 118',(32,451,195,73),'table')
-            button('72 Công thức',(237,451,250,73),'compounds')
-            button('Mẫu 3D',(497,451,191,73),'templates')
+            button('Bảng 118',(32,451,145,73),'table')
+            button('72 Công thức',(187,451,165,73),'compounds')
+            button('Phản ứng',(362,451,165,73),'reactions')
+            button('Mẫu 3D',(537,451,151,73),'templates')
             selected=scene.atoms.get(scene.selected)
             if selected:
                 element=scene.elements[selected.symbol]
@@ -184,18 +186,49 @@ class CameraChemistryView:
                 button(cname,(cx,135,103,46),'compound_cat:'+cid,selected=(cat==cid))
             for i,(key,t) in enumerate(items[current*7:(current+1)*7]):
                 button(t['label'],(32,192+i*66,w-64,58),'template:'+key)
-            button('Trang trước',(32,693,210,52),'compounds_prev')
-            button('Nguyên tố',(256,693,210,52),'elements')
-            button('Trang sau',(480,693,208,52),'compounds_next')
+            button('Trang trước',(32,693,150,52),'compounds_prev')
+            button('Nguyên tố',(192,693,150,52),'elements')
+            button('Phản ứng',(352,693,160,52),'reactions')
+            button('Trang sau',(522,693,166,52),'compounds_next')
         elif control.page=='templates':
             templates=list(self.settings['chemistry_templates'].items())
             pages=max(1,(len(templates)+7)//8); current=min(control.template_page,pages-1)
             text(f'Mẫu cầu–que • Trang {current+1}/{pages}',(32,93),28)
             for i,(key,t) in enumerate(templates[current*8:(current+1)*8]):
                 button(t['label'],(32,145+i*67,w-64,58),'template:'+key)
-            button('Trang trước',(32,693,210,52),'templates_prev')
-            button('72 Công thức',(256,693,210,52),'compounds')
-            button('Trang sau',(480,693,208,52),'templates_next')
+            button('Trang trước',(32,693,150,52),'templates_prev')
+            button('Phản ứng',(192,693,160,52),'reactions')
+            button('72 Công thức',(362,693,160,52),'compounds')
+            button('Trang sau',(532,693,156,52),'templates_next')
+        elif control.page=='reactions':
+            items=list(scene.reactions.values())
+            pages=max(1,(len(items)+4)//5)
+            current=int(np.clip(getattr(control,'reaction_page',0),0,pages-1))
+            control.reaction_page=current
+            text(f'10 Phản ứng tương tác • Trang {current+1}/{pages}',(32,93),26,ACCENT)
+            active_r=scene.reactions.get(scene.current_reaction)
+            for i,r in enumerate(items[current*5:(current+1)*5]):
+                is_selected=(scene.current_reaction==r['id'])
+                button(f"{r['name']} • {r['equation_display']}",(32,135+i*62,w-64,54),'reaction:'+r['id'],selected=is_selected)
+            if active_r:
+                dy=458
+                pygame.draw.rect(surface,(18,34,48,220),(32,dy,w-64,152),border_radius=14)
+                pygame.draw.rect(surface,ACCENT,(32,dy,w-64,152),1,border_radius=14)
+                text(f"Phản ứng: {active_r['name']} ({active_r['type']})",(48,dy+16),22,GOLD)
+                text(f"Phương trình: {active_r['equation_display']}",(48,dy+46),22,ACCENT)
+                text(f"Hiện tượng: {active_r['phenomenon'][:46]}...",(48,dy+76),20,INK)
+                state_lbl="ĐÃ TẠO SẢN PHẨM" if scene.reaction_state=='products' else "SẴN SÀNG: CHẤT BAN ĐẦU"
+                state_col=(100,220,130) if scene.reaction_state=='products' else (255,190,60)
+                text(f"Trạng thái: {state_lbl}",(48,dy+106),20,state_col)
+                bw=(w-80)//2
+                button('⚡ TIẾN HÀNH PHẢN ỨNG',(32,625,bw,56),'trigger_reaction',selected=(scene.reaction_state=='products'))
+                button('↺ ĐẶT LẠI BAN ĐẦU',(48+bw,625,bw,56),'reset_reaction')
+            else:
+                text('Chạm vào một phản ứng ở trên để chuẩn bị phân tử',(32,540),24,MUTED)
+            button('Trang trước',(32,693,170,52),'reactions_prev')
+            button('72 Công thức',(212,693,180,52),'compounds')
+            button('Bảng 118',(402,693,130,52),'elements')
+            button('Trang sau',(542,693,146,52),'reactions_next')
         else:
             text('118 nguyên tố • chọn để tạo nguyên tử; dữ liệu PubChem',(32,91),31)
             for row,symbols in enumerate(PERIODS):
@@ -241,7 +274,8 @@ class CameraChemistryView:
         if manipulating and self.panel_raster is not None and self.panel_key is not None and self.panel_key[1]==self.input.page:
             raster=self.panel_raster
         semantic=(self.space.aspect,self.input.page,self.input.template_page,
-                  getattr(self.input,'compound_page',0),getattr(self.input,'compound_category','all'),symbol,
+                  getattr(self.input,'compound_page',0),getattr(self.input,'compound_category','all'),
+                  getattr(self.input,'reaction_page',0),getattr(self.scene,'current_reaction',None),getattr(self.scene,'reaction_state','none'),symbol,
                   self.scene.edit,self.scene.electrons,self.scene.order,self.renderer.help_visible,self.content[2:],
                   raster,self.input.layout.edge if self.input.page=='compact' else None)
         key=semantic+((),)
