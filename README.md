@@ -1,158 +1,126 @@
 # DIP Touchless STEM
 
-**Real-Time Touchless 3D STEM Interaction Using Adaptive Image Preprocessing and Motion Signal Filtering with a Single RGB Camera**
-
-## 1. Tổng quan & Khởi chạy nhanh (Quick Start)
-
-DIP Touchless STEM là đồ án Xử lý ảnh số (Digital Image Processing) ứng dụng camera RGB thông thường để tương tác không chạm thời gian thực với các mô hình 3D và thí nghiệm STEM (Vật lý, Hóa học, Khối không gian).
-
-### Cách cài đặt và chạy ứng dụng
-
-1. **Cài đặt môi trường (chỉ cần chạy 1 lần):**
-   - Nhấp đúp vào file `Cai_dat_UI.bat`
-   - Hoặc chạy lệnh trong PowerShell:
-     ```powershell
-     python -X utf8 -m submission.setup_ui
-     ```
-   *(Yêu cầu Python >= 3.11 64-bit có trong PATH).*
-
-2. **Khởi chạy ứng dụng:**
-   - Nhấp đúp vào file `Chay_UI.bat`
-   - Hoặc chạy lệnh:
-     ```powershell
-     .\.venv-ui\Scripts\python.exe -X utf8 -m submission.stem_ui.app
-     ```
-   - (Nếu dùng môi trường `.venv` phát triển: `.\.venv\Scripts\python.exe -X utf8 -m submission.stem_ui.app`).
-
-3. **Thao tác trong ứng dụng:**
-   - Bấm **Bật camera** để kết nối webcam máy tính, hoặc bấm **DroidCam** để kết nối camera điện thoại qua Wi-Fi.
-   - Menu chính (Home Hub) gồm 4 phân khu: **Khối 3D**, **Hóa học**, **Bắt điểm cử chỉ**, **Vật lí**.
-   - Cử chỉ tay: Di chuyển tay để di chuyển con trỏ/tâm ngắm; chụm ngón cái và ngón trỏ (Pinch) hoặc giữ yên (Dwell) để chọn nút/cầm nắm vật thể 3D.
+> **Real-Time Touchless 3D STEM Interaction Using Adaptive Image Preprocessing and Motion Signal Filtering with a Single RGB Camera**  
+> *Digital Image Processing (DIP) Graduation Capstone Project*
 
 ---
 
-## 2. Requirements
+## 1. Project Overview
 
-Recommended development environment:
+**DIP Touchless STEM** is an augmented reality (AR) interactive educational platform that operates using standard, low-cost monocular RGB webcams. By combining stateful Region of Interest (ROI) management, adaptive illumination analysis (CLAHE), Google MediaPipe hand landmark tracking, and 1-Euro motion signal filtering, the system provides responsive, jitter-free touchless manipulation of 3D STEM models without requiring dedicated depth sensors or wearable hardware.
 
-```text
-Python 3.11+ (64-bit)
-Git
-Windows PowerShell
-```
-
-Python compatibility is defined by `pyproject.toml`.
-
----
-
-## 3. Development Setup & Testing
-
-Cài đặt môi trường phát triển đầy đủ:
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev,demo3d]"
-```
-
-Kiểm tra toàn bộ test suite tự động:
-
-```powershell
-pytest
-```
+### Key Highlights
+- **End-to-End Image Processing Pipeline**: Stateful illumination assessment, adaptive CLAHE preprocessing, MediaPipe landmark tracking, and 1-Euro temporal filtering.
+- **Markerless Touchless Interaction**: Pinch-to-grab, hover-to-dwell, and multi-finger plane/vertex geometry tracking.
+- **4 Dedicated STEM Modules**:
+  1. **3D Solid Shapes**: Real-time rendering, rotation, dilation, and vertex/plane construction using fingertip coordinates.
+  2. **Interactive Chemistry Laboratory**: 118-element periodic table from PubChem, 72 molecular compounds, dynamic electron orbital animations, and 10 interactive chemical reaction simulations.
+  3. **Gesture Tracking & Skeletons**: Live 21-landmark hand tracking with adaptive smoothing and fingertip polygon mapping.
+  4. **Physics Laboratory**: 8 classical mechanics experiments with SI-unit analytical solvers (pendulum, spring-mass, projectile motion, collisions, lever equilibrium, pulley systems).
 
 ---
 
-## 4. Project Structure
+## 2. System Requirements
+
+- **Operating System**: Windows 10 / Windows 11 (64-bit)
+- **Python**: Python 3.11+ (64-bit)
+- **Camera**: Standard built-in RGB webcam (USB) or smartphone camera via DroidCam (Wi-Fi)
+- **Graphics**: OpenGL 2.1+ compatible GPU and display drivers
+
+---
+
+## 3. Quick Start & Execution Guide
+
+### Option A: One-Click Launcher (Recommended for Windows)
+
+1. **One-Time Environment Setup**:
+   - Double-click **`Cai_dat_UI.bat`**  
+     *(Or run in PowerShell: `python -X utf8 -m submission.setup_ui`)*  
+     This automatically creates `.venv-ui`, installs all required dependencies according to `pyproject.toml`, and downloads/verifies Google MediaPipe hand tracking models with cryptographic SHA-256 validation.
+
+2. **Launch Application**:
+   - Double-click **`Chay_UI.bat`**  
+     *(Or run in PowerShell: `.\.venv-ui\Scripts\python.exe -X utf8 -m submission.stem_ui.app`)*
+
+---
+
+### Option B: Manual CLI Setup & Execution
+
+1. **Create and Activate Virtual Environment**:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+2. **Upgrade Pip and Install Dependencies**:
+   ```powershell
+   python -m pip install --upgrade pip
+   python -m pip install -e ".[dev,demo3d]"
+   ```
+
+3. **Launch the STEM Application**:
+   ```powershell
+   python -X utf8 -m submission.stem_ui.app
+   ```
+
+---
+
+## 4. How to Use the Application
+
+1. **Camera Connection**:
+   - Click **Bật camera** (Turn on camera) to connect to the computer's webcam (Camera index 0–3).
+   - Click **DroidCam** to connect to an external smartphone camera over local Wi-Fi (default port: `4747`).
+2. **Main Hub Navigation**:
+   - The central Home Hub features a circular wheel with 4 main sectors: **3D Solids**, **Chemistry**, **Tracking**, and **Physics**.
+   - Hover over a sector and dwell or pinch to enter the corresponding laboratory.
+3. **Touchless Gestures**:
+   - **Pointer / Target**: Move your index finger in view of the camera to aim at buttons and objects.
+   - **Pinch (Chụm ngón cái & trỏ)**: Bring thumb and index fingertips together to grab, manipulate, or rotate 3D objects, trigger sliders, and prepare chemical reactions.
+   - **Dwell Selection**: Hold the pointer steady over a button for 1.0 second to automatically trigger an action without clicking.
+   - **Reset View**: Press the **Đặt lại** (Reset) button to restore the camera view and objects to their initial orientation.
+
+---
+
+## 5. Project Structure
 
 ```text
 DIP_project/
-├── src/dip_touchless/         # DIP Core: thu ảnh, tiền xử lý, tracking, lọc, tương tác
-├── submission/stem_ui/       # App bốn tab, OpenGL, cử chỉ và dữ liệu STEM
-│   ├── app.py                # Điểm chạy UI
-│   ├── chemistry*.py         # Dữ liệu/đồ thị và tương tác Hóa học
-│   ├── physics*.py           # Mô hình SI, tương tác và trình bày Vật lý
-│   └── physics_labs.yaml     # Tham số, giả thiết, công thức và nguồn tám bài
-├── config/                   # Cấu hình Core và thực nghiệm
-├── experiments/              # Replay/thực nghiệm; UI dùng hàm tạo bộ lọc ở đây
-├── analysis/                 # Phân tích và dựng kết quả nghiên cứu
-├── tests/                    # Kiểm tra tự động
-├── models/README.md          # Nguồn/checksum model; binary tải lúc cài
-├── Cai_dat_UI.bat            # Script cài đặt môi trường UI tự động
-├── Chay_UI.bat               # Script khởi chạy ứng dụng 1-click
-└── README.md                 # Tài liệu hướng dẫn chính
+├── src/dip_touchless/          # DIP Core: Acquisition, Preprocessing, Tracking, 1-Euro Filtering
+├── submission/stem_ui/        # Modern STEM UI: OpenGL Renderer, 4 Labs, Glass UI Theme
+│   ├── app.py                 # Application entry point
+│   ├── chemistry*.py          # 3D Molecule graphs, Periodic Table, and Reaction Simulator
+│   ├── physics*.py            # Mechanics models, SI kinematic solvers, and UI widgets
+│   ├── physics_labs.yaml      # Analytical parameters and formulas for 8 physics experiments
+│   └── data/                  # PubChem periodic table, molecular structures, and compound templates
+├── config/                    # Core pipeline and baseline configurations
+├── experiments/               # Reproducible research replay scripts and comparison benchmarks
+├── analysis/                  # Research telemetry and metrics aggregation
+├── tests/                     # Automated unit and integration test suite (1,700+ tests)
+├── models/README.md           # Hand landmark model provenance and SHA-256 verification
+├── Cai_dat_UI.bat             # 1-Click automated environment setup batch script
+├── Chay_UI.bat                # 1-Click application launcher batch script
+└── README.md                  # Main project guide
 ```
 
 ---
 
-## 5. Kiểm chứng đã thực hiện
+## 6. Verification & Automated Testing
 
-Toàn bộ **1.703 test tự động đã vượt qua (100% pass rate)** trên Python 3.11 và Python 3.13:
-- Kiểm tra toàn diện pipeline tiền xử lý ảnh (Adaptive CLAHE, ROI Manager, Illumination).
-- Kiểm tra tính ổn định của bộ lọc Fixed & Adaptive 1-Euro.
-- Kiểm tra các tương tác cử chỉ Pinch, Dwell, Grip và chuyển trạng thái không chạm.
-- Kiểm tra tính toán cơ học SI, va chạm, bảo toàn năng lượng và động học trong tab Vật lý.
-- Kiểm tra mô hình bảng tuần hoàn 118 nguyên tố, 72 hợp chất và 10 phản ứng tương tác trong tab Hóa học.
+The codebase includes an exhaustive test suite covering all image processing pipelines, signal filters, physics kinematics, chemistry graphs, and touchless gesture mechanics.
 
-Để tự kiểm tra cài đặt hoặc chạy bộ test khi cần:
-
+To run the automated tests:
 ```powershell
 pytest
-git status
-git diff
-
-git add <task-files>
-git commit -m "feat: describe the completed task"
 ```
-
-Do not claim tests passed unless they were actually executed.
+*Verification status: **1,703 / 1,703 passed (100% pass rate)**.*
 
 ---
 
-## 7. Branch workflow
+## 7. Authors & Contributors
 
-`main` contains stable shared work.
+**Project Group Members:**
+- **Nguyễn Đăk Lộc** — Student ID: `24110107`
+- **Trần Gia Kiệt** — Student ID: `24110103`
+- **Lê Ngọc Hải** — Student ID: `24110089`
 
-Each team member should develop on their own branch.
-
-Example:
-
-```text
-main
-loc
-member-a
-member-b
-```
-
-Typical workflow:
-
-```powershell
-git switch loc
-
-# work + commits
-
-pytest
-git status
-git push
-```
-
-For this project, small commits may be kept locally during a gate and pushed when the gate is complete or when a remote backup/share point is needed.
-
-Merge into `main` only after the relevant tests pass and the changes have been reviewed.
-
----
-
-## 8. Important project rules
-
-- DIP Core is the academic center of the project.
-- The 3D application consumes `InteractionState` and must not control Core algorithms directly.
-- Raw and canonical Fixed 1-Euro must remain available as baselines.
-- Canonical Fixed 1-Euro includes derivative low-pass filtering with `d_cutoff`.
-- Missing hand tracking must not be represented by fake zero landmarks.
-- Do not invent tracking confidence or measurement quality.
-- Handedness score is not tracking confidence.
-- Do not silently change algorithm equations, contracts or experiment protocol.
-- Do not fabricate FPS, latency, jitter reduction, accuracy or other experimental results.
-- Do not add YOLO, depth cameras, Transformers, cloud inference or multi-camera processing unless the project scope is explicitly changed.
-- Any quantitative result must come from an actual recorded experiment.
+*Instructor & Academic Department: Faculty of Information Technology / Digital Image Processing Capstone.*
