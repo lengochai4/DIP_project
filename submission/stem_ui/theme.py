@@ -69,6 +69,6 @@ def fit_desktop_window(size,desktop,margin):
 
 def scene_rect(size, camera, mode='solid'):
     w, h = size
-    sidebar = min(300, w//4) if (camera and mode not in ('solid', 'chemistry', 'physics', 'tracking', 'optics')) else 0
+    sidebar = min(300, w//4) if (camera and mode not in ('solid', 'chemistry', 'physics', 'tracking')) else 0
     y = header_height(w) + 12
     return (20, y, w-40-sidebar-(16 if sidebar else 0), h-y-68)

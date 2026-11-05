@@ -59,7 +59,6 @@ class PhysicsView:
         self.space=CameraSpace(4/3); self.content=(0,0,960,640)
         self.page='adjust'; self.param_page=0; self.library=False; self.collapsed=False
         self.quick_open=False; self.quick_edge='right'; self.quick_targets=[]
-        self.library_category='mechanics'
         self.tool='edit'
         self.scene_pan=np.zeros(2); self.roll=0.
         self.release_to_run=bool(settings['physics_release_to_run'])
@@ -76,7 +75,7 @@ class PhysicsView:
         self.layout(); self.setup_projection()
 
     @property
-    def page_key(self): return f'{self.model.lab}/{self.page}/{self.param_page}/{self.library}/{self.collapsed}/{getattr(self,"library_page",0)}/{getattr(self,"tools_page",0)}/{self.tool}/{self.quick_open}/{getattr(self,"library_category","mechanics")}'
+    def page_key(self): return f'{self.model.lab}/{self.page}/{self.param_page}/{self.library}/{self.collapsed}/{getattr(self,"library_page",0)}/{getattr(self,"tools_page",0)}/{self.tool}/{self.quick_open}'
 
     def open(self):
         self.textures={}; self.camera_key=None; self.last_ui=-math.inf; self.ui_dirty=True
@@ -169,20 +168,6 @@ class PhysicsView:
             self.tool='edit'
             m.choose(action.split(':',1)[1]); self.library=False; self.param_page=0; self.input.aims.clear(); self.measure_points=None; self.edit_bounds=None
         elif action=='library': self.library=not self.library
-        elif action=='toggle_library_category':
-            self.library_category='optics' if getattr(self,'library_category','mechanics')=='mechanics' else 'mechanics'
-            self.library_page=0
-        elif action=='category:mechanics':
-            self.library_category='mechanics'
-            self.library_page=0
-        elif action=='category:optics':
-            self.library_category='optics'
-            self.library_page=0
-        elif action.startswith('optics:'):
-            self.library=False
-            lab_key=action.split(':',1)[1]
-            if hasattr(self.renderer,'enter_optics'):
-                self.renderer.enter_optics(lab_key)
         elif action.startswith('page:'): self.page=action.split(':')[1]; self.library=False
         elif action=='run':
             if self.input.claims or self.mouse_claim:
@@ -373,13 +358,10 @@ class PhysicsView:
 
         # 3. Page navigation row
         if self.library:
-            if getattr(self,'library_category','mechanics')=='optics':
-                self._button(surface,'‹ Về Cơ học (8 bài)',(10,y_nav,w-20,22 if small else 24),'category:mechanics')
-            else:
-                pages=max(1,math.ceil(8/max(1,body.h//31))); self.library_page=getattr(self,'library_page',0)%pages
-                self._button(surface,'‹',(10,y_nav,32,22 if small else 24),'library_prev')
-                self._button(surface,'Quang học ›',(44,y_nav,w-88,22 if small else 24),'category:optics')
-                self._button(surface,'›',(w-42,y_nav,32,22 if small else 24),'library_next')
+            pages=max(1,math.ceil(8/max(1,body.h//31))); self.library_page=getattr(self,'library_page',0)%pages
+            self._button(surface,'‹',(10,y_nav,34,22 if small else 24),'library_prev')
+            self._text(surface,f'{self.library_page+1}/{pages}',(w//2-15,y_nav+3),12,MUTED)
+            self._button(surface,'›',(w-44,y_nav,34,22 if small else 24),'library_next')
         elif self.page=='adjust':
             self._button(surface,'‹',(10,y_nav,34,22 if small else 24),'param_prev')
             self._text(surface,f'Thông số {self.param_page+1}/{self.page_count}',(w//2-40,y_nav+3),12,MUTED)
@@ -401,22 +383,13 @@ class PhysicsView:
         return surface
 
     def _paint_library(self,surface,body):
-        if getattr(self,'library_category','mechanics')=='optics':
-            optics_items=[
-                ('refraction','1. Khúc xạ & Phản xạ TP'),
-                ('lens','2. Thấu kính mỏng (HT / PK)'),
-                ('prism','3. Tán sắc qua Lăng kính'),
-            ]
-            for i,(key,title) in enumerate(optics_items):
-                self._button(surface,title,(10,body.y+i*34,body.w,30),'optics:'+key)
-            return
         capacity=max(1,body.h//31); pages=math.ceil(8/capacity)
         self.library_page=getattr(self,'library_page',0)%pages
         items=list(self.model.catalog['labs'].items())[self.library_page*capacity:(self.library_page+1)*capacity]
         for i,(key,spec) in enumerate(items): self._button(surface,spec['title'],(10,body.y+i*31,body.w,27),'lab:'+key,key==self.model.lab)
 
     def _paint_tools(self,surface,body):
-        actions=[('Quang học ›','category:optics'),('Xem cảnh · 2 tay','tool:scene'),('Chỉnh vật','tool:edit'),('Xoay cảnh','tool:orbit'),('Đổi cỡ cảnh','tool:zoom'),
+        actions=[('Xem cảnh · 2 tay','tool:scene'),('Chỉnh vật','tool:edit'),('Xoay cảnh','tool:orbit'),('Đổi cỡ cảnh','tool:zoom'),
                  ('Hoàn tác','undo_edit'),('Thả để chạy','release_mode'),('Hủy đang chỉnh','cancel_edit'),
                  ('Vector','flag:vectors'),('Quỹ đạo','flag:trace'),('Năng lượng','flag:energy'),('Đồ thị','flag:graph'),
                  ('Đo đạc','flag:measure'),('Góc nhìn','view'),('Một bước','step'),('Giữ lượt A','keep'),
