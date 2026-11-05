@@ -15,6 +15,8 @@ def main():
     parser.add_argument('--mode',choices=('solid','tips','chemistry','physics','tracking'),default='solid')
     parser.add_argument('--smoke-frames',type=int,default=0)
     parser.add_argument('--screenshot',type=Path)
+    parser.add_argument('--fullscreen',action='store_true',default=True,help='Mở toàn màn hình')
+    parser.add_argument('--windowed',dest='fullscreen',action='store_false',help='Mở ở chế độ cửa sổ')
     args=parser.parse_args()
     settings=yaml.safe_load(Path(__file__).with_name('settings.yaml').read_text(encoding='utf-8'))
     droidcam_prefs=ROOT/'runs/ui/droidcam.json'
@@ -27,6 +29,7 @@ def main():
         except (OSError,ValueError,TypeError,json.JSONDecodeError):
             pass
     renderer=SubmissionRenderer(settings); renderer.mode=args.mode
+    if args.fullscreen: renderer.fullscreen=True
     if args.mode=='chemistry': renderer.enter_chemistry()
     elif args.mode=='physics': renderer.enter_physics()
     worker=None; active=False; error=None; webcam_index=args.camera

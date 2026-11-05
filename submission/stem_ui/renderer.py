@@ -35,7 +35,7 @@ class SubmissionRenderer:
         self.display_index=0
         self.restore_window_position=False
         self._window=None
-        self.fullscreen = False
+        self.fullscreen = bool(settings.get('fullscreen', False) or settings.get('window_fullscreen', False))
         self.camera_visible = True
         self.help_visible = True
         self.menu = False
@@ -86,7 +86,7 @@ class SubmissionRenderer:
         pygame.init()
         pygame.display.gl_set_attribute(pygame.GL_DEPTH_SIZE,24)
         self._set_display()
-        if self.settings.get('window_maximized', False) and self._window and not self.fullscreen:
+        if not self.fullscreen and self.settings.get('window_maximized', False) and self._window:
             self._window.maximize()
             pygame.event.pump()
             new_size = pygame.display.get_window_size()
@@ -94,7 +94,11 @@ class SubmissionRenderer:
                 self.size = new_size
                 self.windowed = self.size
                 self._set_display()
-            self._window.resizable = False
+                if self._window:
+                    self._window.maximize()
+                    pygame.event.pump()
+            if self._window:
+                self._window.resizable = False
         pygame.display.set_caption('DIP Touchless STEM • Đồ án')
         font_path = Path('C:/Windows/Fonts/segoeui.ttf')
         self.fonts = {size:pygame.font.Font(str(font_path) if font_path.is_file() else None,size)
@@ -132,14 +136,20 @@ class SubmissionRenderer:
         if hasattr(self,'unit_bone'): gl.glDeleteLists(self.unit_bone,1)
         # SDL desktop fullscreen handles monitor bounds/origin and taskbar;
         # merely enlarging a borderless window leaves its old screen offset.
-        resizable_flag = 0 if self.settings.get('window_maximized', False) else pygame.RESIZABLE
-        flags = pygame.OPENGL | pygame.DOUBLEBUF | (pygame.NOFRAME if self.fullscreen else resizable_flag)
-        if not self.fullscreen and self.initial_window_fit:
-            desktops=pygame.display.get_desktop_sizes()
-            desktop=desktops[min(self.display_index,len(desktops)-1)]
-            self.size=fit_desktop_window(self.size,desktop,self.settings['window_desktop_margin'])
-            self.windowed=self.size
-            self.initial_window_fit=False
+        flags = pygame.OPENGL | pygame.DOUBLEBUF | (pygame.NOFRAME if self.fullscreen else pygame.RESIZABLE)
+        if self.fullscreen:
+            desktops = pygame.display.get_desktop_sizes()
+            desktop = desktops[min(self.display_index, len(desktops) - 1)]
+            self.size = desktop
+            if self.initial_window_fit:
+                self.windowed = fit_desktop_window(tuple(self.settings['window']), desktop, self.settings['window_desktop_margin'])
+                self.initial_window_fit = False
+        elif self.initial_window_fit:
+            desktops = pygame.display.get_desktop_sizes()
+            desktop = desktops[min(self.display_index, len(desktops) - 1)]
+            self.size = fit_desktop_window(self.size, desktop, self.settings['window_desktop_margin'])
+            self.windowed = self.size
+            self.initial_window_fit = False
         for samples in (self.settings['render_msaa_samples'],0):
             pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLEBUFFERS,int(samples>0))
             pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLESAMPLES,samples)
@@ -156,7 +166,8 @@ class SubmissionRenderer:
         if self.fullscreen:
             window.set_fullscreen(desktop=True)
         elif self.restore_window_position:
-            window.position=self.windowed_position
+            if self.windowed_position is not None:
+                window.position=self.windowed_position
             self.restore_window_position=False
         self.actual_msaa_samples=int(gl.glGetIntegerv(gl.GL_SAMPLES))
         if self.actual_msaa_samples: gl.glEnable(gl.GL_MULTISAMPLE)
