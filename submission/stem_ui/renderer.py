@@ -893,17 +893,25 @@ class SubmissionRenderer:
             if hasattr(lead_hand,'landmarks') and len(lead_hand.landmarks)>=21:
                 tip8=lead_hand.landmarks[8]
                 tip4=lead_hand.landmarks[4]
-                lx=1.0-tip8.x if self.settings.get('mirror',True) else tip8.x
-                ly=tip8.y
-                hx=round(vx+lx*vw)
-                hy=round(vy+ly*vh)
-                hand_pt=(hx,hy)
+                raw_lx=1.0-tip8.x if self.settings.get('mirror',True) else tip8.x
+                raw_ly=tip8.y
+                target_x=vx+raw_lx*vw
+                target_y=vy+raw_ly*vh
+                prev_pt=getattr(self,'_optics_smooth_hand',None)
+                if prev_pt is None:
+                    sx,sy=target_x,target_y
+                else:
+                    alpha=min(1.0,1.0-math.exp(-math.tau*24.0*max(0.001,dt)))
+                    sx=prev_pt[0]+(target_x-prev_pt[0])*alpha
+                    sy=prev_pt[1]+(target_y-prev_pt[1])*alpha
+                self._optics_smooth_hand=(sx,sy)
+                hand_pt=(round(sx),round(sy))
                 mouse_pos=hand_pt
 
                 tx=1.0-tip4.x if self.settings.get('mirror',True) else tip4.x
                 ty=tip4.y
                 aspect_factor=vw/max(1,vh)
-                pinch_dist=math.hypot((lx-tx)*aspect_factor,ly-ty)
+                pinch_dist=math.hypot((raw_lx-tx)*aspect_factor,raw_ly-ty)
                 is_pinch=pinch_dist<0.052
 
                 if is_pinch:
@@ -916,9 +924,15 @@ class SubmissionRenderer:
                     self._optics_pinch_active=True
                 else:
                     self._optics_pinch_active=False
+        else:
+            self._optics_smooth_hand=None
 
-        surface=pygame.Surface(self.size,pygame.SRCALPHA if is_cam_ar else 0)
-        self.optics.draw(surface,mouse_pos,camera_active=is_cam_ar)
+        # Reuse surface to prevent CPU garbage collection lag
+        if getattr(self,'_optics_surface',None) is None or self._optics_surface.get_size()!=self.size:
+            self._optics_surface=pygame.Surface(self.size,pygame.SRCALPHA)
+        surface=self._optics_surface
+        surface.fill((0,0,0,0))
+        self.optics.draw(surface,mouse_pos,view=view,camera_active=is_cam_ar)
         if hand_pt:
             cursor_col=GOLD if is_pinch else ACCENT
             pygame.draw.circle(surface,cursor_col,hand_pt,11,2)
@@ -1015,12 +1029,12 @@ class SubmissionRenderer:
         pygame.draw.rect(overlay,(53,105,124,190),view,1,border_radius=18)
         pygame.draw.line(overlay,ACCENT,(vx+20,vy),(vx+92,vy),2)
         pygame.draw.line(overlay,GOLD,(vx+vw-92,vy+vh-1),(vx+vw-20,vy+vh-1),2)
-        if self.mode not in ('solid', 'chemistry', 'physics', 'tracking'):
+        if self.mode not in ('solid', 'chemistry', 'physics', 'tracking', 'optics'):
             feedback=self.grab.feedback if self.mode=='solid' and self.grab.slots else ('Đưa tay vào camera để bắt đầu' if not hands else 'Duỗi ngón để tạo hình' if self.mode=='tips' else 'Chụm cái–trỏ để cầm khối')
             if self.mode=='tips': feedback=tip_summary(tips,getattr(self,'live_mesh_mode','points'))
             self._text(overlay,feedback,(vx+18,vy+16),15,ACCENT if hands else MUTED)
         for label,pos in world_labels: self._text(overlay,label,pos,13,INK)
-        if self.camera_visible and self.mode not in ('solid', 'chemistry', 'physics', 'tracking'):
+        if self.camera_visible and self.mode not in ('solid', 'chemistry', 'physics', 'tracking', 'optics'):
             pw=min(300,w//4); px=w-20-pw; py=vy
             self._card(overlay,(px,py,pw,vh),245)
             previous_clip=overlay.get_clip(); overlay.set_clip(pygame.Rect(px,py,pw,vh))
@@ -1050,7 +1064,7 @@ class SubmissionRenderer:
             else:
                 self._wrap(overlay,'Bật camera để thao tác trực tiếp bằng tay.',(px+18,py+68),pw-36,17)
                 self._button(overlay,'Đổi camera',(px+18,py+min(176,max(0,vh-52)),pw-36,36),'next_camera')
-            if self.help_visible and self.mode!='chemistry' and vw<820 and vh>=240:
+            if self.help_visible and self.mode not in ('chemistry', 'optics') and vw<820 and vh>=240:
                 y=py+chmax+108
                 self._text(overlay,'THAO TÁC',(px+18,y),13,ACCENT); y+=26
                 if self.mode=='physics':
@@ -1066,7 +1080,7 @@ class SubmissionRenderer:
             elif vh>=240:
                 self._wrap(overlay,'Đưa một hoặc hai tay vào khung. Tránh che đầu ngón và chồng hai lòng bàn tay.',(px+18,py+chmax+108),pw-36,15)
             overlay.set_clip(previous_clip)
-        if self.help_visible and self.mode not in ('chemistry','physics','tracking') and not (self.camera_visible and vw<820 and self.mode not in ('solid', 'chemistry', 'physics', 'tracking')):
+        if self.help_visible and self.mode not in ('chemistry','physics','tracking','optics') and not (self.camera_visible and vw<820 and self.mode not in ('solid', 'chemistry', 'physics', 'tracking','optics')):
             hw=min(342,vw-36); hx=vx+(222 if self.mode=='solid' else 18); hy=vy+(12 if self.mode=='solid' else 54)
             self._card(overlay,(hx,hy,hw,184),231,True)
             self._text(overlay,'THAO TÁC BẰNG TAY',(hx+16,hy+15),13,ACCENT)
@@ -1084,6 +1098,11 @@ class SubmissionRenderer:
             readiness=(('Camera đã mở' if fresh else 'Đang nhận hình…') if active and snapshot is not None else status)+('  •  '+str(len(hands))+' tay' if hands else '')
             self._text(overlay,readiness,(52,h-43),13,INK)
             self._text(overlay,'Xử lý trên máy',(w-132,h-43),12,MUTED)
+        elif self.mode=='optics':
+            pygame.draw.circle(overlay,ACCENT if active else MUTED,(39,h-33),4)
+            readiness=(('Camera AR đã mở' if fresh else 'Đang nhận hình camera…') if active and snapshot is not None else status)+('  •  '+str(len(hands))+' tay (Chụm ngón để điều khiển)' if hands else '  •  Chưa thấy tay')
+            self._text(overlay,readiness,(52,h-43),13,INK)
+            self._text(overlay,'Quang học STEM • Chụm kéo trực tiếp trên khung',(w-330,h-43),12,MUTED)
         if self.mode=='chemistry':
             scene=self.chemistry.scene; selected=scene.selected
             label=scene.describe(scene.component(selected)) if selected in scene.atoms else scene.message
@@ -1179,7 +1198,7 @@ class SubmissionRenderer:
             gl.glTexCoord2f(u,v); gl.glVertex2f(a,b)
         gl.glEnd(); gl.glDisable(gl.GL_TEXTURE_2D)
         gl.glEnable(gl.GL_BLEND); gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA)
-        gl.glColor4f(0.02,0.05,0.08,0.0 if self.mode=='tracking' else 0.30)
+        gl.glColor4f(0.02,0.05,0.08,0.0 if self.mode=='tracking' else (0.08 if self.mode=='optics' else 0.30))
         gl.glBegin(gl.GL_QUADS)
         for pt in ((0,0),(1,0),(1,1),(0,1)): gl.glVertex2f(*pt)
         gl.glEnd(); gl.glDisable(gl.GL_BLEND)

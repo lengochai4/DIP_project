@@ -31,16 +31,17 @@ RED_LASER = (255, 65, 65)
 def draw_glow_line(surface: pygame.Surface, start: Tuple[float, float],
                    end: Tuple[float, float], color: Tuple[int, int, int],
                    width: int = 2, glow_width: int = 6):
-    """Draw a bright laser ray with an outer soft glow."""
-    glow_surf = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-    glow_color = (*color[:3], 65)
+    """Draw a bright laser ray with fast multi-pass glow without allocating surfaces."""
     p1 = (round(start[0]), round(start[1]))
     p2 = (round(end[0]), round(end[1]))
-    pygame.draw.line(glow_surf, glow_color, p1, p2, glow_width)
-    surface.blit(glow_surf, (0, 0))
+    # 1. Outer diffuse halo glow (dimmer, thicker line)
+    halo_color = tuple(max(15, int(c * 0.35)) for c in color[:3])
+    pygame.draw.line(surface, halo_color, p1, p2, glow_width)
+    # 2. Main laser color line
     pygame.draw.line(surface, color, p1, p2, width)
-    # Bright inner core
-    pygame.draw.line(surface, (255, 255, 255, 180), p1, p2, max(1, width - 1))
+    # 3. Bright central white core highlight
+    if width >= 2:
+        pygame.draw.line(surface, (255, 255, 255), p1, p2, 1)
 
 
 class OpticsVisualizer:
@@ -64,33 +65,42 @@ class OpticsVisualizer:
             self.fonts[size] = pygame.font.Font(str(path) if path.is_file() else None, size)
         return self.fonts[size]
 
-    def draw(self, surface: pygame.Surface, mouse_pos: Tuple[int, int], camera_active: bool = False):
-        """Render full optics canvas and controls onto surface."""
+    def draw(self, surface: pygame.Surface, mouse_pos: Tuple[int, int],
+             view: Optional[Tuple[int, int, int, int]] = None,
+             camera_active: bool = False):
+        """Render full optics canvas and controls onto surface within view bounds."""
         w, h = surface.get_size()
+        if view is not None:
+            vx, vy, vw, vh = view
+        else:
+            vx, vy, vw, vh = (16, 16, w - 32, h - 32)
+
         if camera_active:
             surface.fill((0, 0, 0, 0))
         else:
             surface.fill(BG_COLOR)
 
-        # 1. Header with Tabs & Switch to Mechanics
-        self._draw_header(surface, w, mouse_pos, camera_active=camera_active)
+        # 1. Navigation bar (Tabs + Switch to Mechanics)
+        nav_rect = pygame.Rect(vx, vy, vw, 38)
+        self._draw_header(surface, nav_rect, mouse_pos, camera_active=camera_active)
 
         # 2. Split Stage (Left) and Control Panel (Right)
-        panel_w = min(380, max(280, int(w * 0.28)))
-        stage_w = w - panel_w - 32
-        stage_rect = pygame.Rect(16, 75, stage_w, h - 90)
-        panel_rect = pygame.Rect(w - panel_w - 16, 75, panel_w, h - 90)
+        content_y = vy + 46
+        content_h = max(100, vh - 48)
+        panel_w = min(360, max(270, int(vw * 0.28)))
+        stage_w = max(100, vw - panel_w - 14)
+        stage_rect = pygame.Rect(vx, content_y, stage_w, content_h)
+        panel_rect = pygame.Rect(vx + stage_w + 14, content_y, panel_w, content_h)
         self.last_stage_rect = stage_rect
         self.last_panel_rect = panel_rect
 
-        # Draw Stage Area
+        # Draw Stage Area (Crystal-clear in AR mode without dark tint overlay)
         if camera_active:
-            stage_surf = pygame.Surface(stage_rect.size, pygame.SRCALPHA)
-            stage_surf.fill((10, 18, 28, 165))
-            surface.blit(stage_surf, stage_rect.topleft)
+            pygame.draw.rect(surface, (70, 130, 175, 160), stage_rect, 1, border_radius=14)
+            pygame.draw.line(surface, ACCENT, (stage_rect.left + 16, stage_rect.top), (stage_rect.left + 80, stage_rect.top), 2)
         else:
             pygame.draw.rect(surface, STAGE_BG, stage_rect, border_radius=14)
-        pygame.draw.rect(surface, PANEL_BORDER, stage_rect, 1, border_radius=14)
+            pygame.draw.rect(surface, PANEL_BORDER, stage_rect, 1, border_radius=14)
 
         # Render Active Experiment onto Stage
         stage_center = (stage_rect.centerx, stage_rect.centery)
@@ -100,7 +110,7 @@ class OpticsVisualizer:
         self.last_res = res
 
         if self.session.current_lab == 'refraction' and isinstance(res, RefractionResult):
-            self._render_refraction(surface, stage_rect, res)
+            self._render_refraction(surface, stage_rect, res, camera_active=camera_active)
         elif self.session.current_lab == 'lens' and isinstance(res, ThinLensResult):
             self._render_lens(surface, stage_rect, res)
         elif self.session.current_lab == 'prism' and isinstance(res, PrismDispersionResult):
@@ -109,27 +119,20 @@ class OpticsVisualizer:
         # 3. Control Panel on Right
         self._draw_controls(surface, panel_rect, res, mouse_pos, camera_active=camera_active)
 
-    def _draw_header(self, surface: pygame.Surface, w: int, mouse_pos: Tuple[int, int], camera_active: bool = False):
+    def _draw_header(self, surface: pygame.Surface, nav_rect: pygame.Rect, mouse_pos: Tuple[int, int], camera_active: bool = False):
         self.tab_targets = []
-        if camera_active:
-            hbar = pygame.Rect(16, 10, w - 32, 54)
-            hsurf = pygame.Surface(hbar.size, pygame.SRCALPHA)
-            hsurf.fill((14, 25, 38, 200))
-            surface.blit(hsurf, hbar.topleft)
-            pygame.draw.rect(surface, PANEL_BORDER, hbar, 1, border_radius=12)
+        x, y, w, h = nav_rect
 
-        # Title
-        f_title = self._font(20 if w < 1200 else 22)
-        t_surf = f_title.render("VẬT LÝ • QUANG HỌC", True, ACCENT)
-        surface.blit(t_surf, (26, 22))
+        # Background bar
+        pygame.draw.rect(surface, (16, 30, 46, 220) if camera_active else (20, 36, 52), nav_rect, border_radius=10)
+        pygame.draw.rect(surface, PANEL_BORDER, nav_rect, 1, border_radius=10)
 
         # Button to switch to Mechanics (Cơ học)
-        bx = t_surf.get_width() + 45
-        btn_mech = pygame.Rect(bx, 16, 136, 40)
+        btn_mech = pygame.Rect(x + 6, y + 4, 136, 30)
         is_hov_mech = btn_mech.collidepoint(mouse_pos)
-        pygame.draw.rect(surface, (35, 65, 90) if is_hov_mech else (20, 38, 56), btn_mech, border_radius=10)
-        pygame.draw.rect(surface, GOLD if is_hov_mech else PANEL_BORDER, btn_mech, 1, border_radius=10)
-        lbl_mech = self._font(14).render("‹ Cơ học (8 bài)", True, GOLD if is_hov_mech else INK)
+        pygame.draw.rect(surface, (35, 65, 90) if is_hov_mech else (24, 45, 65), btn_mech, border_radius=8)
+        pygame.draw.rect(surface, GOLD if is_hov_mech else PANEL_BORDER, btn_mech, 1, border_radius=8)
+        lbl_mech = self._font(13).render("‹ Cơ học (8 bài)", True, GOLD if is_hov_mech else INK)
         surface.blit(lbl_mech, lbl_mech.get_rect(center=btn_mech.center))
         self.tab_targets.append((btn_mech, 'switch_mechanics'))
 
@@ -139,33 +142,38 @@ class OpticsVisualizer:
             ('lens', '2. Thấu kính mỏng'),
             ('prism', '3. Tán sắc qua Lăng kính'),
         ]
-        tx = bx + 148
-        f_tab = self._font(14 if w < 1200 else 15)
+        tx = x + 150
+        f_tab = self._font(13)
         for tid, tname in tabs:
             is_active = (self.session.current_lab == tid)
-            tw = f_tab.size(tname)[0] + 24
-            rect = pygame.Rect(tx, 16, tw, 40)
+            tw = f_tab.size(tname)[0] + 20
+            rect = pygame.Rect(tx, y + 4, tw, 30)
             self.tab_targets.append((rect, tid))
 
             is_hov = rect.collidepoint(mouse_pos)
             col_bg = (30, 65, 95) if is_active else ((22, 42, 60) if is_hov else (16, 30, 44))
             border_col = ACCENT if is_active else ((100, 160, 190) if is_hov else PANEL_BORDER)
 
-            pygame.draw.rect(surface, col_bg, rect, border_radius=10)
-            pygame.draw.rect(surface, border_col, rect, 2 if is_active else 1, border_radius=10)
+            pygame.draw.rect(surface, col_bg, rect, border_radius=8)
+            pygame.draw.rect(surface, border_col, rect, 2 if is_active else 1, border_radius=8)
             lbl_col = GOLD if is_active else (INK if is_hov else MUTED)
             lbl_surf = f_tab.render(tname, True, lbl_col)
             surface.blit(lbl_surf, lbl_surf.get_rect(center=rect.center))
-            tx += tw + 10
+            tx += tw + 8
 
-    def _render_refraction(self, surface: pygame.Surface, stage_rect: pygame.Rect, res: RefractionResult):
+        # Right status tag
+        tag_str = "QUANG HỌC • AR CAMERA" if camera_active else "QUANG HỌC • PHÒNG LAB"
+        tag_lbl = self._font(12).render(tag_str, True, ACCENT if camera_active else MUTED)
+        surface.blit(tag_lbl, (x + w - tag_lbl.get_width() - 14, y + 9))
+
+    def _render_refraction(self, surface: pygame.Surface, stage_rect: pygame.Rect, res: RefractionResult, camera_active: bool = False):
         cx, cy = stage_rect.centerx, stage_rect.centery
 
-        # Medium 2 (bottom) background shading
+        # Medium 2 (bottom) background shading - subtle transparent tint
         m2_rect = pygame.Rect(stage_rect.left, cy, stage_rect.width, stage_rect.bottom - cy)
-        m2_alpha = min(90, int(35 + (res.n2 - 1.0) * 45))
+        m2_alpha = 35 if camera_active else min(80, int(35 + (res.n2 - 1.0) * 40))
         m2_surf = pygame.Surface((m2_rect.width, m2_rect.height), pygame.SRCALPHA)
-        m2_surf.fill((30, 120, 180, m2_alpha))
+        m2_surf.fill((20, 100, 180, m2_alpha))
         surface.blit(m2_surf, m2_rect.topleft)
 
         # Boundary line between media
@@ -262,10 +270,17 @@ class OpticsVisualizer:
     def _render_prism(self, surface: pygame.Surface, stage_rect: pygame.Rect, res: PrismDispersionResult):
         # Draw Glass Prism Triangle with transparent sheen
         pts = [(round(p[0]), round(p[1])) for p in res.prism_vertices]
-        prism_surf = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        pygame.draw.polygon(prism_surf, (80, 160, 220, 60), pts)
-        pygame.draw.polygon(prism_surf, (160, 225, 255, 180), pts, 2)
-        surface.blit(prism_surf, (0, 0))
+        min_x = max(0, min(p[0] for p in pts) - 2)
+        max_x = min(surface.get_width(), max(p[0] for p in pts) + 2)
+        min_y = max(0, min(p[1] for p in pts) - 2)
+        max_y = min(surface.get_height(), max(p[1] for p in pts) + 2)
+        pw, ph = int(max_x - min_x), int(max_y - min_y)
+        if pw > 0 and ph > 0:
+            prism_surf = pygame.Surface((pw, ph), pygame.SRCALPHA)
+            local_pts = [(p[0] - min_x, p[1] - min_y) for p in pts]
+            pygame.draw.polygon(prism_surf, (80, 160, 220, 45), local_pts)
+            pygame.draw.polygon(prism_surf, (160, 225, 255, 180), local_pts, 2)
+            surface.blit(prism_surf, (min_x, min_y))
 
         # Apex label A
         surface.blit(self._font(18).render(f"A = {res.apex_angle_deg:.0f}°", True, GOLD), (pts[0][0] - 24, pts[0][1] - 28))
