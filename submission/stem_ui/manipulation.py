@@ -212,7 +212,7 @@ class GrabController:
             self.target=self.pose.copy()
         else:
             base=self.base; base_pose=base['pose']
-            self.target.position=base_pose.position+center-base['center']
+            self.target.position=base_pose.position+(center-base['center'])*getattr(self,'translation_gain',1.0)
             self.target.scale=base_pose.scale; self.target.stretch=base_pose.stretch.copy()
             if vector is not None:
                 old=camera@base['vector']; new=camera@vector

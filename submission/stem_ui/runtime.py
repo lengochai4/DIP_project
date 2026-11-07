@@ -23,6 +23,7 @@ from dip_touchless.tracking import MeasurementValidator
 from experiments.run_replay import build_landmark_filter
 from dip_touchless.interaction import DeterministicGestureEngine
 from .acquisition import LatestCamera
+from .coherence_filter import build_ui_landmark_filter
 from .network_camera import DroidCamWifiSource
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -123,7 +124,7 @@ class CaptureWorker:
                 overrides={'filter':self.settings['filter_overrides'],
                     'runtime':{'mode':'replay' if self.replay else 'realtime','replay_source':str(self.replay) if self.replay else None},
                     'experiment':{'condition':'UI_INTERACTION'}}).to_dict()
-            filters = [build_landmark_filter(cfg) for _ in range(2)]
+            filters = [build_ui_landmark_filter(self.settings, cfg) for _ in range(2)]
             gestures = [DeterministicGestureEngine(**cfg['gesture']) for _ in range(2)]
             manager = ROIManager(**cfg['roi'])
             analyzer = IlluminationAnalyzer()
@@ -220,7 +221,7 @@ class CaptureWorker:
                 last_ms = timestamp_ms
                 compute_start=time.perf_counter()
                 raw_h,raw_w = packet.image.shape[:2]
-                work_packet = replace(packet,image=cv2.resize(packet.image,(640,max(1,round(raw_h*640/raw_w))),interpolation=cv2.INTER_LINEAR)) if raw_w>640 else packet
+                work_packet = replace(packet,image=cv2.resize(packet.image,(640,max(1,round(raw_h*640/raw_w))),interpolation=cv2.INTER_AREA)) if raw_w>640 else packet
                 h,w = work_packet.image.shape[:2]
                 roi = manager.update(frame_width=w,frame_height=h,hand_bbox=bbox)
                 illumination = decision.update(analyzer.measure(work_packet,roi))

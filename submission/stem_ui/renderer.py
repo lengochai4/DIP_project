@@ -533,6 +533,7 @@ class SubmissionRenderer:
                 aspect=snapshot.image.shape[1]/snapshot.image.shape[0]
                 ui_busy=getattr(self,'_solid_ui_busy',False)
                 if not self.solid_palette.open and not ui_busy:
+                    self.grab.translation_gain=1.45/max(0.5,self.zoom)
                     self.grab.update(self.solid_palette.grab_hands(hands,aspect),snapshot.timestamp_s,aspect,view_rotation)
                 chosen=self.solid_palette.update(hands,snapshot.timestamp_s,aspect,view,
                     busy=ui_busy or self.dragging or bool(self.grab.slots) or any(g.held or g.pending_since is not None for g in self.grab.grips.values()) or self.menu)
@@ -1101,8 +1102,8 @@ class SubmissionRenderer:
             k8=(hand.slot,gen,8); k4=(hand.slot,gen,4)
             p8=finger_cache.get(k8,(raw_tx,raw_ty))
             p4=finger_cache.get(k4,(raw_hx,raw_hy))
-            a8=min(1.0,alpha+math.hypot(raw_tx-p8[0],raw_ty-p8[1])/38.0)
-            a4=min(1.0,alpha+math.hypot(raw_hx-p4[0],raw_hy-p4[1])/38.0)
+            a8=min(1.0,alpha+math.hypot(raw_tx-p8[0],raw_ty-p8[1])/24.0)
+            a4=min(1.0,alpha+math.hypot(raw_hx-p4[0],raw_hy-p4[1])/24.0)
             tx=p8[0]+(raw_tx-p8[0])*a8; ty=p8[1]+(raw_ty-p8[1])*a8
             hx=p4[0]+(raw_hx-p4[0])*a4; hy=p4[1]+(raw_hy-p4[1])*a4
             new_cache[k8]=(tx,ty); new_cache[k4]=(hx,hy)
@@ -1258,7 +1259,7 @@ class SubmissionRenderer:
         cover=CameraCover(source_aspect,vw/max(1,vh))
         kp_cache=getattr(self,'_solid_screen_kp',{})
         new_kp={}
-        alpha=1.0-math.exp(-math.tau*22.0*max(0.0,dt)) if dt>0.0 else 1.0
+        alpha=1.0-math.exp(-math.tau*20.0*max(0.0,dt)) if dt>0.0 else 1.0
         gl.glDisable(gl.GL_DEPTH_TEST)
         gl.glDisable(gl.GL_LIGHTING)
         gl.glEnable(gl.GL_BLEND)
@@ -1280,7 +1281,7 @@ class SubmissionRenderer:
                 if prev is None:
                     sx,sy=tx,ty
                 else:
-                    step_a=min(1.0,alpha+math.hypot(tx-prev[0],ty-prev[1])/35.0)
+                    step_a=min(1.0,alpha+math.hypot(tx-prev[0],ty-prev[1])/20.0)
                     sx=prev[0]+(tx-prev[0])*step_a
                     sy=prev[1]+(ty-prev[1])*step_a
                 new_kp[key]=(sx,sy)

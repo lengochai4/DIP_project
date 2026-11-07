@@ -419,7 +419,7 @@ class CameraChemistryView:
                  for key,(nx,ny) in self.input.pointers.items() if key in generations}
         base_alpha=1-math.exp(-math.tau*self.settings['chemistry_cursor_response_hz']*max(0,dt))
         self.cursor_points={key:(p if key[0] in self.input.tap.states and self.input.tap.states[key[0]].locked
-            else self.cursor_points.get(key,p)+(p-self.cursor_points.get(key,p))*min(1.,base_alpha+float(np.linalg.norm(p-self.cursor_points.get(key,p)))*6.5)) for key,p in targets.items()}
+            else self.cursor_points.get(key,p)+(p-self.cursor_points.get(key,p))*min(1.,base_alpha+float(np.linalg.norm(p-self.cursor_points.get(key,p)))*9.0)) for key,p in targets.items()}
         gl.glDisable(gl.GL_LIGHTING); gl.glDisable(gl.GL_DEPTH_TEST)
         gl.glEnable(gl.GL_BLEND); gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_ONE_MINUS_SRC_ALPHA)
         for (key,generation),p in self.cursor_points.items():

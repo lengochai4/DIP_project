@@ -27,7 +27,7 @@ solid_quick_thumb_angle_deg: 150.0
 solid_quick_thumb_spread: 0.6
 solid_quick_min_palm_area: 0.18
 solid_shortcut_min_palm: 0.025
-solid_cursor_response_hz: 18.0
+solid_cursor_response_hz: 40.0
 camera_shutdown_timeout_s: 5.0
 droidcam_wifi_host: ''
 droidcam_wifi_port: 4747
@@ -57,14 +57,14 @@ tip_radius: 0.09
 world_width: 5.0
 relative_z_gain: 4.0
 display_thickness: 0.0
-pose_response_hz: 5.0
-rotation_response_hz: 4.0
-scale_response_hz: 5.0
-orientation_z_response_hz: 8.0
-pose_response_gain: 4.0
-rotation_response_gain: 3.0
-scale_response_gain: 5.0
-display_response_max_hz: 16.0
+pose_response_hz: 10.0
+rotation_response_hz: 4.5
+scale_response_hz: 5.5
+orientation_z_response_hz: 4.5
+pose_response_gain: 16.0
+rotation_response_gain: 4.5
+scale_response_gain: 6.0
+display_response_max_hz: 32.0
 depth_translation_gain: 2.0
 depth_translation_limit: 2.0
 grip_press_ratio: 0.55
@@ -85,11 +85,11 @@ camera_ar_fov_deg: 44.0
 chemistry_max_atoms: 80
 chemistry_scene_limit: 8.0
 chemistry_history_limit: 40
-chemistry_response_hz: 9.0
-chemistry_drag_response_hz: 9.0
-chemistry_move_response_hz: 5.0
-chemistry_rotate_response_hz: 4.0
-chemistry_scale_response_hz: 5.0
+chemistry_response_hz: 12.0
+chemistry_drag_response_hz: 15.0
+chemistry_move_response_hz: 10.0
+chemistry_rotate_response_hz: 4.5
+chemistry_scale_response_hz: 5.5
 chemistry_atom_radius: 0.16
 chemistry_join_distance: 0.68
 chemistry_break_distance: 1.12
@@ -140,7 +140,7 @@ chemistry_panel_dock_edge: 0.025
 chemistry_panel_dock_s: 0.15
 chemistry_panel_throw_edge: 0.04
 chemistry_panel_zoom_step: 0.12
-chemistry_panel_response_hz: 6.0
+chemistry_panel_response_hz: 7.5
 chemistry_panel_aim_grace_s: 0.22
 chemistry_panel_aim_radius: 0.06
 chemistry_panel_min_span: 0.06
@@ -154,7 +154,7 @@ chemistry_object_hold_ratio: 0.34
 chemistry_object_release_s: 0.045
 chemistry_object_release_observations: 2
 # Physics presentation only; frozen Core/chemistry settings above are unchanged.
-physics_drag_response_hz: 9.0
+physics_drag_response_hz: 9.5
 physics_drag_freeze_ratio: 0.45
 physics_model_hold_ratio: 0.34
 physics_drag_release_s: 0.045
@@ -412,15 +412,25 @@ chemistry_templates:
     source_url: "https://pubchem.ncbi.nlm.nih.gov/compound/Carbon%20disulfide"
 # Presentation defaults for faster response; not the F2 research profile.
 filter_overrides:
-  derivative_cutoff_hz: 12.0
+  derivative_cutoff_hz: 1.0
   adaptive:
-    base_cutoff_hz: 1.8
+    base_cutoff_hz: 0.85
     beta_min: 0.0
-    beta_base: 18.0
-    beta_max: 140.0
-    velocity_gain: 90.0
+    beta_base: 0.0
+    beta_max: 4.5
+    velocity_gain: 1.2
     velocity_max: 10.0
-    final_cutoff_min_hz: 1.5
-    final_cutoff_max_hz: 140.0
-    final_cutoff_min_hz: 0.8
+    final_cutoff_min_hz: 0.85
     final_cutoff_max_hz: 15.0
+coherence_filter:
+  window_size: 5
+  base_cutoff_hz: 0.30
+  coherent_velocity_gain: 75.0
+  final_cutoff_min_hz: 0.30
+  final_cutoff_max_hz: 48.0
+  path_floor: 0.016
+  deadband_radius: 0.011
+  phase_lead_s: 0.014
+  phase_lead_max_s: 0.009
+  base_z_cutoff_hz: 0.40
+  deadband_z_radius: 0.018

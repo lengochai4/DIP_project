@@ -740,6 +740,7 @@ class PhysicsView:
         identity=(run_id,snapshot.frame_id) if fresh else None
         if fresh and identity!=self.identity and self.mouse_claim is None:
             hands=tuple(cover.hand(hand) for hand in snapshot.hands)
+            self._covered_hands={hand.slot:hand for hand in hands}
             for hand in hands:
                 if self.cursor_generations.get(hand.slot)!=hand.generation: self.cursor_points.pop(hand.slot,None)
             self.cursor_generations={hand.slot:hand.generation for hand in hands}
@@ -752,7 +753,9 @@ class PhysicsView:
                     anchor=tuple(self.cursor_points[slot]/np.array((w,h)))
                     if self.hit(anchor)==state.target[1]: state.anchor=anchor; self.input.pointers[slot]=anchor
             self.press_cursors=captured
-        elif not fresh and self.identity is not None: self.input.release()
+        elif not fresh and self.identity is not None:
+            self._covered_hands={}
+            self.input.release()
         self.identity=identity
         self.input.advance(dt)
         self.model.advance(max(0,dt))
@@ -1151,7 +1154,7 @@ class PhysicsView:
             p=np.array(point)*self.content[2:]; previous=self.cursor_points.get(key,p)
             state=self.input.tap.states.get(key)
             resp_hz=max(45.,float(self.cfg['cursor_response_hz']))
-            step_alpha=min(1.,(1-math.exp(-math.tau*resp_hz*max(0.,dt)))+float(np.linalg.norm(p-previous))/38.)
+            step_alpha=min(1.,(1-math.exp(-math.tau*resp_hz*max(0.,dt)))+float(np.linalg.norm(p-previous))/24.)
             p=p if key in self.input.claims or (state and state.locked) else previous+(p-previous)*step_alpha
             active[key]=p
             claim=self.input.claims.get(key)
